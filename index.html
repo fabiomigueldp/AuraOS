@@ -139,6 +139,7 @@
             white-space: normal; /* Allow text to wrap if name is long */
             display: -webkit-box;
             -webkit-line-clamp: 2; /* Limit to 2 lines */
+            line-clamp: 2; /* Standard property */
             -webkit-box-orient: vertical;
             line-height: 1.2; /* Adjust line height */
         }
@@ -251,10 +252,7 @@
         .terminal-output { height: 100%; overflow-y: auto; }
         .terminal-line { display: flex; }
 
-        /* Notes App General Font */
-        #notes-app {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
+        /* Terminal Styling */
         .terminal-prompt { color: var(--highlight-secondary); margin-right: 8px; white-space: nowrap; }
         .terminal-input { flex-grow: 1; background: none; border: none; color: var(--text-color); font-family: 'Fira Code', monospace; outline: none; }
         .terminal-output .command { color: #8be9fd; }
@@ -262,178 +260,329 @@
         .terminal-output .output-error { color: #ff5555; }
         .terminal-output .output-link { color: #50fa7b; text-decoration: underline; }
 
-        /* Notes App - Two Pane Layout */
-        #notes-app .window-body { padding: 0; display: flex; flex-direction: row; }
+        /* Notes App - MacOS-inspired Layout */
+        #notes-app .window-body { 
+            padding: 0; 
+            display: flex; 
+            flex-direction: row; 
+            background: transparent;
+        }
 
+        /* Sidebar - MacOS Notes Style */
         #notes-app .notes-sidebar {
-            width: 200px; /* Initial width, can be made resizable later if needed */
+            width: 240px; /* Slightly wider like macOS */
             flex-shrink: 0;
             height: 100%;
-            /* background: var(--glass-background); /* REMOVED - Will be theme-specific */
-            /* border-right: 1px solid var(--glass-border); /* REMOVED - Will be theme-specific */
-            padding: 10px;
+            padding: 0;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
+            overflow: hidden;
+            position: relative;
         }
 
+        /* Sidebar Header with New Note Button */
+        #notes-app .sidebar-header {
+            padding: 16px 16px 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        /* New Note Button - macOS Style */
+        #notes-app .new-note-btn {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        #notes-app .new-note-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        #notes-app .new-note-btn svg {
+            margin-right: 8px;
+            opacity: 0.8;
+        }
+
+        /* Notes List Container */
         #notes-app .notes-list {
             flex-grow: 1;
-            overflow-y: auto; /* For scrolling if many notes */
+            overflow-y: auto;
+            padding: 8px 12px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
 
+        #notes-app .notes-list::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Note Items - macOS Style */
+        #notes-app .note-item {
+            display: flex;
+            flex-direction: column;
+            padding: 12px 12px;
+            margin-bottom: 2px;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            position: relative;
+            background: transparent;
+            border: 1px solid transparent;
+        }
+
+        #notes-app .note-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* Note Title */
+        #notes-app .note-item .note-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-color);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Note Preview */
+        #notes-app .note-item .note-preview {
+            font-size: 12px;
+            color: var(--subtle-text-color);
+            opacity: 0.8;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2; /* Standard property */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Note Date */
+        #notes-app .note-item .note-date {
+            font-size: 11px;
+            color: var(--subtle-text-color);
+            opacity: 0.6;
+            margin-top: 6px;
+        }
+
+        /* Delete Button - Hidden by default, shows on hover */
+        #notes-app .note-item .delete-note-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            color: #ff3b30;
+            width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        #notes-app .note-item:hover .delete-note-btn {
+            opacity: 1;
+        }
+
+        #notes-app .note-item .delete-note-btn:hover {
+            background: rgba(255, 59, 48, 0.2);
+            border-color: rgba(255, 59, 48, 0.4);
+            transform: scale(1.1);
+        }
+
+        /* Active Note Item */
+        #notes-app .note-item.active {
+            background: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.15);
+            border-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .light-theme #notes-app .note-item.active {
+            background: rgba(0, 122, 255, 0.1);
+            border-color: rgba(0, 122, 255, 0.3);
+        }
+
+        /* Editor Area - macOS Notes Style */
         #notes-app .notes-editor-area {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             height: 100%;
-            /* background-color will be set by theme-specific rules below */
-            padding: 20px; /* Add padding to the container */
-            box-sizing: border-box; /* Important if adding padding */
+            position: relative;
+            background: transparent;
         }
 
-        /* Light Theme Editor Area Background */
-        .light-theme #notes-app .notes-editor-area {
-            background-color: #f9f9f9; /* Off-white, paper-like */
+        /* Editor Header */
+        #notes-app .editor-header {
+            padding: 16px 20px 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
 
-        /* Dark Theme Editor Area Background */
-        .dark-theme #notes-app .notes-editor-area {
-            background-color: #2c2c2e; /* Dark gray */
+        #notes-app .editor-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            padding: 4px 0;
+            border-radius: 4px;
+            transition: all 0.2s ease;
         }
 
-        /* Ensure textarea and status bar are correctly styled within the new structure */
+        #notes-app .editor-title:focus {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+        }
+
+        /* Main Textarea */
         #notes-app .notes-editor-area textarea {
             flex-grow: 1;
             width: 100%;
-            background: transparent; /* Correct, shows parent\'s new background */
+            background: transparent;
             border: none;
             outline: none;
-            color: var(--text-color); /* Theme-adaptive */
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Set in previous step */
-            font-size: 14px; /* Adjusted font size */
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            padding: 20px;
             resize: none;
-            padding: 0; /* Remove textarea\'s own padding, rely on container\'s padding */
-            box-sizing: border-box; /* Good practice */
+            box-sizing: border-box;
         }
 
-        /* CSS for #notes-app .notes-editor-area .notes-status-bar and its theme-specific variants REMOVED */
-
-        /* Light Theme Sidebar Background & Separators */
-        .light-theme #notes-app .notes-sidebar {
-            background-color: #f0f0f0; /* Light gray, slightly different from editor\'s off-white */
-            border-right: 1px solid #dcdcdc; /* Subtle light gray line */
-        }
-
-        /* Dark Theme Sidebar Background & Separators */
-        .dark-theme #notes-app .notes-sidebar {
-            background-color: #363638; /* Dark gray, distinct from editor\'s dark gray */
-            border-right: 1px solid #2a2a2c; /* Subtle dark gray line, darker than sidebar */
-        }
-
-        #notes-app .note-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px; /* Adjusted padding */
-            margin-bottom: 1px; /* Or a very small margin for slight separation */
-            border-radius: 5px; /* Consistent radius for items */
-            font-size: 0.9rem; /* Re-evaluate if specific pixel size is known for SF Pro Text in Notes */
-            transition: background-color 0.1s ease-out; /* Faster, more responsive transition */
-            /* color: var(--text-color); /* Already inherited */
-            cursor: pointer; /* Ensure cursor remains pointer */
-        }
-
-        #notes-app .note-item:hover {
-             background-color: rgba(128, 128, 128, 0.15); /* Make hover even more subtle */
-        }
-
-        #notes-app .note-item .note-name {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex-grow: 1; /* Allow name to take available space */
-            padding-right: 5px; /* Space before delete button */
-        }
-
-        #notes-app .note-item .delete-note-btn {
-            background: none;
-            border: none;
+        #notes-app .notes-editor-area textarea::placeholder {
             color: var(--subtle-text-color);
-            cursor: pointer;
-            padding: 3px; /* Small padding to make it easier to click */
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0; /* Prevent button from shrinking */
+            opacity: 0.5;
         }
 
-        #notes-app .note-item:hover .delete-note-btn {
-            color: var(--text-color); /* More visible on hover */
-            background-color: rgba(128, 128, 128, 0.3); /* Slight background on hover */
+        /* Sidebar Background with Glass Effect */
+        .light-theme #notes-app .notes-sidebar {
+            background: rgba(248, 248, 248, 0.8);
+            border-right: 1px solid rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(20px) saturate(1.8);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
         }
 
-        #notes-app .note-item.active {
-            /* font-weight: 600; /* Removed, assuming macOS doesn\'t change weight */
-            /* color is set by theme-specific rules */
+        .dark-theme #notes-app .notes-sidebar {
+            background: rgba(40, 40, 42, 0.8);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px) saturate(1.8);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
         }
 
-        /* Dark Theme Active Note Item (macOS style) */
-        .dark-theme #notes-app .note-item.active {
-            background-color: rgb(45, 115, 230);
-            color: #FFFFFF;
-        }
-        .dark-theme #notes-app .note-item.active .delete-note-btn {
-            color: #FFFFFF;
-        }
-        .dark-theme #notes-app .note-item.active:hover .delete-note-btn {
-            background-color: rgba(255, 255, 255, 0.15);
+        /* Editor Area Background with Glass Effect */
+        .light-theme #notes-app .notes-editor-area {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px) saturate(1.8);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
         }
 
-        /* Light Theme Active Note Item (macOS style) */
-        .light-theme #notes-app .note-item.active {
-            background-color: rgb(0, 122, 255);
-            color: #FFFFFF;
-        }
-        .light-theme #notes-app .note-item.active .delete-note-btn {
-            color: #FFFFFF;
-        }
-        .light-theme #notes-app .note-item.active:hover .delete-note-btn {
-            background-color: rgba(255, 255, 255, 0.2);
+        .dark-theme #notes-app .notes-editor-area {
+            background: rgba(28, 28, 30, 0.9);
+            backdrop-filter: blur(20px) saturate(1.8);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
         }
 
+        /* Light theme adjustments */
+        .light-theme #notes-app .new-note-btn {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.08);
+            color: var(--text-color);
+        }
+
+        .light-theme #notes-app .new-note-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.15);
+        }
+
+        .light-theme #notes-app .note-item:hover {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .light-theme #notes-app .sidebar-header {
+            border-bottom-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .light-theme #notes-app .editor-header {
+            border-bottom-color: rgba(0, 0, 0, 0.05);
+        }
+
+        /* No Notes Message */
         #notes-app .no-notes-message {
             text-align: center;
             color: var(--subtle-text-color);
-            font-size: 0.9rem;
-            padding-top: 20px;
+            font-size: 14px;
+            padding: 40px 20px;
+            opacity: 0.6;
         }
 
-        #notes-app .new-note-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: var(--highlight-primary);
-            color: white;
-            border: none;
-            border-radius: var(--ui-corner-radius-small);
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            #notes-app .notes-sidebar {
+                width: 200px;
+            }
+            
+            #notes-app .notes-editor-area textarea {
+                font-size: 15px;
+                padding: 16px;
+            }
         }
 
-        #notes-app .new-note-btn:hover {
-            background-color: var(--highlight-secondary); /* Or a slightly different shade of primary */
+        /* Save indicator for Notes */
+        #notes-app .save-indicator {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 12px;
+            color: var(--subtle-text-color);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
 
-        #notes-app .new-note-btn svg { /* Ensure SVG aligns well */
-            margin-top: -2px; /* Minor adjustment if needed */
+        #notes-app .save-indicator.saving {
+            opacity: 0.8;
+            color: var(--highlight-primary);
+        }
+
+        #notes-app .save-indicator.saved {
+            opacity: 0.6;
+            color: var(--highlight-secondary);
         }
 
         /* Aura Music (Novo) */
@@ -443,52 +592,132 @@
         /* Custom Scrollbar Styling for Notes App */
         #notes-app .notes-list::-webkit-scrollbar,
         #notes-app .notes-editor-area textarea::-webkit-scrollbar {
-            width: 8px;
-            height: 8px; /* For horizontal scrollbar if textarea wraps */
+            width: 6px;
+            height: 6px;
         }
 
         #notes-app .notes-list::-webkit-scrollbar-track,
         #notes-app .notes-editor-area textarea::-webkit-scrollbar-track {
-            background: transparent; /* Or a very subtle color from theme */
+            background: transparent;
         }
 
         #notes-app .notes-list::-webkit-scrollbar-thumb,
         #notes-app .notes-editor-area textarea::-webkit-scrollbar-thumb {
-            background-color: var(--subtle-text-color); /* Use a theme variable */
-            border-radius: 4px;
-            border: 2px solid transparent; /* Creates padding around thumb */
-            background-clip: content-box;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         #notes-app .notes-list::-webkit-scrollbar-thumb:hover,
         #notes-app .notes-editor-area textarea::-webkit-scrollbar-thumb:hover {
-            background-color: var(--text-color); /* Darken on hover */
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
-        /* For Firefox (basic styling, true customization is limited) */
+        /* For Firefox - Notes App */
         #notes-app .notes-list,
         #notes-app .notes-editor-area textarea {
             scrollbar-width: thin;
-            scrollbar-color: var(--subtle-text-color) transparent; /* thumb and track */
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        /* Light theme scrollbar adjustments for Notes */
+        .light-theme #notes-app .notes-list::-webkit-scrollbar-thumb,
+        .light-theme #notes-app .notes-editor-area textarea::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .light-theme #notes-app .notes-list::-webkit-scrollbar-thumb:hover,
+        .light-theme #notes-app .notes-editor-area textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .light-theme #notes-app .notes-list,
+        .light-theme #notes-app .notes-editor-area textarea {
+            scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+        }
+
+        /* Custom Scrollbar Styling for Music Player */
+        #music-player-app .music-playlist::-webkit-scrollbar {
+            width: 6px; /* Thinner scrollbar for music player */
+        }
+
+        #music-player-app .music-playlist::-webkit-scrollbar-track {
+            background: transparent; /* Completely transparent track */
+        }
+
+        #music-player-app .music-playlist::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1); /* Very subtle thumb */
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.05); /* Glass-like border */
+            backdrop-filter: blur(10px); /* Glass effect */
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        #music-player-app .music-playlist::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2); /* Slightly more visible on hover */
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #music-player-app .music-playlist::-webkit-scrollbar-thumb:active {
+            background: rgba(255, 255, 255, 0.3); /* More visible when dragging */
+        }
+
+        /* For Firefox - Music Player */
+        #music-player-app .music-playlist {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent; /* thumb and track */
+        }
+
+        /* Light theme adjustments for music player scrollbar */
+        .light-theme #music-player-app .music-playlist::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .light-theme #music-player-app .music-playlist::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .light-theme #music-player-app .music-playlist::-webkit-scrollbar-thumb:active {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .light-theme #music-player-app .music-playlist {
+            scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
         }
         .music-player-main { flex-grow: 1; display: flex; flex-direction: column; text-align: center; padding: 20px; }
-        #music-search { width: 90%; margin: 0 auto 10px; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color); }
-        .playlist-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.9rem; }
+        #music-search { width: 90%; margin: 0 auto 10px; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color); transition: border-color 0.3s ease; }
+        #music-search:focus { outline: none; border-color: var(--highlight-primary); }
+        .playlist-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.9rem; transition: background-color 0.2s ease; }
         .playlist-item:hover { background: rgba(128,128,128,0.2); }
         .playlist-item.playing { background: var(--highlight-primary); color: white; }
-        .album-art { width: 180px; height: 180px; border-radius: var(--ui-corner-radius-small); margin: 0 auto; background-color: #333; box-shadow: 0 5px 15px rgba(0,0,0,0.3); background-size: cover; background-position: center; }
-        .track-info { margin-top: 20px; margin-bottom: 15px; }
-        .track-title { font-weight: 600; font-size: 1.2rem; }
-        .track-artist { font-size: 0.9rem; color: var(--subtle-text-color); }
+        .album-art { width: 180px; height: 180px; border-radius: var(--ui-corner-radius-small); margin: 0 auto; background-color: #333; box-shadow: 0 5px 15px rgba(0,0,0,0.3); background-size: cover; background-position: center; position: relative; transition: all 0.3s ease; }
+        .album-art.loading::after { content: ''; position: absolute; top: 50%; left: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border: 3px solid rgba(255,255,255,0.3); border-top-color: var(--highlight-primary); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .track-info { margin-top: 20px; margin-bottom: 15px; transition: opacity 0.3s ease; }
+        .track-title { font-weight: 600; font-size: 1.2rem; transition: all 0.3s ease; }
+        .track-artist { font-size: 0.9rem; color: var(--subtle-text-color); transition: all 0.3s ease; }
         .music-controls { display: flex; justify-content: center; align-items: center; gap: 20px; }
-        .music-controls button { background: none; border: none; cursor: pointer; }
+        .music-controls button { background: none; border: none; cursor: pointer; transition: all 0.2s ease; }
         .music-controls svg { width: 24px; height: 24px; fill: var(--text-color); transition: transform 0.2s; }
         .music-controls button:hover svg { transform: scale(1.1); }
+        .music-controls button:active svg { transform: scale(0.95); }
         #play-pause-btn svg { width: 40px; height: 40px; }
         .progress-container { width: 90%; margin: 15px auto; }
         .time-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--subtle-text-color); margin-bottom: 5px; }
-        .progress-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.2); border-radius: 5px; cursor: pointer; }
-        .progress { height: 100%; width: 0%; background: var(--highlight-secondary); border-radius: 5px; }
+        .progress-bar { width: 100%; height: 5px; background: rgba(255,255,255,0.2); border-radius: 5px; cursor: pointer; position: relative; transition: height 0.2s ease; }
+        .progress-bar:hover { height: 8px; }
+        .progress { height: 100%; width: 0%; background: var(--highlight-secondary); border-radius: 5px; transition: width 0.1s ease; }
+        .search-state { font-size: 0.8rem; color: var(--subtle-text-color); padding: 10px; text-align: center; font-style: italic; }
+        .featured-section { border-top: 1px solid var(--glass-border); padding-top: 10px; margin-top: 10px; }
+        .featured-title { font-size: 0.8rem; color: var(--highlight-primary); padding: 5px 15px; font-weight: 600; }
+        .no-results { padding: 20px; text-align: center; color: var(--subtle-text-color); font-style: italic; }
 
         /* Outros elementos (Login, Context Menu, etc) */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(20px); transition: opacity 0.5s ease; }
@@ -703,6 +932,26 @@
             { title: 'City Lights', artist: 'Lo-Fi Beats', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b27381252fab2d4a55c65a78248c' },
             { title: 'Ocean Drive', artist: '80s Revival', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273243552a47e62feb100366471' },
             { title: 'Forest Path', artist: 'Ambient Worlds', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b2739451d86016335d140656a56e' },
+            { title: 'Neon Dreams', artist: 'Cyberpunk Collective', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273bb5b3b8db4433f5de1e93e4e' },
+            { title: 'Midnight Jazz', artist: 'Smooth Sessions', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273f8e4e4d4c1a3c3e1c4b8a3f1' },
+            { title: 'Electric Pulse', artist: 'Future Bass', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273c3e4d5f2b8a7c1e9f4b5a2d1' },
+            { title: 'Rainy Sunday', artist: 'Chill Vibes', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273a8c2f1e4b9d3c7f5e2a6b1d4' },
+            { title: 'Galactic Journey', artist: 'Space Odyssey', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e1f4c8b2a9d6c3f7e5a8b2d1' },
+            { title: 'Urban Beats', artist: 'Street Sound', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273b4c7f2e8a1d5c9f6e3a7b2d5' },
+            { title: 'Sunset Boulevard', artist: 'California Dreams', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273f7e2c8b5a4d1c6f9e2a5b8d3' },
+            { title: 'Digital Love', artist: 'Synth Pop', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273c9f3e6b2a7d4c1f8e5a2b7d6' },
+            { title: 'Mountain Echo', artist: 'Nature Sounds', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e8c5f2b9a6d3c7f4e1a8b5d2' },
+            { title: 'Retro Wave', artist: 'Vintage Synth', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273b7f4c1e8a5d2c9f6e3a6b9d4' },
+            { title: 'Quantum Bass', artist: 'Electronic Fusion', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273f2e7c4b1a8d5c2f9e6a3b6d7' },
+            { title: 'Chill Night', artist: 'Lo-Fi Hip Hop', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273a1f8c5e2b9d6c3f7e4a7b2d8' },
+            { title: 'Crystal Waters', artist: 'Ambient Flow', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273d6c9f2e5b8a1c4f7e2a5b8d1' },
+            { title: 'Neon Nights', artist: 'Dark Synth', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-18.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273c4e7f1b8a5d2c6f9e3a6b9d2' },
+            { title: 'Aurora Lights', artist: 'Arctic Sounds', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-19.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273f5e8c2b6a9d3c7f1e4a7b2d5' },
+            { title: 'Lost in Time', artist: 'Temporal Echoes', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-20.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e3f6c9b2a6d4c8f5e2a8b5d3' },
+            { title: 'Deep Focus', artist: 'Study Beats', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-21.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273b8c1f4e7a2d5c9f6e3a9b6d4' },
+            { title: 'Cosmic Dance', artist: 'Space Groove', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-22.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273f1e4c7b5a8d2c6f9e5a2b7d6' },
+            { title: 'Zen Garden', artist: 'Meditation Sounds', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-23.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273c7f2e5b8a1d4c8f2e6a3b8d1' },
+            { title: 'Binary Dreams', artist: 'Tech House', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-24.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e6c3f8b1a4d7c2f5e9a6b3d8' }
         ];
 
     const fileAssociations = {
@@ -897,17 +1146,39 @@
                 listItem.className = 'note-item';
                 listItem.dataset.filePath = notePath;
 
-                const noteNameSpan = document.createElement('span');
-                noteNameSpan.className = 'note-name';
-                noteNameSpan.textContent = fileName.replace('.txt', '');
+                // Get note content for preview
+                const noteContent = fileNode.content || '';
+                const lines = noteContent.split('\n').filter(line => line.trim());
+                const title = lines[0] || fileName.replace('.txt', '');
+                const preview = lines.slice(1).join(' ').substring(0, 100) || 'Sem conteúdo adicional';
+                
+                // Create a mock date (in real app, this would come from file metadata)
+                const date = new Date();
+                date.setDate(date.getDate() - Math.floor(Math.random() * 30)); // Random date within last 30 days
+                const dateStr = date.toLocaleDateString('pt-BR', { 
+                    day: 'numeric', 
+                    month: 'short',
+                    year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                });
+
+                // Build the note item HTML
+                listItem.innerHTML = `
+                    <div class="note-title">${title}</div>
+                    <div class="note-preview">${preview}</div>
+                    <div class="note-date">${dateStr}</div>
+                `;
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-note-btn';
-                deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.83l-4.59-4.59L5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>';
+                deleteBtn.innerHTML = '<svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg>';
                 deleteBtn.title = 'Excluir anotação';
 
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent note selection when clicking delete
+
+                    if (!confirm(`Tem certeza que deseja excluir "${title}"?`)) {
+                        return;
+                    }
 
                     const notesDirNode = getFileSystemNode('/Anotações/');
                     if (notesDirNode && notesDirNode.children[fileName]) {
@@ -918,28 +1189,11 @@
                         if (currentOpenNotePath === notePath) {
                             // The currently open note is being deleted
                             const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                            // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                             if (textarea) textarea.value = '';
-                            // if (statusBar) statusBar.textContent = 'Anotação excluída.'; // REMOVED
                             delete notesAppWindow.dataset.currentNotePath; // Clear current path
 
                             // Re-render and attempt to load the first available note
                             renderNoteList(notesAppWindow, null); // Pass null to select the first or show empty
-
-                            // After renderNoteList, check if a new note was automatically selected
-                            // This is now handled by the refined logic at the end of renderNoteList
-                            // const newCurrentNotePath = notesAppWindow.dataset.currentNotePath;
-                            // if (newCurrentNotePath) {
-                            //     const noteContent = getFileSystemNode(newCurrentNotePath);
-                            //     if (textarea && noteContent) {
-                            //         textarea.value = noteContent.content;
-                            //         // statusBar.textContent = 'Pronto'; // REMOVED
-                            //     }
-                            // } else {
-                            //     // No other notes to load
-                            //     if (textarea) textarea.placeholder = "Nenhuma anotação. Crie uma nova!";
-                            // }
-
                         } else {
                             // Deleting a note that is not currently open
                             renderNoteList(notesAppWindow, notesAppWindow.dataset.currentNotePath);
@@ -947,20 +1201,15 @@
                     }
                 });
 
-                listItem.appendChild(noteNameSpan);
-                listItem.appendChild(deleteBtn);
-
                 if (notePath === currentNotePath) { // Check if this item should be active
                     listItem.classList.add('active');
                 }
 
                 listItem.addEventListener('click', () => {
                     const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                    // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                     const noteContent = getFileSystemNode(notePath);
                     if (textarea && noteContent) {
                         textarea.value = noteContent.content;
-                        // statusBar.textContent = 'Pronto'; // REMOVED
                         textarea.placeholder = "Comece a digitar aqui..."; // Reset placeholder
                     }
                     notesAppWindow.querySelectorAll('.note-item.active').forEach(item => item.classList.remove('active'));
@@ -1047,7 +1296,7 @@
                                 </select></div>
                             </div>
                             <div class="setting-row">
-                                <label><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor"/><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg><span>Raio da Borda (UI)</span></label>
+                                <label><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor"/><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V5c0-1.1-.45-2-1-2zm-4.05 14H8.05l1.8-5h4.3l1.8 5z"/></svg><span>Raio da Borda (UI)</span></label>
                                 <div class="control"><input type="range" min="0" max="30" step="1" id="ui-corner-radius-slider"></div>
                             </div>
                             <div class="setting-row">
@@ -1173,7 +1422,7 @@
                                     </button>
                                     <input type="text" class="file-explorer-address-bar" style="flex-grow: 1; margin: 0 5px; padding: 5px; border-radius: 5px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.2); color: var(--text-color);" readonly>
                                     <button class="file-explorer-action-btn" data-action="create-folder" title="Nova Pasta" style="margin-left: 10px; background:none; border:none; color:var(--text-color); cursor:pointer;">
-                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
                                     </button>
                                     <button class="file-explorer-action-btn" data-action="delete" title="Excluir Selecionado" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -1517,17 +1766,24 @@
 
                     body.innerHTML = `
                         <div class="notes-sidebar">
-                            <button class="new-note-btn">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
-                                Nova Anotação
-                            </button>
+                            <div class="sidebar-header">
+                                <button class="new-note-btn">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+                                    </svg>
+                                    Nova Anotação
+                                </button>
+                            </div>
                             <div class="notes-list">
-                                {/* Note items will be rendered here by renderNoteList */}
+                                <!-- Note items will be rendered here by renderNoteList -->
                             </div>
                         </div>
                         <div class="notes-editor-area">
-                            <textarea placeholder="Selecione uma nota para editar ou crie uma nova."></textarea>
-                            {/* <div class="notes-status-bar">Pronto</div> REMOVED from innerHTML */}
+                            <div class="editor-header">
+                                <input type="text" class="editor-title" placeholder="Título da anotação" style="display: none;">
+                                <div class="save-indicator">Salvando...</div>
+                            </div>
+                            <textarea placeholder="Comece a digitar sua anotação..."></textarea>
                         </div>
                     `;
                     const textarea = body.querySelector('.notes-editor-area textarea');
@@ -1537,49 +1793,48 @@
                     const newNoteBtn = body.querySelector('.new-note-btn');
                     if (newNoteBtn) {
                         newNoteBtn.addEventListener('click', () => {
-                            const now = new Date();
-                            const year = now.getFullYear();
-                            const month = String(now.getMonth() + 1).padStart(2, '0');
-                            const day = String(now.getDate()).padStart(2, '0');
-                            const hours = String(now.getHours()).padStart(2, '0');
-                            const minutes = String(now.getMinutes()).padStart(2, '0');
-                            const seconds = String(now.getSeconds()).padStart(2, '0');
-
-                            // Try to find a unique name. If "Nova Anotação.txt" exists, try "Nova Anotação 1.txt", etc.
-                            // For simplicity now, using timestamp ensures high probability of uniqueness.
-                            const defaultFileName = `Nova Anotação ${year}-${month}-${day} ${hours}${minutes}${seconds}.txt`;
-                            let newNoteName = defaultFileName;
-                            let counter = 1;
+                            // Simple note naming like macOS - just use "Nova Anotação" with counter if needed
                             const notesDirNode = getFileSystemNode('/Anotações/');
-
-                            // Ensure unique filename if one with exact timestamp already exists (highly unlikely but good practice)
-                            while (notesDirNode && notesDirNode.children[newNoteName]) {
-                                newNoteName = `Nova Anotação ${year}-${month}-${day} ${hours}${minutes}${seconds} (${counter}).txt`;
-                                counter++;
-                            }
-
-                            const newNotePath = '/Anotações/' + newNoteName;
-
+                            
                             // Ensure /Anotações directory exists
                             if (!notesDirNode) {
-                                if (!getFileSystemNode('/')) { // Should not happen if app is running
+                                if (!getFileSystemNode('/')) {
                                      fileSystem['/'] = { type: 'folder', children: {} };
                                 }
                                 fileSystem['/'].children['Anotações'] = { type: 'folder', children: {} };
                             }
 
-                            // Create the new note file
-                            getFileSystemNode('/Anotações/').children[newNoteName] = { type: 'file', content: '' };
+                            // Find next available note name
+                            let counter = 1;
+                            let newNoteName = 'Nova Anotação.txt';
+                            const baseName = 'Nova Anotação';
+                            
+                            while (getFileSystemNode('/Anotações/').children[newNoteName]) {
+                                newNoteName = `${baseName} ${counter}.txt`;
+                                counter++;
+                            }
+
+                            const newNotePath = '/Anotações/' + newNoteName;
+
+                            // Create the new note file with placeholder content
+                            getFileSystemNode('/Anotações/').children[newNoteName] = { 
+                                type: 'file', 
+                                content: 'Nova Anotação\n\nComece a digitar aqui...' 
+                            };
                             saveFileSystem();
 
-                            // Update current note path, clear textarea, and refresh list
+                            // Update current note path and refresh list
                             windowEl.dataset.currentNotePath = newNotePath;
-                            textarea.value = ''; // New note is empty
-                            // statusBar.textContent = 'Nova anotação criada.'; // REMOVED
+                            renderNoteList(windowEl, newNotePath);
 
-                            renderNoteList(windowEl, newNotePath); // This will re-render and highlight the new note
-
-                            textarea.focus(); // Focus on textarea for immediate typing
+                            // Load the new note in editor and focus
+                            const textarea = body.querySelector('.notes-editor-area textarea');
+                            if (textarea) {
+                                textarea.value = 'Nova Anotação\n\nComece a digitar aqui...';
+                                textarea.focus();
+                                // Select the title text for easy editing
+                                textarea.setSelectionRange(0, 'Nova Anotação'.length);
+                            }
                         });
                     }
 
@@ -1617,26 +1872,83 @@
                         }
                     }
                     
-                    // The existing save logic for textarea input can remain, but ensure it saves to the 'currentNotePath'
-                    // This will be refined in the "Note Selection and Loading" step.
+                    // Enhanced auto-save logic with title tracking and visual feedback
                     let saveTimeout;
+                    let lastTitle = '';
+                    const saveIndicator = body.querySelector('.save-indicator');
+                    
                     textarea.addEventListener('input', () => {
                         const activeNotePath = windowEl.dataset.currentNotePath;
-                        if (!activeNotePath) return; // Don\'t save if no note is selected
+                        if (!activeNotePath) return; // Don't save if no note is selected
 
-                        // statusBar.textContent = 'Salvando...'; // REMOVED
+                        // Show saving indicator
+                        if (saveIndicator) {
+                            saveIndicator.className = 'save-indicator saving';
+                            saveIndicator.textContent = 'Salvando...';
+                        }
+
+                        // Get current title (first line) to detect changes
+                        const lines = textarea.value.split('\n');
+                        const currentTitle = lines[0] || '';
+                        const titleChanged = currentTitle !== lastTitle;
+                        lastTitle = currentTitle;
+
                         clearTimeout(saveTimeout);
                         saveTimeout = setTimeout(() => {
                             const noteNode = getFileSystemNode(activeNotePath);
                             if (noteNode) {
                                 noteNode.content = textarea.value;
                                 saveFileSystem();
-                                // statusBar.textContent = `Salvo às ${new Date().toLocaleTimeString()}`; // REMOVED
-                            } else {
-                                // statusBar.textContent = 'Erro ao salvar. Nota não encontrada.'; // REMOVED
+                                
+                                // Show saved indicator
+                                if (saveIndicator) {
+                                    saveIndicator.className = 'save-indicator saved';
+                                    saveIndicator.textContent = 'Salvo';
+                                    setTimeout(() => {
+                                        saveIndicator.className = 'save-indicator';
+                                    }, 2000);
+                                }
+                                
+                                // If title changed, refresh the note list to show updated title
+                                if (titleChanged) {
+                                    renderNoteList(windowEl, activeNotePath);
+                                }
                             }
-                        }, 1500);
+                        }, titleChanged ? 500 : 1500); // Faster save when title changes
                     });
+
+                    // Initialize lastTitle when a note is loaded
+                    function updateLastTitle() {
+                        const lines = textarea.value.split('\n');
+                        lastTitle = lines[0] || '';
+                    }
+
+                    // Call updateLastTitle whenever a note is loaded
+                    const originalTextareaValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+                    Object.defineProperty(textarea, 'value', {
+                        get: originalTextareaValue.get,
+                        set: function(newValue) {
+                            originalTextareaValue.set.call(this, newValue);
+                            updateLastTitle();
+                        }
+                    });
+
+                    // Keyboard shortcuts for Notes app
+                    windowEl.addEventListener('keydown', (e) => {
+                        // Cmd+N or Ctrl+N for new note
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+                            e.preventDefault();
+                            newNoteBtn.click();
+                        }
+                        
+                        // Escape to deselect note (macOS-like behavior)
+                        if (e.key === 'Escape') {
+                            textarea.blur();
+                        }
+                    });
+
+                    // Initialize the app
+                    updateLastTitle();
                     break;
 
                 case 'music-player-app':
@@ -1681,6 +1993,9 @@
                     const pauseIcon = '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
 
                     function formatTime(seconds) {
+                        if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) {
+                            return '0:00';
+                        }
                         const min = Math.floor(seconds / 60);
                         const sec = Math.floor(seconds % 60);
                         return `${min}:${sec < 10 ? '0' : ''}${sec}`;
@@ -1689,13 +2004,53 @@
                     function loadSong(index) {
                         currentSongIndex = index;
                         const song = songDatabase[index];
-                        audio.src = song.audioUrl;
-                        trackTitle.textContent = song.title;
-                        trackArtist.textContent = song.artist;
-                        albumArt.style.backgroundImage = `url(${song.artworkUrl})`;
                         
+                        // Add loading state to album art
+                        albumArt.classList.add('loading');
+                        
+                        // Smooth transition for track info
+                        trackTitle.style.opacity = '0.5';
+                        trackArtist.style.opacity = '0.5';
+                        
+                        // Reset progress bar
+                        progress.style.width = '0%';
+                        currentTimeLabel.textContent = '0:00';
+                        totalTimeLabel.textContent = '0:00';
+                        
+                        // Set new audio source
+                        audio.src = song.audioUrl;
+                        
+                        // Update track info with smooth transition
+                        setTimeout(() => {
+                            trackTitle.textContent = song.title;
+                            trackArtist.textContent = song.artist;
+                            trackTitle.style.opacity = '1';
+                            trackArtist.style.opacity = '1';
+                        }, 150);
+                        
+                        // Handle album art loading
+                        const img = new Image();
+                        img.onload = () => {
+                            albumArt.style.backgroundImage = `url(${song.artworkUrl})`;
+                            albumArt.classList.remove('loading');
+                        };
+                        img.onerror = () => {
+                            // Fallback to default album art on error
+                            albumArt.style.backgroundImage = 'linear-gradient(135deg, var(--highlight-primary), var(--highlight-secondary))';
+                            albumArt.classList.remove('loading');
+                        };
+                        img.src = song.artworkUrl;
+                        
+                        // Update playlist highlighting
                         document.querySelectorAll('.playlist-item').forEach((item, i) => {
-                            item.classList.toggle('playing', i === index);
+                            item.classList.remove('playing');
+                        });
+                        
+                        // Find and highlight the current song in the playlist
+                        document.querySelectorAll('.playlist-item').forEach((item) => {
+                            if (item.textContent === `${song.title} - ${song.artist}`) {
+                                item.classList.add('playing');
+                            }
                         });
                     }
 
@@ -1708,14 +2063,51 @@
                         playPauseBtn.innerHTML = playIcon;
                     }
 
-                    function renderPlaylist(songs) {
+                    function renderPlaylist(songs, isSearchResult = false, query = '') {
                         playlistContainer.innerHTML = '';
+                        
+                        // If no songs and it's a search result, show smart recommendations
+                        if (songs.length === 0 && isSearchResult && query) {
+                            // Show "no direct results" message
+                            const noResultsDiv = document.createElement('div');
+                            noResultsDiv.className = 'no-results';
+                            noResultsDiv.textContent = `Nenhum resultado para "${query}"`;
+                            playlistContainer.appendChild(noResultsDiv);
+                            
+                            // Show featured/recommended tracks
+                            const featuredDiv = document.createElement('div');
+                            featuredDiv.className = 'featured-section';
+                            
+                            const featuredTitle = document.createElement('div');
+                            featuredTitle.className = 'featured-title';
+                            featuredTitle.textContent = 'Recomendações para você';
+                            featuredDiv.appendChild(featuredTitle);
+                            
+                            // Get a curated list of recommendations (first 8 songs from database)
+                            const recommendations = songDatabase.slice(0, 8);
+                            recommendations.forEach((song, index) => {
+                                const item = document.createElement('div');
+                                item.className = 'playlist-item';
+                                item.textContent = `${song.title} - ${song.artist}`;
+                                item.addEventListener('click', () => {
+                                    loadSong(songDatabase.indexOf(song));
+                                    playSong();
+                                });
+                                featuredDiv.appendChild(item);
+                            });
+                            
+                            playlistContainer.appendChild(featuredDiv);
+                            return;
+                        }
+                        
+                        // Normal playlist rendering
                         songs.forEach((song, index) => {
                             const item = document.createElement('div');
                             item.className = 'playlist-item';
                             item.textContent = `${song.title} - ${song.artist}`;
                             item.addEventListener('click', () => {
-                                loadSong(index);
+                                const originalIndex = songDatabase.indexOf(song);
+                                loadSong(originalIndex);
                                 playSong();
                             });
                             playlistContainer.appendChild(item);
@@ -1723,30 +2115,73 @@
                     }
                     
                     searchInput.addEventListener('input', () => {
-                        const query = searchInput.value.toLowerCase();
+                        const query = searchInput.value.toLowerCase().trim();
+                        
+                        if (query === '') {
+                            renderPlaylist(songDatabase);
+                            return;
+                        }
+                        
                         const filteredSongs = songDatabase.filter(s => 
                             s.title.toLowerCase().includes(query) || s.artist.toLowerCase().includes(query)
                         );
-                        renderPlaylist(filteredSongs);
+                        
+                        renderPlaylist(filteredSongs, true, query);
                     });
 
-                    playPauseBtn.addEventListener('click', () => audio.paused ? playSong() : pauseSong());
+                    playPauseBtn.addEventListener('click', () => {
+                        if (currentSongIndex === -1 && songDatabase.length > 0) {
+                            loadSong(0);
+                        }
+                        audio.paused ? playSong() : pauseSong();
+                    });
+                    
                     nextBtn.addEventListener('click', () => {
-                        loadSong((currentSongIndex + 1) % songDatabase.length);
+                        if (songDatabase.length === 0) return;
+                        const nextIndex = currentSongIndex === -1 ? 0 : (currentSongIndex + 1) % songDatabase.length;
+                        loadSong(nextIndex);
                         playSong();
                     });
+                    
                     prevBtn.addEventListener('click', () => {
-                        loadSong((currentSongIndex - 1 + songDatabase.length) % songDatabase.length);
+                        if (songDatabase.length === 0) return;
+                        const prevIndex = currentSongIndex === -1 ? songDatabase.length - 1 : (currentSongIndex - 1 + songDatabase.length) % songDatabase.length;
+                        loadSong(prevIndex);
                         playSong();
                     });
-                    audio.addEventListener('ended', () => nextBtn.click());
-                    audio.addEventListener('timeupdate', () => {
-                        progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
-                        currentTimeLabel.textContent = formatTime(audio.currentTime);
-                        if (!isNaN(audio.duration)) totalTimeLabel.textContent = formatTime(audio.duration);
+                    
+                    audio.addEventListener('ended', () => {
+                        if (songDatabase.length > 0) {
+                            nextBtn.click();
+                        }
                     });
+                    audio.addEventListener('loadstart', () => {
+                        currentTimeLabel.textContent = '0:00';
+                        totalTimeLabel.textContent = '0:00';
+                        progress.style.width = '0%';
+                    });
+                    
+                    audio.addEventListener('loadedmetadata', () => {
+                        if (!isNaN(audio.duration) && isFinite(audio.duration)) {
+                            totalTimeLabel.textContent = formatTime(audio.duration);
+                        }
+                    });
+                    
+                    audio.addEventListener('timeupdate', () => {
+                        if (!isNaN(audio.currentTime) && !isNaN(audio.duration) && audio.duration > 0) {
+                            const progressPercent = (audio.currentTime / audio.duration) * 100;
+                            progress.style.width = `${progressPercent}%`;
+                            currentTimeLabel.textContent = formatTime(audio.currentTime);
+                        }
+                    });
+                    
                     progressBar.addEventListener('click', (e) => {
-                        audio.currentTime = (e.offsetX / progressBar.clientWidth) * audio.duration;
+                        if (!isNaN(audio.duration) && audio.duration > 0) {
+                            const rect = progressBar.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const newTime = (clickX / rect.width) * audio.duration;
+                            audio.currentTime = newTime;
+                        }
                     });
                     
                     renderPlaylist(songDatabase);
@@ -1863,13 +2298,13 @@
                     const neofetchArt = `
           <span style="color: var(--highlight-primary);">         
           @@@@@@@@@@            </span><span style="color: var(--text-color);"><b>AuraOS</b>@aura-desktop</span>
-          <span style="color: var(--highlight-primary);">       @@@@@@@@@@@@         </span><span style="color: var(--text-color);">--------------------</span>
-          <span style="color: var(--highlight-primary);">     @@@@@@@@@@@@@@@@       </span><span style="color: var(--text-color);"><b>OS:</b> AuraOS Complete v2.0</span>
-          <span style="color: var(--highlight-primary);">    @@@@@@@@@@@@@@@@@@      </span><span style="color: var(--text-color);"><b>Kernel:</b> 1.0-JS-DOM</span>
-          <span style="color: var(--highlight-primary);">   @@@@@@@@@@@@@@@@@@@@     </span><span style="color: var(--text-color);"><b>Uptime:</b> ${Math.floor(performance.now()/1000)}s</span>
-          <span style="color: var(--highlight-primary);">  @@@@@@@@@@@@@@@@@@@@@@    </span><span style="color: var(--text-color);"><b>Windows:</b> ${document.querySelectorAll('.window').length}</span>
+          <span style="color: var(--highlight-primary);">       @@@@@@@@@@@@         </span><span style="color: var,--text-color);">--------------------</span>
+          <span style="color: var(--highlight-primary);">     @@@@@@@@@@@@@@@@       </span><span style="color: var,--text-color);"><b>OS:</b> AuraOS Complete v2.0</span>
+          <span style="color: var(--highlight-primary);">    @@@@@@@@@@@@@@@@@@      </span><span style="color: var,--text-color);"><b>Kernel:</b> 1.0-JS-DOM</span>
+          <span style="color: var(--highlight-primary);">   @@@@@@@@@@@@@@@@@@@@     </span><span style="color: var,--text-color);"><b>Uptime:</b> ${Math.floor(performance.now()/1000)}s</span>
+          <span style="color: var(--highlight-primary);">  @@@@@@@@@@@@@@@@@@@@@@    </span><span style="color: var,--text-color);"><b>Windows:</b> ${document.querySelectorAll('.window').length}</span>
           <span style="color: var(--highlight-primary);">  @@@@@@@@@@@@@@@@@@@@@@    </span><span style="color: var,--text-color);"><b>Shell:</b> AuraSH (ZSH-like)</span>
-          <span style="color: var(--highlight-primary);">   @@@@@@@@@@@@@@@@@@@@     </span><span style="color: var(--text-color);"><b>Theme:</b> ${localStorage.getItem('auraOS_theme') || 'dark'}</span>
+          <span style="color: var(--highlight-primary);">   @@@@@@@@@@@@@@@@@@@@     </span><span style="color: var,--text-color);"><b>Theme:</b> ${localStorage.getItem('auraOS_theme') || 'dark'}</span>
           <span style="color: var(--highlight-primary);">    @@@@@@@@@@@@@@@@@@      </span>
           <span style="color: var(--highlight-primary);">     @@@@@@@@@@@@@@@@       </span>
           <span style="color: var(--highlight-primary);">       @@@@@@@@@@@@         </span>
@@ -2162,10 +2597,10 @@
                     // let appOrPath = ''; // This variable was defined but not used, removing.
 
                     if (item.type === 'folder') {
-                        iconSvg = '<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
+                        iconSvg = '<svg viewBox="0 0 24 24"><path d="M10  4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
                         iconEl.setAttribute('data-folder-path', `${desktopPath}/${name}`);
                     } else { // It's a file
-                        iconSvg = '<svg viewBox="0 0 24 24"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF" /></svg>';
+                        iconSvg = '<svg viewBox="0 0 24 24"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF"/></svg>';
                         iconEl.setAttribute('data-file-path', `${desktopPath}/${name}`);
                     }
 
