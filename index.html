@@ -1681,6 +1681,21 @@
         .shake-animation {
           animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
         }
+
+        /* Drag and Drop Visual Feedback */
+        .drag-over-valid {
+            outline: 2px dashed var(--highlight-primary, #8a63d2);
+            outline-offset: -2px; /* Inset a bit for better visual */
+            background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.1);
+            transition: outline 0.1s ease-in-out, background-color 0.1s ease-in-out; /* Smooth feedback */
+        }
+
+        .drag-over-invalid {
+            outline: 2px dashed var(--red-accent, #ff5f56);
+            outline-offset: -2px;
+            background-color: rgba(255, 95, 86, 0.05); /* Subtle red background */
+            /* Standard not-allowed cursor is usually sufficient from dropEffect='none' */
+        }
     </style>
 </head>
 <body>    <div id="notification-container"></div>
@@ -2920,6 +2935,13 @@
                             const parentName = '..';
                             const parentEl = document.createElement('div');
                             parentEl.className = 'file-explorer-item';
+                            parentEl.setAttribute('draggable', 'true'); // Make ".." draggable
+                            const parentActualPath = path === '/' ? '/' : path.substring(0, path.lastIndexOf('/')) || '/';
+                            parentEl.dataset.folderPath = parentActualPath;
+                            parentEl.dataset.itemName = parentName; // Store the displayed name ".."
+                            parentEl.title = `Navegar para: ${parentActualPath}`;
+
+
                             parentEl.style.textAlign = 'center';
                             parentEl.style.width = '80px';
                             parentEl.style.padding = '5px';
@@ -2931,8 +2953,7 @@
                             // Single click to select ".." (path is parent's path)
                             parentEl.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                const parentPathValue = path === '/' ? '/' : path.substring(0, path.lastIndexOf('/')) || '/';
-                                selectItem(parentEl, parentPathValue);
+                                selectItem(parentEl, parentActualPath);
                             });
 
                             // Double click to navigate up
@@ -2960,6 +2981,18 @@
                         Object.entries(node.children).forEach(([name, item]) => {
                             const itemEl = document.createElement('div');
                             itemEl.className = 'file-explorer-item'; // For styling
+                            itemEl.setAttribute('draggable', 'true'); // Make item draggable
+                            const itemFullPath = resolvePath(path, name);
+                            itemEl.dataset.itemName = name; // Store the actual name for drag data
+                            itemEl.title = name; // Tooltip
+
+                            if (item.type === 'folder') {
+                                itemEl.dataset.folderPath = itemFullPath;
+                            } else {
+                                itemEl.dataset.filePath = itemFullPath;
+                            }
+
+
                             itemEl.style.textAlign = 'center';
                             itemEl.style.width = '80px'; // Example size
                             itemEl.style.padding = '5px';
@@ -2970,8 +3003,7 @@
                             // Single click to select
                             itemEl.addEventListener('click', (e) => {
                                 e.stopPropagation();
-                                const fullItemPath = resolvePath(path, name);
-                                selectItem(itemEl, fullItemPath);
+                                selectItem(itemEl, itemFullPath);
                             });
 
                             // Double click to open
@@ -2979,12 +3011,78 @@
                                 iconSvg = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
                                 itemEl.addEventListener('dblclick', () => {
                                     selectItem(null, null); // Deselect before navigating
-                                    renderFileExplorerView(resolvePath(path, name));
+                                    renderFileExplorerView(itemFullPath);
                                 });
+
+                                // Add drop target listeners for folder items in file explorer
+                                itemEl.addEventListener('dragover', function(event) {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    this.classList.remove('drag-over-valid', 'drag-over-invalid');
+
+                                    try {
+                                        const draggedItems = JSON.parse(event.dataTransfer.getData('text/plain'));
+                                        if (!draggedItems || !draggedItems.length) {
+                                            event.dataTransfer.dropEffect = 'none';
+                                            this.classList.add('drag-over-invalid');
+                                            return;
+                                        }
+                                        const firstDraggedItem = draggedItems[0];
+                                        const targetFolderPath = this.dataset.folderPath;
+
+                                        if (firstDraggedItem.type && (firstDraggedItem.type.startsWith('desktop-app-icon') || firstDraggedItem.type.startsWith('dock-app-icon'))) {
+                                            event.dataTransfer.dropEffect = 'none';
+                                            this.classList.add('drag-over-invalid');
+                                            return;
+                                        }
+
+                                        if (!firstDraggedItem.path || firstDraggedItem.path === targetFolderPath ||
+                                            (firstDraggedItem.type.includes('folder') && targetFolderPath.startsWith(firstDraggedItem.path + '/'))) {
+                                            event.dataTransfer.dropEffect = 'none';
+                                            this.classList.add('drag-over-invalid');
+                                            return;
+                                        }
+
+                                        event.dataTransfer.dropEffect = 'move';
+                                        this.classList.add('drag-over-valid');
+                                    } catch(e) {
+                                        console.warn("Error parsing drag data in FE folder dragover:", e);
+                                        event.dataTransfer.dropEffect = 'none';
+                                        this.classList.add('drag-over-invalid');
+                                    }
+                                });
+                                itemEl.addEventListener('dragleave', function(event) {
+                                    event.stopPropagation();
+                                    this.classList.remove('drag-over-valid');
+                                    this.classList.remove('drag-over-invalid');
+                                });
+                                itemEl.addEventListener('drop', async function(event) { // Made async
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    this.classList.remove('drag-over-valid');
+                                    this.classList.remove('drag-over-invalid');
+                                    try {
+                                        const dragDataString = event.dataTransfer.getData('text/plain');
+                                        if(!dragDataString) return;
+                                        const dragData = JSON.parse(dragDataString);
+                                        if (!dragData || !dragData.path) return;
+
+                                        const destinationPath = itemEl.dataset.folderPath;
+                                        if (dragData.path === destinationPath || destinationPath.startsWith(dragData.path + '/')) {
+                                            AuraOS.showNotification({ title: 'Ação Inválida', message: 'Não é possível mover uma pasta para dentro dela mesma ou de uma subpasta, ou para o mesmo local.', type: 'warning' });
+                                            return;
+                                        }
+                                        await handleMoveOperation(dragData, destinationPath);
+                                    } catch (error) {
+                                        console.error('Drop on FE folder error:', error);
+                                        AuraOS.showNotification({ title: 'Erro ao Soltar na Pasta (FE)', message: `Ocorreu um erro: ${error.message}`, type: 'error' });
+                                    }
+                                });
+
                             } else { // File
                                 iconSvg = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF"/></svg>';
                                 itemEl.addEventListener('dblclick', () => {
-                                    openFile(resolvePath(path, name));
+                                    openFile(itemFullPath);
                                 });
                             }
 
@@ -3001,6 +3099,81 @@
                                 }
                             });
                             mainView.appendChild(itemEl);
+                        });
+                         // After rendering all items, initialize draggable for them within this specific window
+                        initializeDraggableItems(`#${windowEl.id} .file-explorer-item`, 'file-explorer');
+
+                        // Add drop listener to the main view area (background) of the file explorer
+                        mainView.addEventListener('dragover', function(event) {
+                            event.preventDefault();
+                            this.classList.remove('drag-over-valid', 'drag-over-invalid');
+                            // Check if the target is the mainView itself, not a child item (which has its own handler)
+                            if (event.target === mainView) {
+                                try {
+                                    const draggedItems = JSON.parse(event.dataTransfer.getData('text/plain'));
+                                     if (!draggedItems || !draggedItems.length) {
+                                        event.dataTransfer.dropEffect = 'none';
+                                        this.classList.add('drag-over-invalid');
+                                        return;
+                                    }
+                                    const firstDraggedItem = draggedItems[0];
+
+                                    if (firstDraggedItem.type && (firstDraggedItem.type.startsWith('desktop-app-icon') || firstDraggedItem.type.startsWith('dock-app-icon'))) {
+                                        event.dataTransfer.dropEffect = 'none';
+                                        this.classList.add('drag-over-invalid');
+                                        return;
+                                    }
+
+                                    // Additional check: prevent dropping a folder onto itself if currentPath is the folder being dragged
+                                    const currentFEPath = windowEl.dataset.currentPath;
+                                    if (firstDraggedItem.type && firstDraggedItem.type.includes('folder') && firstDraggedItem.path === currentFEPath) {
+                                       event.dataTransfer.dropEffect = 'none';
+                                       this.classList.add('drag-over-invalid');
+                                       return;
+                                    }
+
+                                    if (firstDraggedItem.path) { // General check for valid draggable data
+                                        event.dataTransfer.dropEffect = 'move';
+                                        this.classList.add('drag-over-valid');
+                                    } else { // Should not happen if firstDraggedItem.path is always present
+                                        event.dataTransfer.dropEffect = 'none';
+                                        this.classList.add('drag-over-invalid');
+                                    }
+                                } catch (e) {
+                                     console.warn("Error parsing drag data in FE background dragover:", e);
+                                     event.dataTransfer.dropEffect = 'none';
+                                     this.classList.add('drag-over-invalid');
+                                }
+                            }
+                        });
+                        mainView.addEventListener('dragleave', function(event) {
+                            if (event.target === mainView) {
+                                this.classList.remove('drag-over-valid');
+                                this.classList.remove('drag-over-invalid');
+                            }
+                        });
+                        mainView.addEventListener('drop', async function(event) { // Made async
+                            event.preventDefault();
+                            if (event.target === mainView) { // Ensure drop is on background, not an item
+                                this.classList.remove('drag-over-valid');
+                                this.classList.remove('drag-over-invalid');
+                                try {
+                                    const dragDataString = event.dataTransfer.getData('text/plain');
+                                    if (!dragDataString) return;
+                                    const dragData = JSON.parse(dragDataString);
+                                    if (!dragData || !dragData.path) return;
+
+                                    const destinationPath = windowEl.dataset.currentPath; // Current path of the FE window
+                                    if (dragData.path === destinationPath || destinationPath.startsWith(dragData.path + '/')) {
+                                        AuraOS.showNotification({ title: 'Ação Inválida', message: 'Não é possível mover uma pasta para dentro dela mesma ou de uma subpasta, ou para o mesmo local.', type: 'warning' });
+                                        return;
+                                    }
+                                    await handleMoveOperation(dragData, destinationPath);
+                                } catch (error) {
+                                    console.error('Drop on FE background error:', error);
+                                     AuraOS.showNotification({ title: 'Erro ao Soltar (FE)', message: `Ocorreu um erro: ${error.message}`, type: 'error' });
+                                }
+                            }
                         });
                     }
 
@@ -5030,6 +5203,8 @@
                     const iconEl = document.createElement('div');
                     iconEl.className = 'desktop-icon';
                     iconEl.setAttribute('data-dynamic', 'true');
+                    iconEl.setAttribute('draggable', 'true'); // Make dynamic icons draggable
+                    iconEl.title = name; // Set title for better UX and potential drag data fallback
 
                     let iconSvg = '';
                     const itemPath = `${desktopPath}/${name}`;
@@ -5037,7 +5212,83 @@
                     if (item.type === 'folder') {
                         iconSvg = '<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
                         iconEl.setAttribute('data-folder-path', itemPath);
+
+                        // Add drop target listeners for folder icons
+                        iconEl.addEventListener('dragover', function(event) {
+                            event.preventDefault();
+                            event.stopPropagation(); // Prevent desktop's dragover
+                            this.classList.remove('drag-over-valid', 'drag-over-invalid'); // Clear previous states
+
+                            try {
+                                const draggedItems = JSON.parse(event.dataTransfer.getData('text/plain'));
+                                if (!draggedItems || !draggedItems.length) {
+                                    event.dataTransfer.dropEffect = 'none';
+                                    this.classList.add('drag-over-invalid');
+                                    return;
+                                }
+                                const firstDraggedItem = draggedItems[0];
+                                const targetFolderPath = this.dataset.folderPath; // Path of this folder icon
+
+                                // Check 1: Prevent dropping app icons
+                                if (firstDraggedItem.type && (firstDraggedItem.type.startsWith('desktop-app-icon') || firstDraggedItem.type.startsWith('dock-app-icon'))) {
+                                    event.dataTransfer.dropEffect = 'none';
+                                    this.classList.add('drag-over-invalid');
+                                    return;
+                                }
+
+                                // Check 2: Prevent dropping a folder onto itself or into its own child, or if it's not a valid path
+                                if (!firstDraggedItem.path || firstDraggedItem.path === targetFolderPath ||
+                                    (firstDraggedItem.type.includes('folder') && targetFolderPath.startsWith(firstDraggedItem.path + '/'))) {
+                                    event.dataTransfer.dropEffect = 'none';
+                                    this.classList.add('drag-over-invalid');
+                                    return;
+                                }
+
+                                event.dataTransfer.dropEffect = 'move';
+                                this.classList.add('drag-over-valid');
+
+                            } catch(e) {
+                                console.warn("Error parsing drag data in desktop folder dragover:", e);
+                                event.dataTransfer.dropEffect = 'none';
+                                this.classList.add('drag-over-invalid');
+                            }
+                        });
+                        iconEl.addEventListener('dragleave', function(event) {
+                            event.stopPropagation();
+                            this.classList.remove('drag-over-valid');
+                            this.classList.remove('drag-over-invalid');
+                        });
+                        iconEl.addEventListener('drop', async function(event) { // Made async
+                            event.preventDefault();
+                            event.stopPropagation(); // Prevent desktop's drop
+                            this.classList.remove('drag-over-valid');
+                            this.classList.remove('drag-over-invalid');
+
+                            try {
+                                const dragDataString = event.dataTransfer.getData('text/plain');
+                                if (!dragDataString) return;
+                                const dragData = JSON.parse(dragDataString);
+                                 if (!dragData || !dragData.path) {
+                                    AuraOS.showNotification({ title: 'Erro no Drop', message: 'Dados do item arrastado inválidos.', type: 'error' });
+                                    return;
+                                }
+
+                                const destinationPath = iconEl.dataset.folderPath;
+                                if (dragData.path === destinationPath || destinationPath.startsWith(dragData.path + '/')) {
+                                    AuraOS.showNotification({ title: 'Ação Inválida', message: 'Não é possível mover uma pasta para dentro dela mesma ou de uma subpasta, ou para o mesmo local.', type: 'warning' });
+                                    return;
+                                }
+
+                                console.log(`Attempting to drop '${dragData.name}' onto folder '${name}' (Destination: ${destinationPath})`);
+                                await handleMoveOperation(dragData, destinationPath);
+                            } catch (error) {
+                                console.error('Drop on folder icon error:', error);
+                                AuraOS.showNotification({ title: 'Erro ao Soltar na Pasta', message: `Ocorreu um erro: ${error.message}`, type: 'error' });
+                            }
+                        });
+
                     } else { // It's a file
+                        iconEl.setAttribute('data-file-path', itemPath); // Set data-file-path for files
                         // Ícone específico baseado na extensão
                         const extension = name.toLowerCase().split('.').pop();
                         switch(extension) {
@@ -5136,6 +5387,8 @@
 
                     desktopFilesDiv.appendChild(iconEl);
                 });
+                // After rendering all dynamic icons, initialize draggable for them
+                initializeDraggableItems('.desktop-icon[data-dynamic="true"]', 'desktop-item');
             }        }
         
         // --- FUNÇÕES LOCK SCREEN ---
@@ -5364,6 +5617,7 @@
         function initializeDesktopIcons() {
             // Selecionar apenas ícones estáticos (apps) que não são dinâmicos
             document.querySelectorAll('.desktop-icon:not([data-dynamic="true"])').forEach(icon => {
+                icon.setAttribute('draggable', 'true'); // Make static icons draggable
                 if (icon.dataset.appId) {
                     // Double click para abrir app
                     icon.addEventListener('dblclick', () => {
@@ -5382,12 +5636,130 @@
                     });
                 }
             });
+            // Initialize dragstart for static desktop icons
+            initializeDraggableItems('.desktop-icon:not([data-dynamic="true"])', 'desktop-app-icon');
+        }
+
+        // --- DRAG AND DROP FUNCTIONALITY ---
+        function initializeDraggableItems(selector, itemTypePrefix) {
+            document.querySelectorAll(selector).forEach(item => {
+                // Ensure draggable isn't re-added if already true by a rendering function
+                if (item.getAttribute('draggable') !== 'true') {
+                    item.setAttribute('draggable', 'true');
+                }
+
+                item.addEventListener('dragstart', function(event) {
+                    // event.preventDefault(); // Usually not needed for 'draggable=true' elements
+                    event.stopPropagation();
+
+                    let itemsToDrag = [];
+                    const parentContainer = item.parentElement;
+                    const selectedItemsInContainer = parentContainer.querySelectorAll(`.${item.classList.contains('desktop-icon') ? 'desktop-icon' : 'file-explorer-item'}.selected`);
+
+                    if (selectedItemsInContainer.length > 0 && Array.from(selectedItemsInContainer).includes(item)) {
+                        // Multiple items selected, and the dragged item is part of the selection
+                        selectedItemsInContainer.forEach(selItem => {
+                            const selItemPath = selItem.dataset.filePath || selItem.dataset.folderPath || selItem.dataset.appId || selItem.title || 'unknown-path';
+                            const selItemName = selItem.querySelector('p')?.textContent || selItem.title || 'Unknown Item';
+                            let selSpecificType = 'item';
+                            if (selItem.dataset.appId) selSpecificType = 'app';
+                            else if (selItem.dataset.folderPath) selSpecificType = 'folder';
+                            else if (selItem.dataset.filePath) selSpecificType = 'file';
+                            const selDataType = `${itemTypePrefix}-${selSpecificType}`;
+
+                            itemsToDrag.push({
+                                path: selItemPath,
+                                type: selDataType,
+                                name: selItemName,
+                                sourceWindowId: selItem.closest('.window')?.id
+                            });
+                        });
+                    } else {
+                        // Single item dragged (or dragged item was not part of a multiple selection)
+                        const itemPath = item.dataset.filePath || item.dataset.folderPath || item.dataset.appId || item.title || 'unknown-path';
+                        const itemName = item.querySelector('p')?.textContent || item.title || 'Unknown Item';
+                        let specificType = 'item';
+                        if (item.dataset.appId) specificType = 'app';
+                        else if (item.dataset.folderPath) specificType = 'folder';
+                        else if (item.dataset.filePath) specificType = 'file';
+                        const dataType = `${itemTypePrefix}-${specificType}`;
+
+                        itemsToDrag.push({
+                            path: itemPath,
+                            type: dataType,
+                            name: itemName,
+                            sourceWindowId: item.closest('.window')?.id
+                        });
+                    }
+
+                    event.dataTransfer.setData('text/plain', JSON.stringify(itemsToDrag)); // Always set an array
+                    event.dataTransfer.effectAllowed = 'move';
+
+                    let ghost = item.cloneNode(true);
+                    ghost.style.position = "absolute";
+                    ghost.style.top = "-1000px";
+                    ghost.style.opacity = "0.6";
+                    ghost.style.pointerEvents = "none";
+                    ghost.style.zIndex = "1000000"; // Ensure ghost is above other elements
+
+                    const selectedItems = Array.from(item.parentElement.querySelectorAll(`.${item.classList.contains('desktop-icon') ? 'desktop-icon' : 'file-explorer-item'}.selected`));
+
+                    if (itemsToDrag.length > 1) { // Ghost for multiple items
+                        const stackContainer = document.createElement('div');
+                        stackContainer.style.position = 'relative';
+                        stackContainer.style.display = 'inline-block';
+
+                        const baseGhost = item.cloneNode(true); // Base ghost is the item actually being dragged
+                        baseGhost.style.opacity = "0.7";
+
+                        const counterBadge = document.createElement('span');
+                        counterBadge.textContent = itemsToDrag.length; // Use itemsToDrag.length
+                        counterBadge.style.position = 'absolute';
+                        counterBadge.style.top = '2px';
+                        counterBadge.style.right = '2px';
+                        counterBadge.style.background = 'var(--highlight-primary)';
+                        counterBadge.style.color = 'white';
+                        counterBadge.style.borderRadius = '50%';
+                        counterBadge.style.padding = '1px 5px';
+                        counterBadge.style.fontSize = '0.7rem';
+                        counterBadge.style.fontWeight = 'bold';
+                        counterBadge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+                        counterBadge.style.lineHeight = 'normal';
+
+                        stackContainer.appendChild(baseGhost);
+                        stackContainer.appendChild(counterBadge);
+                        ghost = stackContainer;
+                    }
+                    // For a single item, 'ghost' remains the direct clone.
+
+                    document.body.appendChild(ghost);
+                    // Calculate offset more reliably, especially if ghost is complex (like the stack)
+                    const ghostRect = ghost.getBoundingClientRect();
+                    const itemRect = item.getBoundingClientRect();
+                    const offsetX = event.clientX - itemRect.left + (ghostRect.width - itemRect.width) / 2;
+                    const offsetY = event.clientY - itemRect.top + (ghostRect.height - itemRect.height) / 2;
+
+                    event.dataTransfer.setDragImage(ghost, offsetX, offsetY);
+
+                    const cleanupGhost = () => {
+                        if (ghost.parentNode) {
+                            ghost.parentNode.removeChild(ghost);
+                        }
+                        // No need to remove dragend listener this way if using { once: true }
+                    };
+                    item.addEventListener('dragend', cleanupGhost, { once: true });
+
+                    console.log(`Drag Start: ${itemsToDrag.length} item(s). First item: ${itemsToDrag[0].name}, Type: ${itemsToDrag[0].type}, Path: ${itemsToDrag[0].path}`);
+                });
+            });
         }
         
         // --- MENU DE CONTEXTO DO DESKTOP ---
-        function initializeDesktopContextMenu() {
+        function initializeDesktopContextMenu() { // Also handles Desktop Drop Target
             const desktop = document.getElementById('desktop');
-            
+            const desktopContent = desktop.querySelector('.desktop-content'); // Target for visual feedback
+
+            // Desktop Context Menu
             desktop.addEventListener('contextmenu', (e) => {
                 // Apenas mostrar menu se clicou no desktop mesmo, não em um ícone
                 if (e.target === desktop || e.target.classList.contains('desktop-content') || 
@@ -5438,6 +5810,75 @@
                     document.querySelectorAll('.desktop-icon.selected').forEach(icon => {
                         icon.classList.remove('selected');
                     });
+                }
+            });
+
+            // Desktop Drop Target Logic
+            desktopContent.addEventListener('dragover', function(event) {
+                event.preventDefault(); // Necessary to allow drop
+                this.classList.remove('drag-over-valid', 'drag-over-invalid'); // Clear previous states
+
+                try {
+                    const draggedItems = JSON.parse(event.dataTransfer.getData('text/plain'));
+                     if (!draggedItems || !draggedItems.length) {
+                        event.dataTransfer.dropEffect = 'none';
+                        this.classList.add('drag-over-invalid');
+                        return;
+                    }
+                    const firstDraggedItem = draggedItems[0];
+
+                    // Prevent dropping app icons onto the desktop background as if they are files
+                    if (firstDraggedItem.type && (firstDraggedItem.type.startsWith('desktop-app-icon') || firstDraggedItem.type.startsWith('dock-app-icon'))) {
+                        event.dataTransfer.dropEffect = 'none';
+                        this.classList.add('drag-over-invalid');
+                        return;
+                    }
+
+                    // General check for valid draggable data with a path
+                    if (firstDraggedItem.path) {
+                        event.dataTransfer.dropEffect = 'move';
+                        this.classList.add('drag-over-valid');
+                    } else { // Should ideally not be reached if itemsToDrag always has valid items
+                        event.dataTransfer.dropEffect = 'none';
+                        this.classList.add('drag-over-invalid');
+                    }
+                } catch (e) {
+                    console.warn("Error parsing drag data in desktop background dragover:", e);
+                    event.dataTransfer.dropEffect = 'none';
+                    this.classList.add('drag-over-invalid');
+                }
+            });
+
+            desktopContent.addEventListener('dragleave', function(event) {
+                this.classList.remove('drag-over-valid');
+                this.classList.remove('drag-over-invalid');
+            });
+
+            desktopContent.addEventListener('drop', async function(event) { // Made async
+                event.preventDefault();
+                this.classList.remove('drag-over-valid');
+                this.classList.remove('drag-over-invalid');
+
+                try {
+                    const dragDataString = event.dataTransfer.getData('text/plain');
+                    if (!dragDataString) return;
+
+                    const draggedItems = JSON.parse(dragDataString); // Expect an array
+                    if (!draggedItems || !draggedItems.length || !draggedItems[0] || !draggedItems[0].path) {
+                        AuraOS.showNotification({ title: 'Erro no Drop', message: 'Dados do item arrastado inválidos ou ausentes.', type: 'error' });
+                        return;
+                    }
+
+                    const destinationPath = '/Desktop';
+                    // Log info for the first item if multiple are dragged, or the single item
+                    console.log(`Attempting to drop ${draggedItems.length} item(s) onto Desktop. First item: '${draggedItems[0].name}' (Path: ${draggedItems[0].path})`);
+
+                    // Call the main move handler, which now expects an array
+                    await handleMoveOperation(draggedItems, destinationPath);
+
+                } catch (error) {
+                    console.error('Drop error:', error);
+                    AuraOS.showNotification({ title: 'Erro ao Soltar', message: `Ocorreu um erro: ${error.message}`, type: 'error' });
                 }
             });
         }
@@ -5495,6 +5936,187 @@
         }
 
     });
+
+    // --- GLOBAL MOVE OPERATION HANDLER ---
+    async function handleMoveOperation(draggedItemsArray, destinationFolderPath) {
+        console.log(`handleMoveOperation called with ${draggedItemsArray.length} items to:`, destinationFolderPath);
+
+        let allSuccessful = true;
+        const affectedSourceParents = new Set();
+        const affectedDestinationFolders = new Set([destinationFolderPath]); // Always update the primary destination
+
+        for (const draggedItemData of draggedItemsArray) {
+            const sourcePath = draggedItemData.path;
+            const originalItemName = draggedItemData.name; // Original name for notifications
+            let currentItemName = draggedItemData.name; // Name used for processing, may change due to conflicts
+
+            const sourceParentPath = sourcePath.substring(0, sourcePath.lastIndexOf('/')) || '/';
+            affectedSourceParents.add(sourceParentPath);
+
+            // 1. Prevent dropping item onto itself or its own current parent folder if path hasn't changed
+            if (sourcePath === destinationFolderPath || (sourceParentPath === destinationFolderPath && sourcePath.endsWith(currentItemName)) ) {
+                if (draggedItemData.type.endsWith('-app') && destinationFolderPath === '/Desktop') {
+                     AuraOS.showNotification({ title: 'Ação Inválida', message: `Não é possível mover '${originalItemName}' (aplicativo) para o Desktop desta forma.`, type: 'warning' });
+                     allSuccessful = false;
+                     continue;
+                }
+                if (!draggedItemData.type.endsWith('-app')) {
+                    console.log(`Item '${originalItemName}': Source and destination are effectively the same. No operation needed.`);
+                    continue;
+                }
+            }
+
+            // Prevent dropping a folder into itself or one of its own children (recursive drop)
+            if (draggedItemData.type.includes('folder') && destinationFolderPath.startsWith(sourcePath + '/')) {
+                AuraOS.showNotification({ title: 'Ação Inválida', message: `Não é possível mover a pasta '${originalItemName}' para dentro dela mesma.`, type: 'error' });
+                allSuccessful = false;
+                continue;
+            }
+
+            if (draggedItemData.type.endsWith('-app')) {
+                AuraOS.showNotification({ title: 'Ação não Suportada', message: `Mover aplicativos (${originalItemName}) ainda não é totalmente suportado.`, type: 'info' });
+                allSuccessful = false;
+                continue;
+            }
+
+            const sourceNodeInMemory = getFileSystemNode(sourcePath);
+            if (!sourceNodeInMemory) {
+                AuraOS.showNotification({ title: 'Erro ao Mover', message: `Item de origem '${originalItemName}' (${sourcePath}) não encontrado.`, type: 'error' });
+                // Attempt to reload FS only once per batch if a source is missing, not for every item.
+                // For simplicity here, we might log and continue, or try a single reload outside the loop if errors occur.
+                allSuccessful = false;
+                continue;
+            }
+
+            let newName = currentItemName;
+            let newPath = destinationFolderPath === '/' ? `/${newName}` : `${destinationFolderPath}/${newName}`;
+            const destinationNode = getFileSystemNode(destinationFolderPath);
+
+            if (!destinationNode || destinationNode.type !== 'folder') {
+                AuraOS.showNotification({ title: 'Erro ao Mover', message: `Destino '${destinationFolderPath}' não é uma pasta válida para '${originalItemName}'.`, type: 'error' });
+                allSuccessful = false;
+                continue;
+            }
+
+            let conflictCounter = 0;
+            const baseName = newName.substring(0, newName.lastIndexOf('.') > 0 ? newName.lastIndexOf('.') : newName.length);
+            const extension = newName.lastIndexOf('.') > 0 ? newName.substring(newName.lastIndexOf('.')) : '';
+
+            while (getFileSystemNode(newPath)) {
+                conflictCounter++;
+                newName = `${baseName} (${conflictCounter})${extension}`;
+                newPath = destinationFolderPath === '/' ? `/${newName}` : `${destinationFolderPath}/${newName}`;
+                if (conflictCounter > 100) {
+                     AuraOS.showNotification({ title: 'Erro ao Mover', message: `Muitos conflitos de nome para '${originalItemName}' em '${destinationFolderPath}'.`, type: 'error' });
+                     allSuccessful = false;
+                     break; // Break from while, then continue to next item in for loop
+                }
+            }
+            if (!allSuccessful && conflictCounter > 100) continue; // If already failed due to conflict loop, go to next item.
+
+            if (conflictCounter > 0) {
+                AuraOS.showNotification({ title: 'Conflito de Nome', message: `Item '${originalItemName}' renomeado para '${newName}'.`, type: 'info' });
+            }
+
+            affectedDestinationFolders.add(newPath); // For UI update if it's a folder
+
+            try {
+                const sourceItemDBData = await dbManager.loadFile(sourcePath);
+                if (!sourceItemDBData) {
+                    AuraOS.showNotification({ title: 'Erro ao Mover', message: `Item de origem '${originalItemName}' (${sourcePath}) não encontrado no DB.`, type: 'error' });
+                    allSuccessful = false;
+                    continue;
+                }
+
+                const { content: sourceContent, ...sourceMetadata } = sourceItemDBData;
+                const newItemMetadata = { ...sourceMetadata, path: newPath, lastModified: Date.now() };
+
+                if (sourceItemDBData.type === 'folder') {
+                    await dbManager.saveFile(newItemMetadata, null);
+                    const oldPathPrefix = sourcePath + '/';
+                    const newPathPrefix = newPath + '/';
+                    const allDbFiles = await dbManager.getAllFiles();
+
+                    for (const fileInDb of allDbFiles) {
+                        if (fileInDb.path.startsWith(oldPathPrefix)) {
+                            const oldChildPath = fileInDb.path;
+                            const newChildPath = newPathPrefix + fileInDb.path.substring(oldPathPrefix.length);
+                            const { content: childContent, ...childMetadata } = fileInDb;
+                            childMetadata.path = newChildPath;
+                            childMetadata.lastModified = Date.now();
+                            await dbManager.saveFile(childMetadata, childContent);
+                            await dbManager.deleteFile(oldChildPath);
+                        }
+                    }
+                    await dbManager.deleteFile(sourcePath);
+                } else { // File
+                    await dbManager.saveFile(newItemMetadata, sourceContent);
+                    await dbManager.deleteFile(sourcePath);
+                }
+
+                const oldParentNodeInMemory = getFileSystemNode(sourceParentPath);
+                if (oldParentNodeInMemory && oldParentNodeInMemory.children && oldParentNodeInMemory.children[currentItemName]) { // currentItemName is original name here
+                    delete oldParentNodeInMemory.children[currentItemName];
+                }
+                const newParentNodeInMemory = getFileSystemNode(destinationFolderPath);
+                if (newParentNodeInMemory && newParentNodeInMemory.children) {
+                    newParentNodeInMemory.children[newName] = { // Use the (potentially resolved) newName
+                        type: sourceItemDBData.type,
+                        content: sourceItemDBData.type === 'file' ? sourceContent : undefined,
+                        children: sourceItemDBData.type === 'folder' ? (sourceNodeInMemory.children || {}) : undefined,
+                        lastModified: newItemMetadata.lastModified,
+                    };
+                }
+                 // Don't show individual success if part of a batch, unless it was renamed.
+                if (draggedItemsArray.length > 1 && newName !== originalItemName) {
+                    // Notification for rename already shown
+                } else if (draggedItemsArray.length === 1) {
+                     AuraOS.showNotification({ title: 'Item Movido', message: `'${originalItemName}' movido para '${destinationFolderPath}'. ${newName !== originalItemName ? `Renomeado para '${newName}'.` : ''}`, type: 'success' });
+                }
+
+
+            } catch (error) {
+                console.error(`Error moving item '${originalItemName}' to DB:`, error);
+                AuraOS.showNotification({ title: 'Erro ao Mover no DB', message: `Falha ao mover '${originalItemName}': ${error.message}`, type: 'error' });
+                allSuccessful = false;
+                // Consider a reload once outside loop if errors occurred
+            }
+        } // End of for loop
+
+        if (draggedItemsArray.length > 1 && allSuccessful) {
+            AuraOS.showNotification({ title: 'Itens Movidos', message: `${draggedItemsArray.length} itens movidos com sucesso para '${destinationFolderPath}'.`, type: 'success' });
+        } else if (draggedItemsArray.length > 1 && !allSuccessful) {
+            AuraOS.showNotification({ title: 'Movimentação Parcial', message: `Alguns itens não puderam ser movidos. Verifique os erros individuais.`, type: 'warning' });
+        }
+
+        // Single comprehensive UI update after all operations
+        try {
+            const fsWasStale = await dbManager.isFileSystemStale(fileSystem); // Hypothetical function
+            if (fsWasStale || !allSuccessful) { // If any error or known staleness, reload fully.
+                console.warn("FS might be stale or errors occurred, reloading full FS before UI update.");
+                await loadFileSystem();
+            }
+        } catch (e) {
+            console.error("Error checking/reloading FS:", e);
+            await loadFileSystem(); // Fallback to reload
+        }
+
+
+        affectedSourceParents.forEach(p => updateDesktopAndFileExplorer(p));
+        affectedDestinationFolders.forEach(p => updateDesktopAndFileExplorer(p));
+         // If a folder was moved, its original path might have been a root for an explorer,
+         // and its new path might become one.
+        draggedItemsArray.forEach(itemData => {
+            if(itemData.type.includes('folder')){
+                updateDesktopAndFileExplorer(itemData.path); // old full path
+                // The new path needs to be constructed with the potentially resolved name
+                // This is tricky if newName changed inside the loop. For now, just update dest folder.
+                // updateDesktopAndFileExplorer(newPathForItem); // new full path
+            }
+        });
+
+    }
+
     </script>
 </body>
 </html>
