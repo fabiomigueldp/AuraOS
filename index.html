@@ -877,10 +877,20 @@
         .light-theme .calculator-buttons button.btn-light-gray {
             background-color: #D4D4D2; /* Light gray can stay same or be adjusted */
             color: black;
+        }        /* Outros elementos (Login, Context Menu, etc) */
+        #login-screen { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: 100000; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            backdrop-filter: blur(20px); 
+            transition: opacity 0.5s ease; 
         }
-
-        /* Outros elementos (Login, Context Menu, etc) */
-        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(20px); transition: opacity 0.5s ease; }
         .login-box { text-align: center; padding: 40px; background: var(--glass-background); border-radius: var(--ui-corner-radius); border: 1px solid var(--glass-border); box-shadow: var(--window-shadow); }
         .login-box h1 { margin-top: 0; color: var(--highlight-primary); }
         .login-box button { background: var(--highlight-primary); color: var(--text-color); border: none; padding: 12px 25px; border-radius: var(--ui-corner-radius-small); font-weight: 600; cursor: pointer; transition: transform 0.2s, background-color 0.2s; }
@@ -1242,13 +1252,19 @@
         }
     </style>
 </head>
-<body>
-    <div id="notification-container"></div>
+<body>    <div id="notification-container"></div>
+    
+    <!-- Background global que fica visível durante login e depois -->
+    <div class="background-effect wallpaper-default">
+        <div class="blob blob1"></div>
+        <div class="blob blob2"></div>
+    </div>
+    
     <div id="login-screen">
         <div class="login-box">
             <h1>AuraOS</h1>
-            <p>Complete Desktop Experience</p>
-            <img src="https://via.placeholder.com/100" alt="User Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;" id="login-profile-pic">
+            <p>fabiomigueldp</p>
+            <img src="https://github.com/fabiomigueldp/fabiomigueldp.github.io/blob/main/owner51.jpg?raw=true" alt="User Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;" id="login-profile-pic">
             <div id="login-controls-container">
                 <input type="password" id="password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
                 <div id="login-error-message" style="color: var(--red-accent); margin-top: -10px; margin-bottom: 10px; height: 20px;"></div>
@@ -1258,12 +1274,7 @@
     </div>
     
     <div id="aura-os-container">
-        <div id="desktop">
-            <div class="background-effect wallpaper-default">
-                <div class="blob blob1"></div>
-                <div class="blob blob2"></div>
-            </div>
-            
+        <div id="desktop">            
             <!-- Container principal dos ícones do desktop -->
             <div class="desktop-content">
                 <!-- Seção para aplicativos (ícones estáticos) -->
@@ -1325,7 +1336,7 @@
         
         <div id="top-bar">
             <div id="top-bar-logo">AuraOS</div>
-            <div id="clock" style="margin-right: auto;">12:00:00</div> {/* Added margin-right: auto to clock */}
+            <div id="clock" style="margin-right: auto;">12:00:00</div>
             <button id="lock-os-button" title="Bloquear Sistema" style="background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 1rem; padding: 0 10px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                     <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/>
@@ -1375,7 +1386,7 @@
     <div id="lock-screen">
         <div class="lock-box">
             <div id="lock-screen-clock">12:00:00</div> <!-- Removed inline styles -->
-            <img src="https://via.placeholder.com/100" alt="User Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;" id="lock-profile-pic">
+            <img src="https://github.com/fabiomigueldp/fabiomigueldp.github.io/blob/main/owner51.jpg?raw=true" alt="User Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;" id="lock-profile-pic">
             <div id="lock-controls-container">
                 <input type="password" id="lock-password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
                 <div id="lock-error-message" style="color: var(--red-accent); margin-top: -10px; margin-bottom: 10px; height: 20px;"></div>
@@ -3336,11 +3347,9 @@
                 wallpaper: (args) => {
                     if (['default', 'aurora', 'sunset', 'forest', 'ocean', 'space', 'minimalist'].includes(args[0])) setWallpaper(args[0]);
                     else termLog('Uso: wallpaper [default|aurora|sunset|forest|ocean|space|minimalist]', 'output-error');
-                },
-                ls: (args) => {
+                },                ls: (args) => {
                     const node = getFileSystemNode(currentPath);
                     if (!node || node.type !== 'folder') return termLog('Diretório inválido', 'output-error');
-                    let items = Object.keys(node.children);
                     const showAll = args.includes('-a');
                     const longFormat = args.includes('-l');
 
@@ -4254,14 +4263,13 @@
 
                     desktopFilesDiv.appendChild(iconEl);
                 });
-            }
-        }
+            }        }
         
         // --- FUNÇÕES LOCK SCREEN ---
         function showLockScreen() {
             if (!lockScreen) return; // Safety check
             isLocked = true; // Update state
-            const desktopBackground = document.querySelector('#desktop > .background-effect');
+            const desktopBackground = document.querySelector('.background-effect');
             if (desktopBackground) {
                 desktopBackground.style.backdropFilter = 'blur(40px)';
             }
@@ -4269,15 +4277,14 @@
             lockScreenClock.textContent = new Date().toLocaleTimeString('pt-BR'); // Initial time update
             setTimeout(() => {
                 lockScreen.style.opacity = '1';
-            }, 10); // Short delay for CSS transition
-            lockPasswordInput.value = '';
+            }, 10); // Short delay for CSS transition            lockPasswordInput.value = '';
             lockPasswordInput.focus();
             // Clock update will be handled by the main interval
         }
 
         function hideLockScreen() {
             if (!lockScreen) return; // Safety check
-            const desktopBackground = document.querySelector('#desktop > .background-effect');
+            const desktopBackground = document.querySelector('.background-effect');
             if (desktopBackground) {
                 desktopBackground.style.backdropFilter = 'blur(0px)';
             }
@@ -4381,11 +4388,10 @@
                         loginControlsContainer.classList.remove('slide-up-fade-out');
                         loginControlsContainer.style.transform = '';
                         loginControlsContainer.style.opacity = '';
-                    }
-                    // Restore login screen opacity if it was globally set (optional, depends on desired effect)
+                    }                    // Restore login screen opacity if it was globally set (optional, depends on desired effect)
                     // loginScreen.style.opacity = '1';
 
-                    const desktopBackground = document.querySelector('#desktop > .background-effect');
+                    const desktopBackground = document.querySelector('.background-effect');
                     if (desktopBackground) {
                         desktopBackground.style.backdropFilter = 'blur(0px)';
                     }
