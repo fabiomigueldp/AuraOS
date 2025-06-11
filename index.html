@@ -23,6 +23,7 @@
             --glass-border: rgba(255, 255, 255, 0.1);
             --glass-border-focus: rgba(160, 130, 255, 0.6);
             --highlight-primary: #8a63d2;
+            --highlight-primary-rgb: 138, 99, 210; /* ADDED */
             --highlight-secondary: #63d2b3;
             --window-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
             --window-shadow-focus: 0 25px 70px rgba(0, 0, 0, 0.5);
@@ -44,6 +45,7 @@
             --glass-border: rgba(0, 0, 0, 0.1);
             --glass-border-focus: rgba(10, 132, 255, 0.6);
             --highlight-primary: #007aff;
+            --highlight-primary-rgb-light: 0, 122, 255; /* ADDED */
             --highlight-secondary: #34c759;
             --window-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
             --window-shadow-focus: 0 20px 50px rgba(0, 0, 0, 0.2);
@@ -67,6 +69,11 @@
         #desktop {
             width: 100%; height: 100%;
             position: relative;
+            display: flex; /* Enable flexbox for desktop items */
+            flex-wrap: wrap; /* Allow icons to wrap to the next line */
+            align-content: flex-start; /* Align wrapped lines to the start */
+            padding: 20px; /* Add some padding around the desktop area */
+            box-sizing: border-box;
         }
 
         .background-effect {
@@ -96,13 +103,45 @@
         
         /* 3. ÍCONES DA ÁREA DE TRABALHO */
         .desktop-icon {
-            position: absolute; top: 80px; left: 30px; width: 90px; text-align: center;
-            cursor: pointer; padding: 10px; border-radius: var(--ui-corner-radius-small);
-            transition: background-color 0.2s; z-index: 10;
+            /* REMOVE: position: absolute; top: 80px; left: 30px; */
+            /* ADD/MODIFY: */
+            width: 100px; /* Slightly wider icons */
+            text-align: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: var(--ui-corner-radius-small);
+            transition: background-color 0.2s;
+            z-index: 10; /* Keep z-index if needed for overlap with other elements, though less critical with flex */
+            margin: 10px; /* Add margin for spacing between icons */
+            display: flex; /* Internal flex for icon and text alignment */
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Align content (SVG, p) to the top */
+            height: 110px; /* Fixed height for better alignment in rows */
         }
         .desktop-icon:hover { background-color: rgba(128, 128, 128, 0.2); }
-        .desktop-icon svg { width: var(--desktop-icon-size); height: var(--desktop-icon-size); margin-bottom: 5px; pointer-events: none; transition: width 0.3s ease, height 0.3s ease; }
-        .desktop-icon p { margin: 0; font-size: 0.85rem; color: var(--text-color); text-shadow: 1px 1px 3px rgba(0,0,0,0.5); pointer-events: none; }
+        .desktop-icon svg {
+            width: var(--desktop-icon-size, 60px) !important; /* Ensure var is used */
+            height: var(--desktop-icon-size, 60px) !important;
+            margin-bottom: 8px !important; /* Increased margin */
+            pointer-events: none;
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+        .desktop-icon p {
+            margin: 0;
+            font-size: 0.8rem; /* Slightly smaller for better fit */
+            color: var(--text-color);
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            pointer-events: none;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal; /* Allow text to wrap if name is long */
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
+            line-height: 1.2; /* Adjust line height */
+        }
 
         /* 4. ESTILO BASE DAS JANELAS (WINDOWS) - CORRIGIDO */
         .window {
@@ -457,6 +496,134 @@
         .login-box h1 { margin-top: 0; color: var(--highlight-primary); }
         .login-box button { background: var(--highlight-primary); color: var(--text-color); border: none; padding: 12px 25px; border-radius: var(--ui-corner-radius-small); font-weight: 600; cursor: pointer; transition: transform 0.2s, background-color 0.2s; }
         .login-box button:hover { transform: scale(1.05); background-color: var(--highlight-secondary); }
+
+/* --- File Explorer Enhancements --- */
+.file-explorer-container {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Ensure consistent font */
+}
+
+.file-explorer-sidebar {
+    background-color: rgba(0,0,0,0.05); /* Slightly off-black for dark theme, or very light gray for light theme */
+    box-sizing: border-box; /* Already set inline, but good to have in CSS */
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Space between sidebar items */
+}
+
+.light-theme .file-explorer-sidebar {
+    background-color: rgba(230,230,230,0.6); /* A common light theme sidebar color */
+}
+
+.sidebar-item {
+    padding: 7px 12px !important; /* Override inline style for consistency */
+    border-radius: 6px !important; /* Standard macOS-like radius */
+    font-size: 0.85rem;
+    color: var(--subtle-text-color) !important; /* Default text color */
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-item:hover {
+    background-color: rgba(128, 128, 128, 0.15) !important; /* Default hover */
+}
+
+.sidebar-item.active { /* Class to be added for active state */
+    background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.3) !important; /* Use RGB version of highlight for opacity */
+    color: var(--highlight-primary) !important;
+    font-weight: 500 !important;
+}
+
+.light-theme .sidebar-item.active {
+    background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.2) !important;
+    color: var(--highlight-primary) !important;
+}
+
+
+.file-explorer-toolbar {
+    padding: 6px 10px !important; /* Adjusted padding */
+    background-color: rgba(0,0,0,0.03);
+    border-bottom: 1px solid var(--glass-border) !important;
+}
+.light-theme .file-explorer-toolbar {
+    background-color: rgba(240,240,240,0.7); /* Light theme toolbar background */
+}
+
+
+.file-explorer-toolbar button { /* Style for buttons in toolbar */
+    background: none;
+    border: none;
+    color: var(--icon-fill, var(--text-color)); /* Use icon-fill if available, else text-color */
+    cursor: pointer;
+    padding: 4px; /* Minimal padding for icon buttons */
+    border-radius: 5px;
+    display: flex; /* To center SVG inside */
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+.file-explorer-toolbar button:hover {
+    background-color: rgba(128, 128, 128, 0.2);
+}
+.file-explorer-toolbar button svg {
+    width: 20px; /* Consistent SVG size */
+    height: 20px;
+    fill: currentColor; /* SVG inherits button's text color */
+}
+
+
+.file-explorer-toolbar input.file-explorer-address-bar {
+    font-size: 0.85rem;
+    border-radius: 5px !important;
+}
+
+.file-explorer-main-view {
+    gap: 15px 12px !important; /* row-gap column-gap */
+    padding: 15px !important; /* More padding around content */
+}
+
+.file-explorer-item {
+    width: 85px !important; /* Slightly wider items */
+    padding: 8px !important;
+    border-radius: 6px !important; /* Consistent radius */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: background-color 0.15s ease;
+}
+
+.file-explorer-item svg { /* Target SVGs within items for consistent sizing */
+    width: 48px !important; /* Already set inline, but good for CSS */
+    height: 48px !important;
+    margin-bottom: 5px;
+}
+
+.file-explorer-item p {
+    font-size: 0.8rem !important;
+    max-width: 100%; /* Ensure text doesn't overflow item width */
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 3px !important; /* Small space between icon and text */
+    color: var(--text-color); /* Ensure paragraph text color is standard text color */
+}
+
+/* Styling for selected items in main view */
+.file-explorer-item.selected {
+    background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.4) !important;
+}
+.file-explorer-item.selected p {
+    color: var(--text-color); /* Ensure text color is still readable, might need to be brighter if selection is dark */
+    font-weight: 500; /* Slightly bolder when selected */
+}
+
+.light-theme .file-explorer-item.selected {
+    background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.3) !important;
+}
+.light-theme .file-explorer-item.selected p {
+    color: var(--text-color); /* Ensure good contrast in light theme */
+}
     </style>
 </head>
 <body>
@@ -995,43 +1162,51 @@
                 case 'file-explorer':
                     const currentExplorerPath = data.path || '/Desktop'; // Open at specified path or default to /Desktop
                     body.innerHTML = `
-                        <div style="display: flex; align-items: center; padding: 5px; border-bottom: 1px solid var(--glass-border);">
-                            <button class="file-explorer-nav-btn" data-action="up" title="Up">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
-                            </button>
-                            <button class="file-explorer-action-btn" data-action="create-folder" title="Nova Pasta" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L4 18c0 1.11.89 2 1.99 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
-                            </button>
-                            <button class="file-explorer-action-btn" data-action="delete" title="Excluir Selecionado" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                            <input type="text" class="file-explorer-address-bar" style="flex-grow: 1; margin: 0 5px; padding: 5px; border-radius: 5px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.2); color: var(--text-color);" readonly>
-                        </div>
-                        <div class="file-explorer-main-view" style="padding: 10px; overflow-y: auto; height: calc(100% - 45px); display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px;">
-                            <!-- File and folder icons will be rendered here -->
+                        <div class="file-explorer-container" style="display: flex; height: 100%;">
+                            <div class="file-explorer-sidebar" style="width: 180px; height: 100%; background-color: rgba(0,0,0,0.1); border-right: 1px solid var(--glass-border); padding: 10px; box-sizing: border-box; overflow-y: auto;">
+                                <!-- Sidebar items will be populated here -->
+                            </div>
+                            <div class="file-explorer-content-area" style="flex-grow: 1; height: 100%; display: flex; flex-direction: column;">
+                                <div class="file-explorer-toolbar" style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid var(--glass-border); flex-shrink: 0;">
+                                    <button class="file-explorer-nav-btn" data-action="up" title="Up" style="background:none; border:none; color:var(--text-color); cursor:pointer; margin-right:5px;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+                                    </button>
+                                    <input type="text" class="file-explorer-address-bar" style="flex-grow: 1; margin: 0 5px; padding: 5px; border-radius: 5px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.2); color: var(--text-color);" readonly>
+                                    <button class="file-explorer-action-btn" data-action="create-folder" title="Nova Pasta" style="margin-left: 10px; background:none; border:none; color:var(--text-color); cursor:pointer;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+                                    </button>
+                                    <button class="file-explorer-action-btn" data-action="delete" title="Excluir Selecionado" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                    </button>
+                                </div>
+                                <div class="file-explorer-main-view" style="padding: 10px; overflow-y: auto; flex-grow: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px;">
+                                    <!-- File and folder icons will be rendered here -->
+                                </div>
+                            </div>
                         </div>
                     `;
 
                     const addressBar = body.querySelector('.file-explorer-address-bar');
                     const mainView = body.querySelector('.file-explorer-main-view');
                     const upButton = body.querySelector('.file-explorer-nav-btn[data-action="up"]');
+                    const sidebarDiv = body.querySelector('.file-explorer-sidebar'); // New selector for the sidebar
                     const createFolderButton = body.querySelector('.file-explorer-action-btn[data-action="create-folder"]');
                     const deleteButton = body.querySelector('.file-explorer-action-btn[data-action="delete"]');
                     let selectedItemPath = null;
 
                     function selectItem(itemEl, itemFullPath) {
-                        mainView.querySelectorAll('.file-explorer-item').forEach(el => {
-                            el.style.backgroundColor = 'transparent'; // Deselect others
+                        mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => {
                             el.classList.remove('selected');
+                            // el.style.backgroundColor = 'transparent'; // Handled by CSS not having .selected
                         });
+
                         if (itemEl && itemFullPath) {
-                            itemEl.style.backgroundColor = 'rgba(128, 128, 128, 0.4)'; // Select current
                             itemEl.classList.add('selected');
+                            // The background color is now handled by .file-explorer-item.selected CSS rule
                             selectedItemPath = itemFullPath;
                         } else {
-                            selectedItemPath = null; // Clear selection if no itemEl or path
+                            selectedItemPath = null;
                         }
-                        // console.log("Selected item path:", selectedItemPath);
                     }
 
                     mainView.addEventListener('click', (event) => {
@@ -1042,6 +1217,55 @@
 
                     // Store current path within the window element for persistence if needed, or manage locally
                     windowEl.dataset.currentPath = currentExplorerPath;
+
+                    function renderSidebar(currentPathForHighlighting) {
+                        sidebarDiv.innerHTML = ''; // Clear existing items
+                        const rootNode = getFileSystemNode('/');
+                        if (rootNode && rootNode.type === 'folder') {
+                            const commonLocations = ['Desktop', 'Documents', 'Music', 'Pictures', 'System'];
+
+                            commonLocations.forEach(locName => {
+                                if (rootNode.children[locName] && rootNode.children[locName].type === 'folder') {
+                                    const sidebarItemEl = document.createElement('div');
+                                    sidebarItemEl.className = 'sidebar-item';
+                                    sidebarItemEl.textContent = locName;
+                                    const itemPath = '/' + locName;
+                                    sidebarItemEl.setAttribute('data-path', itemPath);
+                                    sidebarItemEl.style.padding = '8px 10px';
+                                    sidebarItemEl.style.cursor = 'pointer';
+                                    sidebarItemEl.style.borderRadius = 'var(--ui-corner-radius-small)';
+                                    sidebarItemEl.style.marginBottom = '5px';
+                                    sidebarItemEl.style.color = 'var(--subtle-text-color)';
+
+                                    // Highlighting logic (NEW)
+                                    if (itemPath === currentPathForHighlighting || (currentPathForHighlighting.startsWith(itemPath + '/') && itemPath !== '/')) { // Adjusted for root path
+                                        sidebarItemEl.classList.add('active');
+                                    } else if (itemPath === '/' && currentPathForHighlighting === '/') { // Explicit for root
+                                         sidebarItemEl.classList.add('active');
+                                    }
+                                     else {
+                                        sidebarItemEl.classList.remove('active');
+                                    }
+
+                                    sidebarItemEl.addEventListener('click', () => {
+                                        selectItem(null, null);
+                                        renderFileExplorerView(itemPath);
+                                    });
+                                    sidebarItemEl.addEventListener('mouseenter', () => {
+                                        if (!sidebarItemEl.classList.contains('active')) {
+                                           sidebarItemEl.style.backgroundColor = 'rgba(128, 128, 128, 0.15)';
+                                        }
+                                    });
+                                    sidebarItemEl.addEventListener('mouseleave', () => {
+                                        if (!sidebarItemEl.classList.contains('active')) {
+                                           sidebarItemEl.style.backgroundColor = 'transparent';
+                                        }
+                                    });
+                                    sidebarDiv.appendChild(sidebarItemEl);
+                                }
+                            });
+                        }
+                    }
 
                     createFolderButton.addEventListener('click', () => {
                         const currentExplorerPath = windowEl.dataset.currentPath;
@@ -1146,6 +1370,7 @@
                     function renderFileExplorerView(path) {
                         windowEl.dataset.currentPath = path; // Update current path
                         addressBar.value = path;
+                        renderSidebar(path); // Call to update sidebar highlighting using the new path
                         mainView.innerHTML = ''; // Clear previous view
 
                         const node = getFileSystemNode(path);
@@ -1771,7 +1996,12 @@
                     '/': {
                         type: 'folder',
                         children: {
-                            'Desktop': { type: 'folder', children: {} },
+                            'Desktop': { type: 'folder', children: {
+                                'Welcome.txt': { // ADDED THIS ITEM
+                                    type: 'file',
+                                    content: 'Bem-vindo ao AuraOS!\\n\\nEste é um arquivo de exemplo no seu Desktop.\\nVocê pode criar pastas e arquivos usando o Explorador de Arquivos ou o Terminal.'
+                                }
+                            } },
                             'Documents': { type: 'folder', children: {
                                 'AuraOS_Project.txt': { type: 'file', content: 'Metas para a v2:\n- Multi-threading simulado\n- API de plugins\n- Melhor gerenciamento de memória' },
                                 'ideas.txt': { type: 'file', content: 'Uma ideia para um novo app: um player de video!' }
@@ -1916,28 +2146,25 @@
             const desktopNode = getFileSystemNode(desktopPath);
 
             if (desktopNode && desktopNode.type === 'folder') {
-                let iconTopPosition = 80; // Initial top position for the first icon
-                const iconLeftPosition = 30; // Initial left position
-                const iconMarginBottom = 110; // Space between icons vertically
+                // REMOVE: let iconTopPosition = 80;
+                // REMOVE: const iconLeftPosition = 30;
+                // REMOVE: const iconMarginBottom = 110;
 
                 Object.entries(desktopNode.children).forEach(([name, item]) => {
                     const iconEl = document.createElement('div');
                     iconEl.className = 'desktop-icon';
-                    iconEl.setAttribute('data-dynamic', 'true'); // Mark as dynamically generated
-                    iconEl.style.position = 'absolute'; // Ensure icons are positioned absolutely
-                    iconEl.style.top = `${iconTopPosition}px`;
-                    iconEl.style.left = `${iconLeftPosition}px`;
+                    iconEl.setAttribute('data-dynamic', 'true');
+                    // REMOVE: iconEl.style.position = 'absolute';
+                    // REMOVE: iconEl.style.top = `${iconTopPosition}px`;
+                    // REMOVE: iconEl.style.left = `${iconLeftPosition}px`;
 
                     let iconSvg = '';
-                    let appOrPath = '';
+                    // let appOrPath = ''; // This variable was defined but not used, removing.
 
                     if (item.type === 'folder') {
                         iconSvg = '<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
-                        // For folders, we'll want to open them in file explorer later
-                        // For now, let's set a generic data attribute or handle click later
                         iconEl.setAttribute('data-folder-path', `${desktopPath}/${name}`);
                     } else { // It's a file
-                        // Basic file icon, ideally we'd have specific icons per file type
                         iconSvg = '<svg viewBox="0 0 24 24"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF" /></svg>';
                         iconEl.setAttribute('data-file-path', `${desktopPath}/${name}`);
                     }
@@ -1945,10 +2172,9 @@
                     iconEl.innerHTML = `${iconSvg}<p>${name}</p>`;
                     desktopDiv.appendChild(iconEl);
 
-                    // Increment top position for the next icon
-                    iconTopPosition += iconMarginBottom;
+                    // REMOVE: iconTopPosition += iconMarginBottom;
 
-                    // Add dblclick listener (initial implementation)
+                    // Event listener logic remains the same
                     iconEl.addEventListener('dblclick', () => {
                         if (item.type === 'folder') {
                             const folderPath = `${desktopPath}/${name}`;
