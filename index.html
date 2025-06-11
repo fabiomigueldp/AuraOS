@@ -265,15 +265,7 @@
                 <div class="blob blob1"></div>
                 <div class="blob blob2"></div>
             </div>
-            
-            <div class="desktop-icon" data-app-id="file-explorer" style="top: 80px; left: 30px;">
-                <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>
-                <p>Arquivos</p>
-            </div>
-             <div class="desktop-icon" data-app-id="music-player-app" style="top: 190px; left: 30px;">
-                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-                <p>Música</p>
-            </div>
+            <!-- Ícones da área de trabalho serão renderizados dinamicamente -->
         </div>
         
         <div id="top-bar">
@@ -336,6 +328,37 @@
             { title: 'Forest Path', artist: 'Ambient Worlds', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b2739451d86016335d140656a56e' },
         ];
 
+    const fileAssociations = {
+        '.txt': 'notes-app',
+        '.log': 'notes-app', // Example: .log files also open with notes
+        '.md': 'notes-app',  // Example: Markdown files
+        '.glb': 'model-viewer-app',
+        // Add more associations as needed, e.g., for images
+        '.jpg': 'image-viewer',
+        '.jpeg': 'image-viewer',
+        '.png': 'image-viewer',
+        '.gif': 'image-viewer',
+        // Future: '.mp3': 'music-player-app' (if music player can play individual files)
+    };
+
+    function openFile(filePath) {
+        const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+        const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+        const appId = fileAssociations[fileExtension];
+
+        if (appId) {
+            if (apps[appId]) { // Check if the app is defined
+                // Pass the file path and potentially a custom title to the app
+                createWindow(appId, { filePath: filePath, title: `${apps[appId].title} - ${fileName}` });
+            } else {
+                console.error(`App ID '${appId}' defined in fileAssociations but not found in apps object.`);
+                alert(`Erro: Aplicativo '${appId}' não encontrado para abrir '${fileName}'.`);
+            }
+        } else {
+            console.warn(`No application associated with extension '${fileExtension}' for file '${fileName}'.`);
+            alert(`Nenhum aplicativo associado para abrir '${fileName}'.`);
+        }
+    }
 
         // --- FUNÇÕES DE GERENCIAMENTO DE JANELAS (CORRIGIDO) ---
         function createWindow(appId, data = {}) {
@@ -528,7 +551,283 @@
                     break;
                 
                 case 'file-explorer':
-                    // Lógica do File Explorer (sem grandes mudanças)
+                    const currentExplorerPath = data.path || '/Desktop'; // Open at specified path or default to /Desktop
+                    body.innerHTML = `
+                        <div style="display: flex; align-items: center; padding: 5px; border-bottom: 1px solid var(--glass-border);">
+                            <button class="file-explorer-nav-btn" data-action="up" title="Up">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+                            </button>
+                            <button class="file-explorer-action-btn" data-action="create-folder" title="Nova Pasta" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+                            </button>
+                            <button class="file-explorer-action-btn" data-action="delete" title="Excluir Selecionado" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                            <input type="text" class="file-explorer-address-bar" style="flex-grow: 1; margin: 0 5px; padding: 5px; border-radius: 5px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.2); color: var(--text-color);" readonly>
+                        </div>
+                        <div class="file-explorer-main-view" style="padding: 10px; overflow-y: auto; height: calc(100% - 45px); display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px;">
+                            <!-- File and folder icons will be rendered here -->
+                        </div>
+                    `;
+
+                    const addressBar = body.querySelector('.file-explorer-address-bar');
+                    const mainView = body.querySelector('.file-explorer-main-view');
+                    const upButton = body.querySelector('.file-explorer-nav-btn[data-action="up"]');
+                    const createFolderButton = body.querySelector('.file-explorer-action-btn[data-action="create-folder"]');
+                    const deleteButton = body.querySelector('.file-explorer-action-btn[data-action="delete"]');
+                    let selectedItemPath = null;
+
+                    function selectItem(itemEl, itemFullPath) {
+                        mainView.querySelectorAll('.file-explorer-item').forEach(el => {
+                            el.style.backgroundColor = 'transparent'; // Deselect others
+                            el.classList.remove('selected');
+                        });
+                        if (itemEl && itemFullPath) {
+                            itemEl.style.backgroundColor = 'rgba(128, 128, 128, 0.4)'; // Select current
+                            itemEl.classList.add('selected');
+                            selectedItemPath = itemFullPath;
+                        } else {
+                            selectedItemPath = null; // Clear selection if no itemEl or path
+                        }
+                        // console.log("Selected item path:", selectedItemPath);
+                    }
+
+                    mainView.addEventListener('click', (event) => {
+                        if (event.target === mainView) { // Clicked on the background
+                            selectItem(null, null); // Deselect all
+                        }
+                    });
+
+                    // Store current path within the window element for persistence if needed, or manage locally
+                    windowEl.dataset.currentPath = currentExplorerPath;
+
+                    createFolderButton.addEventListener('click', () => {
+                        const currentExplorerPath = windowEl.dataset.currentPath;
+                        let newFolderName = prompt("Digite o nome da nova pasta:", "Nova Pasta");
+
+                        if (!newFolderName || newFolderName.trim() === "") {
+                            // User cancelled or entered empty/whitespace name
+                            if (newFolderName !== null) { // Only alert if not cancelled
+                                 alert("Nome da pasta não pode ser vazio.");
+                            }
+                            return;
+                        }
+                        newFolderName = newFolderName.trim(); // Trim whitespace
+
+                        // Basic sanitization - remove characters not typically allowed in folder names
+                        // You might want a more robust sanitization function for a real OS
+                        const sanitizedFolderName = newFolderName.replace(/[\/:*?"<>|]/g, '_');
+                        if (sanitizedFolderName !== newFolderName) {
+                            alert(`Nome da pasta continha caracteres inválidos. Foi sanitizado para: ${sanitizedFolderName}`);
+                            newFolderName = sanitizedFolderName;
+                        }
+                        if (!newFolderName) { // If sanitization resulted in empty string
+                            alert("Nome de pasta inválido após sanitização.");
+                            return;
+                        }
+
+
+                        const parentNode = getFileSystemNode(currentExplorerPath);
+                        if (parentNode && parentNode.type === 'folder') {
+                            if (parentNode.children[newFolderName]) {
+                                alert("Um item com este nome já existe neste local.");
+                                return;
+                            }
+                            parentNode.children[newFolderName] = { type: 'folder', children: {} };
+                            saveFileSystem();
+                            updateDesktopAndFileExplorer(currentExplorerPath); // This triggers refresh in current and other relevant views
+                            selectItem(null, null); // Deselect any current selection
+                        } else {
+                            alert("Não foi possível criar a pasta no caminho atual. Diretório pai não encontrado ou inválido.");
+                        }
+                    });
+
+                    deleteButton.addEventListener('click', () => {
+                        if (!selectedItemPath) {
+                            alert("Nenhum item selecionado para excluir.");
+                            return;
+                        }
+
+                        // Prevent deleting the root directory or ".." representation if it was somehow selected with a root-like path
+                        if (selectedItemPath === '/') {
+                            alert("Não é possível excluir o diretório raiz.");
+                            selectItem(null, null); // Clear selection
+                            return;
+                        }
+
+                        const itemName = selectedItemPath.substring(selectedItemPath.lastIndexOf('/') + 1);
+                        // If selectedItemPath actually points to a directory that is represented as ".."
+                        // This check is a bit indirect. A truly selected ".." item has its selectedItemPath as the parent dir.
+                        // So, if itemName is empty, it means selectedItemPath was like "/" or "/Desktop/" instead of "/Desktop/MyFile.txt"
+                        if (itemName === "" && getFileSystemNode(selectedItemPath)?.type === 'folder') {
+                             alert("Não é possível excluir o diretório atual ou pai desta forma. Selecione um arquivo ou subpasta específica.");
+                             selectItem(null, null);
+                             return;
+                        }
+                        // A more direct check if the selected item is the one visually represented as ".."
+                        // This requires knowing the *displayed name* of the selected element.
+                        // For simplicity, we rely on `selectedItemPath` not being the *current* path for deletion.
+                        if (selectedItemPath === windowEl.dataset.currentPath && itemName === windowEl.dataset.currentPath.substring(windowEl.dataset.currentPath.lastIndexOf('/') + 1)) {
+                             // This means selectedItemPath is the current directory itself.
+                             // This case should ideally not happen if ".." is handled correctly in selectItem.
+                        }
+
+
+                        if (!confirm(`Tem certeza que deseja excluir '${itemName}'? Esta ação não pode ser desfeita.`)) {
+                            return;
+                        }
+
+                        const parts = selectedItemPath.split('/').filter(p => p); // Get path components
+                        if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
+                            alert("Não é possível excluir o diretório raiz.");
+                            return;
+                        }
+                        parts.pop(); // Remove item name to get parent's components
+                        const parentOfSelectedItemPath = '/' + parts.join('/');
+
+                        const parentNode = getFileSystemNode(parentOfSelectedItemPath);
+
+                        if (parentNode && parentNode.type === 'folder' && parentNode.children[itemName]) {
+                            delete parentNode.children[itemName];
+                            saveFileSystem();
+                            const pathToUpdate = parentOfSelectedItemPath;
+                            selectItem(null, null); // Clear selection
+                            updateDesktopAndFileExplorer(pathToUpdate);
+                        } else {
+                            alert(`Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfSelectedItemPath}'. (Caminho completo: ${selectedItemPath})`);
+                            // It's possible the item was deleted by another process/tab, refresh view
+                            selectItem(null, null);
+                            updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
+                        }
+                    });
+
+                    function renderFileExplorerView(path) {
+                        windowEl.dataset.currentPath = path; // Update current path
+                        addressBar.value = path;
+                        mainView.innerHTML = ''; // Clear previous view
+
+                        const node = getFileSystemNode(path);
+                        if (!node || node.type !== 'folder') {
+                            mainView.innerHTML = '<p>Diretório não encontrado ou inválido.</p>';
+                            return;
+                        }
+
+                        // Parent directory (for ".." entry, if not at root)
+                        if (path !== '/') {
+                            const parentName = '..';
+                            const parentEl = document.createElement('div');
+                            parentEl.className = 'file-explorer-item';
+                            parentEl.style.textAlign = 'center';
+                            parentEl.style.width = '80px';
+                            parentEl.style.padding = '5px';
+                            parentEl.style.cursor = 'pointer';
+                            parentEl.innerHTML = `
+                                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2" opacity="0.7"/></svg>
+                                <p style="margin: 0; font-size: 0.8rem; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${parentName}</p>
+                            `;
+                            // Single click to select ".." (path is parent's path)
+                            parentEl.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const parentPathValue = path === '/' ? '/' : path.substring(0, path.lastIndexOf('/')) || '/';
+                                selectItem(parentEl, parentPathValue);
+                            });
+
+                            // Double click to navigate up
+                            parentEl.addEventListener('dblclick', () => {
+                                selectItem(null, null); // Deselect before navigating
+                                const currentParts = path.split('/').filter(p => p);
+                                currentParts.pop();
+                                renderFileExplorerView('/' + currentParts.join('/'));
+                            });
+
+                            // Hover for ".."
+                            parentEl.addEventListener('mouseenter', () => {
+                                if (!parentEl.classList.contains('selected')) {
+                                    parentEl.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
+                                }
+                            });
+                            parentEl.addEventListener('mouseleave', () => {
+                                if (!parentEl.classList.contains('selected')) {
+                                    parentEl.style.backgroundColor = 'transparent';
+                                }
+                            });
+                            mainView.appendChild(parentEl);
+                        }
+
+                        Object.entries(node.children).forEach(([name, item]) => {
+                            const itemEl = document.createElement('div');
+                            itemEl.className = 'file-explorer-item'; // For styling
+                            itemEl.style.textAlign = 'center';
+                            itemEl.style.width = '80px'; // Example size
+                            itemEl.style.padding = '5px';
+                            itemEl.style.cursor = 'pointer';
+                            itemEl.style.borderRadius = 'var(--ui-corner-radius-small)';
+
+                            let iconSvg = '';
+                            // Single click to select
+                            itemEl.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const fullItemPath = resolvePath(path, name);
+                                selectItem(itemEl, fullItemPath);
+                            });
+
+                            // Double click to open
+                            if (item.type === 'folder') {
+                                iconSvg = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
+                                itemEl.addEventListener('dblclick', () => {
+                                    selectItem(null, null); // Deselect before navigating
+                                    renderFileExplorerView(resolvePath(path, name));
+                                });
+                            } else { // File
+                                iconSvg = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF"/></svg>';
+                                itemEl.addEventListener('dblclick', () => {
+                                    openFile(resolvePath(path, name));
+                                });
+                            }
+
+                            itemEl.innerHTML = `${iconSvg}<p style="margin: 0; font-size: 0.8rem; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${name}</p>`;
+                            // Visual hover effects (if not selected)
+                            itemEl.addEventListener('mouseenter', () => {
+                                if (!itemEl.classList.contains('selected')) {
+                                    itemEl.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
+                                }
+                            });
+                            itemEl.addEventListener('mouseleave', () => {
+                                if (!itemEl.classList.contains('selected')) {
+                                    itemEl.style.backgroundColor = 'transparent';
+                                }
+                            });
+                            mainView.appendChild(itemEl);
+                        });
+                    }
+
+                    upButton.addEventListener('click', () => {
+                        selectItem(null, null); // Clear selection
+                        const currentWindowPath = windowEl.dataset.currentPath;
+                        // ... rest of the up button logic ...
+                        // (Ensure it uses currentWindowPath, not the 'path' variable from renderFileExplorerView's scope if 'path' is different)
+                        const currentParts = currentWindowPath.split('/').filter(p => p);
+                        if (currentParts.length > 0) {
+                            currentParts.pop();
+                            renderFileExplorerView('/' + currentParts.join('/'));
+                        } else if (currentWindowPath !== '/') {
+                             renderFileExplorerView('/');
+                        }
+                    });
+
+                    // Initial render
+                    renderFileExplorerView(currentExplorerPath);
+
+                    // Make File Explorer aware of external changes
+                    // This is a simplified version. A more robust solution might involve custom events or a global state manager.
+                    windowEl.addEventListener('aura:filesystemchange', (event) => {
+                        const changedDirPath = event.detail.path;
+                        // If the currently viewed path or a sub-path is affected, refresh
+                        if (windowEl.dataset.currentPath.startsWith(changedDirPath) || changedDirPath.startsWith(windowEl.dataset.currentPath)) {
+                           renderFileExplorerView(windowEl.dataset.currentPath);
+                        }
+                    });
+
                     break;
 
                 case 'notes-app':
@@ -754,6 +1053,7 @@
                     if (parentNode && parentNode.type === 'folder' && !parentNode.children[newDirName]) {
                         parentNode.children[newDirName] = { type: 'folder', children: {} };
                         saveFileSystem();
+                        updateDesktopAndFileExplorer(parentPath); // <-- Add this line
                     } else {
                         termLog(`mkdir: não foi possível criar o diretório '${args[0]}'`, 'output-error');
                     }
@@ -768,6 +1068,7 @@
                     if (parentNode && parentNode.type === 'folder' && !parentNode.children[newFileName]) {
                         parentNode.children[newFileName] = { type: 'file', content: '' };
                         saveFileSystem();
+                        updateDesktopAndFileExplorer(parentPath); // <-- Add this line
                     } else {
                          termLog(`touch: não foi possível criar o arquivo '${args[0]}'`, 'output-error');
                     }
@@ -777,11 +1078,12 @@
                     const path = resolvePath(currentPath, args[0]);
                     const parts = path.substring(1).split('/');
                     const targetName = parts.pop();
-                    const parentPath = '/' + parts.join('/');
+                    const parentPath = '/' + parts.join('/'); // This is the path of the directory being affected
                     const parentNode = getFileSystemNode(parentPath);
                      if (parentNode && parentNode.children[targetName]) {
                         delete parentNode.children[targetName];
                         saveFileSystem();
+                        updateDesktopAndFileExplorer(parentPath); // <-- Add this line
                     } else {
                         termLog(`rm: não foi possível remover '${args[0]}': Arquivo ou diretório não encontrado`, 'output-error');
                     }
@@ -914,13 +1216,16 @@
                     '/': {
                         type: 'folder',
                         children: {
-                            'Projetos': { type: 'folder', children: {
-                                'AuraOS.txt': { type: 'file', content: 'Metas para a v2:\n- Multi-threading simulado\n- API de plugins\n- Melhor gerenciamento de memória' },
+                            'Desktop': { type: 'folder', children: {} },
+                            'Documents': { type: 'folder', children: {
+                                'AuraOS_Project.txt': { type: 'file', content: 'Metas para a v2:\n- Multi-threading simulado\n- API de plugins\n- Melhor gerenciamento de memória' },
+                                'ideas.txt': { type: 'file', content: 'Uma ideia para um novo app: um player de video!' }
                             }},
-                            'Anotações': { type: 'folder', children: {
-                                'ideias.txt': { type: 'file', content: 'Uma ideia para um novo app: um player de video!' },
+                            'Music': { type: 'folder', children: {} },
+                            'Pictures': { type: 'folder', children: {
+                                'astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' }
                             }},
-                            'astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' },
+                            'System': { type: 'folder', children: {} }
                         }
                     }
                 };
@@ -1003,6 +1308,75 @@
                 }
             });
         }
+
+        function updateDesktopAndFileExplorer(changedPath = null) {
+            renderDesktopIcons(); // Always re-render desktop icons
+
+            document.querySelectorAll('.window').forEach(win => {
+                if (win.id.startsWith('file-explorer')) { // Check if it's a file explorer window
+                    const event = new CustomEvent('aura:filesystemchange', { detail: { path: changedPath } });
+                    win.dispatchEvent(event);
+                }
+            });
+            console.log(`File system changed. Path: ${changedPath}. Desktop and relevant File Explorers notified.`);
+        }
+
+        function renderDesktopIcons() {
+            const desktopDiv = document.getElementById('desktop');
+            // Clear existing dynamic icons to prevent duplicates if called multiple times
+            desktopDiv.querySelectorAll('.desktop-icon[data-dynamic]').forEach(icon => icon.remove());
+
+            const desktopPath = '/Desktop';
+            const desktopNode = getFileSystemNode(desktopPath);
+
+            if (desktopNode && desktopNode.type === 'folder') {
+                let iconTopPosition = 80; // Initial top position for the first icon
+                const iconLeftPosition = 30; // Initial left position
+                const iconMarginBottom = 110; // Space between icons vertically
+
+                Object.entries(desktopNode.children).forEach(([name, item]) => {
+                    const iconEl = document.createElement('div');
+                    iconEl.className = 'desktop-icon';
+                    iconEl.setAttribute('data-dynamic', 'true'); // Mark as dynamically generated
+                    iconEl.style.position = 'absolute'; // Ensure icons are positioned absolutely
+                    iconEl.style.top = `${iconTopPosition}px`;
+                    iconEl.style.left = `${iconLeftPosition}px`;
+
+                    let iconSvg = '';
+                    let appOrPath = '';
+
+                    if (item.type === 'folder') {
+                        iconSvg = '<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
+                        // For folders, we'll want to open them in file explorer later
+                        // For now, let's set a generic data attribute or handle click later
+                        iconEl.setAttribute('data-folder-path', `${desktopPath}/${name}`);
+                    } else { // It's a file
+                        // Basic file icon, ideally we'd have specific icons per file type
+                        iconSvg = '<svg viewBox="0 0 24 24"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF" /></svg>';
+                        iconEl.setAttribute('data-file-path', `${desktopPath}/${name}`);
+                    }
+
+                    iconEl.innerHTML = `${iconSvg}<p>${name}</p>`;
+                    desktopDiv.appendChild(iconEl);
+
+                    // Increment top position for the next icon
+                    iconTopPosition += iconMarginBottom;
+
+                    // Add dblclick listener (initial implementation)
+                    iconEl.addEventListener('dblclick', () => {
+                        if (item.type === 'folder') {
+                            const folderPath = `${desktopPath}/${name}`;
+                            // Check if a file explorer is already open for this path (optional, for focusing)
+                            // For simplicity, always create a new one or focus if one exists for 'file-explorer' app ID
+                            createWindow('file-explorer', { path: folderPath, title: `Explorador - ${name}` });
+                        } else { // File
+                            const filePath = `${desktopPath}/${name}`;
+                            openFile(filePath);
+                        }
+                    });
+                });
+            }
+        }
         
         // --- INICIALIZAÇÃO ---
         document.getElementById('login-button').addEventListener('click', () => {
@@ -1015,6 +1389,7 @@
                 // Carregar configurações e sistema de arquivos
                 loadFileSystem();
                 applySystemState();
+                renderDesktopIcons(); // <-- Add this line
                 
                 // Clock
                 setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
