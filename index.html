@@ -806,6 +806,107 @@
 .notification-toast .notification-icon { margin-right: 10px; width: 20px; height: 20px; fill: var(--icon-fill); }
 .notification-content { display: flex; align-items: center; }
 
+.notification-toast-error {
+    border-left: 4px solid var(--red-accent, #ff5f56);
+}
+.notification-toast-error .notification-icon svg {
+    fill: var(--red-accent, #ff5f56);
+}
+
+.notification-toast-warning {
+    border-left: 4px solid var(--yellow-accent, #ffbd2e);
+}
+.notification-toast-warning .notification-icon svg {
+    fill: var(--yellow-accent, #ffbd2e);
+}
+
+.notification-toast-info {
+    border-left: 4px solid var(--highlight-primary, #8a63d2); /* Or a neutral blue */
+}
+.notification-toast-info .notification-icon svg {
+    fill: var(--highlight-primary, #8a63d2);
+}
+
+/* --- Confirmation Dialog --- */
+#aura-dialog-confirm {
+    background-color: var(--glass-background);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ui-corner-radius);
+    box-shadow: var(--window-shadow);
+    backdrop-filter: blur(20px) saturate(1.8); /* Enhance glassmorphism */
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    color: var(--text-color);
+    padding: 25px; /* More spacious padding */
+    min-width: 320px;
+    max-width: 450px;
+    /* Transitions for entry/exit are already handled by inline styles in JS */
+}
+
+.aura-dialog-content #aura-dialog-message {
+    font-size: 1rem; /* Standardized font size */
+    margin-bottom: 25px; /* More space before buttons */
+    line-height: 1.5; /* Improved readability */
+    color: var(--text-color);
+}
+
+.aura-dialog-buttons {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 12px; /* Slightly more gap */
+}
+
+.aura-dialog-button {
+    padding: 10px 18px; /* Larger click target */
+    border-radius: var(--ui-corner-radius-small, 8px); /* Use small radius or a fixed value */
+    border: none;
+    font-weight: 500; /* Medium weight */
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    font-size: 0.9rem;
+}
+
+.aura-dialog-button:active {
+    transform: scale(0.97); /* Subtle press effect */
+}
+
+.aura-dialog-button-confirm {
+    background-color: var(--highlight-primary);
+    color: white; /* Ensure contrast */
+    border: 1px solid transparent; /* For consistency */
+}
+
+.aura-dialog-button-confirm:hover {
+    background-color: color-mix(in srgb, var(--highlight-primary) 90%, black); /* Darken on hover */
+}
+
+.aura-dialog-button-cancel {
+    background-color: rgba(128, 128, 128, 0.2); /* Subtle background */
+    color: var(--text-color);
+    border: 1px solid var(--glass-border); /* Subtle border */
+}
+
+.aura-dialog-button-cancel:hover {
+    background-color: rgba(128, 128, 128, 0.3); /* Slightly more opaque on hover */
+    border-color: var(--glass-border-focus);
+}
+
+/* Light theme adjustments for dialog buttons */
+.light-theme #aura-dialog-confirm .aura-dialog-button-confirm {
+    /* Confirm button in light theme might need adjusted text color if highlight-primary is too light */
+    /* color: white; /* Assuming highlight-primary is dark enough */
+}
+
+.light-theme #aura-dialog-confirm .aura-dialog-button-cancel {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: var(--text-color);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.light-theme #aura-dialog-confirm .aura-dialog-button-cancel:hover {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
         #lock-screen {
             position: fixed;
             top: 0; left: 0;
@@ -1112,7 +1213,7 @@
         window.AuraOS = {};
     }
 
-    window.AuraOS.showNotification = function({ title = 'Notification', message = '', icon = '', duration = 4000 }) {
+    window.AuraOS.showNotification = function({ title = 'Notification', message = '', icon = '', type = 'info', duration = 4000 }) {
         const container = document.getElementById('notification-container');
         if (!container) {
             console.error('Notification container not found!');
@@ -1123,21 +1224,33 @@
         const notificationEl = document.createElement('div');
         notificationEl.className = 'notification-toast';
         notificationEl.id = notificationId;
+        notificationEl.classList.add(`notification-toast-${type}`); // Add type-specific class
 
         let iconHTML = '';
-        if (icon) {
+        if (icon) { // Custom icon takes precedence
             // Basic check if icon is SVG or an image URL
             if (icon.trim().startsWith('<svg')) {
                 iconHTML = `<div class="notification-icon">${icon}</div>`;
             } else if (icon.match(/\.(jpeg|jpg|gif|png|svg)$/i)) {
                 iconHTML = `<div class="notification-icon"><img src="${icon}" alt="icon" style="width:100%; height:100%;"></div>`;
             } else {
-                // Default to a simple info icon if a generic string is passed
-                iconHTML = `<div class="notification-icon">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path>
-                                </svg>
-                            </div>`;
+                 // Fallback for non-svg/image custom icon strings (though ideally SVGs or URLs are passed)
+                iconHTML = `<div class="notification-icon"><span>${icon}</span></div>`;
+            }
+        } else { // Type-based default icons
+            switch (type) {
+                case 'error':
+                    iconHTML = `<div class="notification-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="var(--red-accent)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>`;
+                    if (!title || title === 'Notification') title = 'Erro'; // Default title for errors
+                    break;
+                case 'warning':
+                    iconHTML = `<div class="notification-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="var(--yellow-accent)"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2V7h2v7z"/></svg></div>`;
+                    if (!title || title === 'Notification') title = 'Aviso'; // Default title for warnings
+                    break;
+                case 'info':
+                default:
+                    iconHTML = `<div class="notification-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="var(--highlight-primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>`;
+                    break;
             }
         }
 
@@ -1181,6 +1294,106 @@
                 removeNotification();
             });
         }
+    };
+
+    if (typeof window.AuraOS === 'undefined') {
+        window.AuraOS = {};
+    }
+    if (typeof window.AuraOS.dialog === 'undefined') {
+        window.AuraOS.dialog = {};
+    }
+
+    window.AuraOS.dialog.confirm = function(message = 'Are you sure?', onConfirm, onCancel) {
+        // Remove any existing dialog and overlay first to prevent duplicates
+        const existingDialog = document.getElementById('aura-dialog-confirm');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        const existingOverlay = document.getElementById('aura-dialog-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+
+        const dialogId = 'aura-dialog-confirm';
+        const dialogOverlayId = 'aura-dialog-overlay';
+
+        // Create overlay
+        const overlayEl = document.createElement('div');
+        overlayEl.id = dialogOverlayId;
+        // Styles for overlay are now primarily in CSS
+
+        // Create dialog
+        const dialogEl = document.createElement('div');
+        dialogEl.id = dialogId;
+        // Basic positioning styles, main styling will be in CSS
+        dialogEl.style.position = 'fixed';
+        dialogEl.style.top = '50%';
+        dialogEl.style.left = '50%';
+        dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)'; // Start slightly scaled down for entry animation
+        dialogEl.style.zIndex = '2000000';
+        dialogEl.style.opacity = '0'; // Start transparent for entry animation
+        dialogEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease'; // CSS transitions
+
+        dialogEl.innerHTML = `
+            <div class="aura-dialog-content"> <!-- Class for styling -->
+                <p id="aura-dialog-message" style="margin-bottom: 20px; font-size: 1rem;"></p>
+                <div class="aura-dialog-buttons" style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="aura-dialog-cancel-btn" class="aura-dialog-button aura-dialog-button-cancel">Cancel</button>
+                    <button id="aura-dialog-confirm-btn" class="aura-dialog-button aura-dialog-button-confirm">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        dialogEl.querySelector('#aura-dialog-message').textContent = message;
+
+        document.body.appendChild(overlayEl);
+        document.body.appendChild(dialogEl);
+        document.body.classList.add('aura-dialog-open'); // Prevent body scroll
+
+        // Trigger entry animation for overlay and dialog
+        requestAnimationFrame(() => {
+            overlayEl.classList.add('show');
+            dialogEl.style.opacity = '1';
+            dialogEl.style.transform = 'translate(-50%, -50%) scale(1)';
+        });
+
+
+        const confirmButton = dialogEl.querySelector('#aura-dialog-confirm-btn');
+        const cancelButton = dialogEl.querySelector('#aura-dialog-cancel-btn');
+
+        const closeDialog = (callback) => {
+            dialogEl.style.opacity = '0';
+            dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            overlayEl.classList.remove('show');
+
+            setTimeout(() => {
+                if (document.getElementById(dialogId)) {
+                    document.getElementById(dialogId).remove();
+                }
+                if (document.getElementById(dialogOverlayId)) {
+                    document.getElementById(dialogOverlayId).remove();
+                }
+                document.body.classList.remove('aura-dialog-open');
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            }, 300); // Match transition duration
+        };
+
+        confirmButton.addEventListener('click', () => {
+            closeDialog(onConfirm);
+        });
+
+        cancelButton.addEventListener('click', () => {
+            closeDialog(onCancel);
+        });
+
+        overlayEl.addEventListener('click', () => {
+            closeDialog(onCancel); // Clicking overlay acts as cancel
+        });
+
+        dialogEl.setAttribute('tabindex', '-1');
+        dialogEl.focus();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -1268,11 +1481,11 @@
                 createWindow(appId, { filePath: filePath, title: `${apps[appId].title} - ${fileName}` });
             } else {
                 console.error(`App ID '${appId}' defined in fileAssociations but not found in apps object.`);
-                alert(`Erro: Aplicativo '${appId}' não encontrado para abrir '${fileName}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Abrir Arquivo', message: `Aplicativo '${appId}' não encontrado para abrir '${fileName}'.`, type: 'error' });
             }
         } else {
             console.warn(`No application associated with extension '${fileExtension}' for file '${fileName}'.`);
-            alert(`Nenhum aplicativo associado para abrir '${fileName}'.`);
+            AuraOS.showNotification({ title: 'Erro ao Abrir Arquivo', message: `Nenhum aplicativo associado para abrir '${fileName}'.`, type: 'warning' });
         }
     }
 
@@ -1474,10 +1687,35 @@
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent note selection when clicking delete
 
-                    if (!confirm(`Tem certeza que deseja excluir "${title}"?`)) {
-                        return;
-                    }
+                    AuraOS.dialog.confirm(
+                        `Tem certeza que deseja excluir "${title}"?`,
+                        () => { // onConfirm
+                            const notesDirNode = getFileSystemNode('/Anotações/');
+                            if (notesDirNode && notesDirNode.children[fileName]) {
+                                delete notesDirNode.children[fileName];
+                                saveFileSystem();
 
+                                const currentOpenNotePath = notesAppWindow.dataset.currentNotePath;
+                                if (currentOpenNotePath === notePath) {
+                                    // The currently open note is being deleted
+                                    const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                                    if (textarea) textarea.value = '';
+                                    delete notesAppWindow.dataset.currentNotePath; // Clear current path
+
+                                    // Re-render and attempt to load the first available note
+                                    renderNoteList(notesAppWindow, null); // Pass null to select the first or show empty
+                                } else {
+                                    // Deleting a note that is not currently open
+                                    renderNoteList(notesAppWindow, notesAppWindow.dataset.currentNotePath);
+                                }
+                            }
+                        }
+                        // No onCancel needed as original if block only had a return.
+                    );
+                });
+
+                // Original logic moved into onConfirm callback above
+                /*
                     const notesDirNode = getFileSystemNode('/Anotações/');
                     if (notesDirNode && notesDirNode.children[fileName]) {
                         delete notesDirNode.children[fileName];
@@ -1497,7 +1735,7 @@
                             renderNoteList(notesAppWindow, notesAppWindow.dataset.currentNotePath);
                         }
                     }
-                });
+                */
 
                 if (notePath === currentNotePath) { // Check if this item should be active
                     listItem.classList.add('active');
@@ -1677,6 +1915,7 @@
                     windowEl.querySelector('#dock-pos-buttons').addEventListener('click', e => { if(e.target.dataset.pos) setDockPosition(e.target.dataset.pos); });
                     windowEl.querySelector('#icon-size-buttons').addEventListener('click', e => { if(e.target.dataset.size) setIconSize(e.target.dataset.size); });
                     windowEl.querySelector('#reset-settings-button').addEventListener('click', () => {
+                        // This confirm call is intentionally NOT REPLACED as per instructions.
                         if (confirm("⚠️ AVISO: Esta ação irá restaurar o AuraOS para as configurações de fábrica.\n\nTodos os seus arquivos, pastas, configurações personalizadas, tema, papel de parede e dados salvos serão PERMANENTEMENTE DELETADOS.\n\nEsta ação NÃO PODE SER DESFEITA.\n\nTem certeza que deseja continuar?")) {
                             // Clear all AuraOS localStorage data
                             Object.keys(localStorage).forEach(key => {
@@ -1827,7 +2066,7 @@
                         if (!newFolderName || newFolderName.trim() === "") {
                             // User cancelled or entered empty/whitespace name
                             if (newFolderName !== null) { // Only alert if not cancelled
-                                 alert("Nome da pasta não pode ser vazio.");
+                                 AuraOS.showNotification({title: 'Nome Inválido', message: "Nome da pasta não pode ser vazio.", type: 'warning'});
                             }
                             return;
                         }
@@ -1837,11 +2076,11 @@
                         // You might want a more robust sanitization function for a real OS
                         const sanitizedFolderName = newFolderName.replace(/[\/:*?"<>|]/g, '_');
                         if (sanitizedFolderName !== newFolderName) {
-                            alert(`Nome da pasta continha caracteres inválidos. Foi sanitizado para: ${sanitizedFolderName}`);
+                            AuraOS.showNotification({title: 'Nome Sanitizado', message: `Nome da pasta continha caracteres inválidos. Foi sanitizado para: ${sanitizedFolderName}`, type: 'warning'});
                             newFolderName = sanitizedFolderName;
                         }
                         if (!newFolderName) { // If sanitization resulted in empty string
-                            alert("Nome de pasta inválido após sanitização.");
+                            AuraOS.showNotification({title: 'Nome Inválido', message: "Nome de pasta inválido após sanitização.", type: 'error'});
                             return;
                         }
 
@@ -1849,7 +2088,7 @@
                         const parentNode = getFileSystemNode(currentExplorerPath);
                         if (parentNode && parentNode.type === 'folder') {
                             if (parentNode.children[newFolderName]) {
-                                alert("Um item com este nome já existe neste local.");
+                                AuraOS.showNotification({title: 'Erro ao Criar Pasta', message: "Um item com este nome já existe neste local.", type: 'error'});
                                 return;
                             }
                             parentNode.children[newFolderName] = { type: 'folder', children: {} };
@@ -1857,19 +2096,19 @@
                             updateDesktopAndFileExplorer(currentExplorerPath); // This triggers refresh in current and other relevant views
                             selectItem(null, null); // Deselect any current selection
                         } else {
-                            alert("Não foi possível criar a pasta no caminho atual. Diretório pai não encontrado ou inválido.");
+                            AuraOS.showNotification({title: 'Erro ao Criar Pasta', message: "Não foi possível criar a pasta no caminho atual. Diretório pai não encontrado ou inválido.", type: 'error'});
                         }
                     });
 
                     deleteButton.addEventListener('click', () => {
                         if (!selectedItemPath) {
-                            alert("Nenhum item selecionado para excluir.");
+                            AuraOS.showNotification({title: 'Nenhum Item Selecionado', message: "Nenhum item selecionado para excluir.", type: 'warning'});
                             return;
                         }
 
                         // Prevent deleting the root directory or ".." representation if it was somehow selected with a root-like path
                         if (selectedItemPath === '/') {
-                            alert("Não é possível excluir o diretório raiz.");
+                            AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório raiz.", type: 'error'});
                             selectItem(null, null); // Clear selection
                             return;
                         }
@@ -1879,7 +2118,7 @@
                         // This check is a bit indirect. A truly selected ".." item has its selectedItemPath as the parent dir.
                         // So, if itemName is empty, it means selectedItemPath was like "/" or "/Desktop/" instead of "/Desktop/MyFile.txt"
                         if (itemName === "" && getFileSystemNode(selectedItemPath)?.type === 'folder') {
-                             alert("Não é possível excluir o diretório atual ou pai desta forma. Selecione um arquivo ou subpasta específica.");
+                             AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório atual ou pai desta forma. Selecione um arquivo ou subpasta específica.", type: 'warning'});
                              selectItem(null, null);
                              return;
                         }
@@ -1892,10 +2131,38 @@
                         }
 
 
-                        if (!confirm(`Tem certeza que deseja excluir '${itemName}'? Esta ação não pode ser desfeita.`)) {
-                            return;
-                        }
+                        AuraOS.dialog.confirm(
+                            `Tem certeza que deseja excluir '${itemName}'? Esta ação não pode ser desfeita.`,
+                            () => { // onConfirm
+                                const parts = selectedItemPath.split('/').filter(p => p); // Get path components
+                                if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
+                                    AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório raiz.", type: 'error'});
+                                    return;
+                                }
+                                parts.pop(); // Remove item name to get parent's components
+                                const parentOfSelectedItemPath = '/' + parts.join('/');
 
+                                const parentNode = getFileSystemNode(parentOfSelectedItemPath);
+
+                                if (parentNode && parentNode.type === 'folder' && parentNode.children[itemName]) {
+                                    delete parentNode.children[itemName];
+                                    saveFileSystem();
+                                    const pathToUpdate = parentOfSelectedItemPath;
+                                    selectItem(null, null); // Clear selection
+                                    updateDesktopAndFileExplorer(pathToUpdate);
+                                } else {
+                                    AuraOS.showNotification({title: 'Erro ao Excluir', message: `Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfSelectedItemPath}'. (Caminho completo: ${selectedItemPath})`, type: 'error'});
+                                    // It's possible the item was deleted by another process/tab, refresh view
+                                    selectItem(null, null);
+                                    updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
+                                }
+                            }
+                            // No onCancel needed
+                        );
+                    });
+
+                    // Original logic moved into onConfirm callback
+                    /*
                         const parts = selectedItemPath.split('/').filter(p => p); // Get path components
                         if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
                             alert("Não é possível excluir o diretório raiz.");
@@ -1918,7 +2185,7 @@
                             selectItem(null, null);
                             updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
                         }
-                    });
+                    */
 
                     function renderFileExplorerView(path) {
                         windowEl.dataset.currentPath = path; // Update current path
@@ -2691,7 +2958,7 @@
         // --- SISTEMA DE ARQUIVOS E PERSISTÊNCIA ---
         function createItem(itemPath, type, content = '') {
             if (!itemPath || itemPath === '/') {
-                alert("Error: Cannot create item at root or with invalid path.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Cannot create item at root or with invalid path.", type: 'error' });
                 return false;
             }
 
@@ -2702,22 +2969,22 @@
             // Sanitizar nome do item
             const sanitizedName = itemName.replace(/[\/\\:*?"<>|]/g, '_');
             if (sanitizedName !== itemName) {
-                alert(`Nome continha caracteres inválidos e foi sanitizado para: ${sanitizedName}`);
+                AuraOS.showNotification({ title: 'Nome Inválido', message: `Nome continha caracteres inválidos e foi sanitizado para: ${sanitizedName}`, type: 'warning' });
             }
             if (!sanitizedName.trim()) {
-                alert("Error: Nome do item inválido após sanitização.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Nome do item inválido após sanitização.", type: 'error' });
                 return false;
             }
 
             const parentNode = getFileSystemNode(parentPath);
             if (!parentNode || parentNode.type !== 'folder') {
-                alert("Error: Diretório pai não encontrado.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Diretório pai não encontrado.", type: 'error' });
                 console.error(`[createItem] Parent node not found for path: ${parentPath}`);
                 return false;
             }
 
             if (parentNode.children[sanitizedName]) {
-                alert(`Error: Um item com o nome '${sanitizedName}' já existe em '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: `Um item com o nome '${sanitizedName}' já existe em '${parentPath}'.`, type: 'error' });
                 return false;
             }
 
@@ -2727,7 +2994,7 @@
             } else if (type === 'file') {
                 parentNode.children[sanitizedName] = { type: 'file', content: content || '' };
             } else {
-                alert("Error: Tipo de item inválido. Use 'folder' ou 'file'.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Tipo de item inválido. Use 'folder' ou 'file'.", type: 'error' });
                 return false;
             }
 
@@ -2739,7 +3006,7 @@
 
         function deleteItem(itemPath) {
             if (!itemPath || itemPath === '/') {
-                alert("Error: Cannot delete the root directory or an invalid path.");
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Cannot delete the root directory or an invalid path.", type: 'error' });
                 return false;
             }
 
@@ -2749,13 +3016,13 @@
 
             const parentNode = getFileSystemNode(parentPath);
             if (!parentNode || parentNode.type !== 'folder') {
-                alert("Error: Parent directory not found.");
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Parent directory not found.", type: 'error' });
                 console.error(`[deleteItem] Parent node not found for path: ${parentPath}`);
                 return false;
             }
 
             if (!parentNode.children[itemName]) {
-                alert(`Error: Item to delete ('${itemName}') not found in '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Item to delete ('${itemName}') not found in '${parentPath}'.`, type: 'error' });
                 console.error(`[deleteItem] Item to delete not found: ${itemName} in ${parentPath}`);
                 return false;
             }
@@ -2769,22 +3036,22 @@
 
         function renameItem(itemPath, newName) {
             if (!itemPath || !newName || newName.trim() === "") {
-                alert("Error: Invalid new name provided.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Invalid new name provided.", type: 'error' });
                 return false;
             }
 
             let sanitizedNewName = newName.trim().replace(/[\/\\:*?"<>|]/g, '_');
             if (sanitizedNewName !== newName.trim()) {
-                alert(`Name contained invalid characters and was sanitized to: ${sanitizedNewName}`);
+                AuraOS.showNotification({ title: 'Aviso de Nome', message: `Name contained invalid characters and was sanitized to: ${sanitizedNewName}`, type: 'warning' });
             }
             if (!sanitizedNewName) {
-                alert("Error: Sanitized name is empty. Please provide a valid name.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Sanitized name is empty. Please provide a valid name.", type: 'error' });
                 return false;
             }
             newName = sanitizedNewName; // Use the sanitized name
 
             if (itemPath === '/') {
-                alert("Error: Cannot rename the root directory.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Cannot rename the root directory.", type: 'error' });
                 return false;
             }
 
@@ -2794,19 +3061,19 @@
 
             const parentNode = getFileSystemNode(parentPath);
             if (!parentNode || parentNode.type !== 'folder') {
-                alert("Error: Parent directory not found or is not a folder.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Parent directory not found or is not a folder.", type: 'error' });
                 console.error(`[renameItem] Parent node not found for path: ${parentPath}`);
                 return false;
             }
 
             if (!parentNode.children[oldName]) {
-                alert(`Error: Item to rename ('${oldName}') not found in '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `Item to rename ('${oldName}') not found in '${parentPath}'.`, type: 'error' });
                 console.error(`[renameItem] Item to rename not found: ${oldName} in ${parentPath}`);
                 return false;
             }
 
             if (oldName !== newName && parentNode.children[newName]) {
-                alert(`Error: An item with the name '${newName}' already exists in '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `An item with the name '${newName}' already exists in '${parentPath}'.`, type: 'error' });
                 return false;
             }
 
@@ -3135,9 +3402,13 @@
                         menuItems.push({
                             label: "Excluir",
                             action: () => {
-                                if (confirm(`Tem certeza que deseja excluir "${name}"?`)) {
-                                    deleteItem(itemPath);
-                                }
+                                AuraOS.dialog.confirm(
+                                    `Tem certeza que deseja excluir "${name}"?`,
+                                    () => { // onConfirm
+                                        deleteItem(itemPath);
+                                    }
+                                    // No onCancel needed
+                                );
                             }
                         });
                         
@@ -3187,7 +3458,7 @@
                     isLocked = false; // Update state
                     hideLockScreen();
                 } else {
-                    alert("Senha incorreta!");
+                    AuraOS.showNotification({ title: 'Erro de Autenticação', message: 'Senha incorreta!', type: 'error' });
                     lockPasswordInput.value = '';
                     lockPasswordInput.focus();
                 }
@@ -3251,7 +3522,7 @@
 
                 }, 500);
             } else {
-                alert("Senha incorreta!");
+                AuraOS.showNotification({ title: 'Erro de Login', message: 'Senha incorreta!', type: 'error' });
                 passwordInput.value = ''; // Limpar o campo da senha
                 passwordInput.focus(); // Focar no campo da senha novamente
             }
@@ -3299,6 +3570,8 @@
                                 const folderName = prompt("Nome da nova pasta:", "Nova Pasta");
                                 if (folderName && folderName.trim() !== "") {
                                     createItem('/Desktop/' + folderName.trim(), 'folder');
+                                } else if (folderName !== null) { // Not cancelled, but empty or whitespace
+                                    AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome da pasta não pode ser vazio.', type: 'warning'});
                                 }
                             }
                         },
@@ -3308,6 +3581,8 @@
                                 const fileName = prompt("Nome do novo arquivo:", "novo_arquivo.txt");
                                 if (fileName && fileName.trim() !== "") {
                                     createItem('/Desktop/' + fileName.trim(), 'file', '');
+                                } else if (fileName !== null) { // Not cancelled, but empty or whitespace
+                                    AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome do arquivo não pode ser vazio.', type: 'warning'});
                                 }
                             }
                         },
