@@ -704,6 +704,7 @@
         .login-box button { background: var(--highlight-primary); color: var(--text-color); border: none; padding: 12px 25px; border-radius: var(--ui-corner-radius-small); font-weight: 600; cursor: pointer; transition: transform 0.2s, background-color 0.2s; }
         .login-box button:hover { transform: scale(1.05); background-color: var(--highlight-secondary); }
 
+
 /* --- Notification System --- */
 #notification-container {
     position: fixed;
@@ -742,6 +743,47 @@
 .notification-toast p { margin: 0; font-size: 0.9rem; }
 .notification-toast .notification-icon { margin-right: 10px; width: 20px; height: 20px; fill: var(--icon-fill); }
 .notification-content { display: flex; align-items: center; }
+
+        #lock-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 100000; /* Same as login, or higher if needed over windows */
+            display: none; /* Initially hidden */
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: opacity 0.5s ease;
+            opacity: 0; /* Start fully transparent for fade-in */
+        }
+        .lock-box { /* Can reuse login-box or define separately if styles diverge */
+            text-align: center;
+            padding: 40px;
+            background: var(--glass-background);
+            border-radius: var(--ui-corner-radius);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--window-shadow);
+        }
+        #lock-screen-clock {
+            /* Style already applied inline, but can be centralized here */
+            color: var(--text-color); /* Ensure it uses theme text color */
+        }
+        /* #lock-password-input uses inline styles, matching login-input */
+        #unlock-button {
+            background: var(--highlight-primary);
+            color: var(--text-color);
+            border: none;
+            padding: 12px 25px;
+            border-radius: var(--ui-corner-radius-small);
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #unlock-button:hover {
+            transform: scale(1.05);
+            background-color: var(--highlight-secondary);
+        }
 
 /* --- File Explorer Enhancements --- */
 .file-explorer-container {
@@ -870,6 +912,33 @@
 .light-theme .file-explorer-item.selected p {
     color: var(--text-color); /* Ensure good contrast in light theme */
 }
+
+        /* Context Menu Styling */
+        .context-menu {
+            position: absolute;
+            background-color: var(--glass-background);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            box-shadow: var(--window-shadow);
+            padding: 5px;
+            z-index: 100000; /* Ensure it's above other elements */
+            backdrop-filter: blur(10px) saturate(1.5);
+            -webkit-backdrop-filter: blur(10px) saturate(1.5);
+        }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            border-radius: calc(var(--ui-corner-radius-small) - 4px); /* Inner radius */
+            transition: background-color 0.15s ease;
+        }
+
+        .context-menu-item:hover {
+            background-color: rgba(128, 128, 128, 0.2);
+            color: var(--highlight-primary);
+        }
     </style>
 </head>
 <body>
@@ -878,6 +947,7 @@
         <div class="login-box">
             <h1>AuraOS</h1>
             <p>Complete Desktop Experience</p>
+            <input type="password" id="password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
             <button id="login-button">Iniciar Sessão</button>
         </div>
     </div>
@@ -893,7 +963,12 @@
         
         <div id="top-bar">
             <div id="top-bar-logo">AuraOS</div>
-            <div id="clock">12:00:00</div>
+            <div id="clock" style="margin-right: auto;">12:00:00</div> {/* Added margin-right: auto to clock */}
+            <button id="lock-os-button" title="Bloquear Sistema" style="background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 1rem; padding: 0 10px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/>
+                </svg>
+            </button>
         </div>
 
         <div id="dock" class="dock-bottom">
@@ -917,6 +992,14 @@
                 <svg viewBox="0 0 24 24"><path d="M4 3h16c.55 0 1 .45 1 1v16c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1V4c0-.55.45-1 1-1zm2 4v2h4V7H6zm0 4v2h6v-2H6z"/></svg>
                 <div class="active-indicator"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="lock-screen">
+        <div class="lock-box">
+            <div id="lock-screen-clock" style="font-size: 3rem; margin-bottom: 20px;">12:00:00</div>
+            <input type="password" id="lock-password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
+            <button id="unlock-button">Desbloquear</button>
         </div>
     </div>
     
@@ -1001,10 +1084,80 @@
 
         // --- ELEMENTOS GLOBAIS E ESTADO ---
         const desktop = document.getElementById('desktop');
+
+        // --- DESKTOP CONTEXT MENU ---
+        if (desktop) {
+            desktop.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+
+                const menuItems = [
+                    {
+                        label: "New Folder",
+                        action: () => {
+                            const folderName = prompt("Enter folder name:", "New Folder");
+                            if (folderName) {
+                                let desktopNode = getFileSystemNode('/Desktop');
+                                if (desktopNode && desktopNode.type === 'folder') {
+                                    if (desktopNode.children[folderName]) {
+                                        alert("A folder with this name already exists on the Desktop.");
+                                        return;
+                                    }
+                                    desktopNode.children[folderName] = { type: 'folder', children: {} };
+                                    saveFileSystem();
+                                    updateDesktopAndFileExplorer('/Desktop');
+                                } else {
+                                    console.error("Desktop node not found or is not a folder.");
+                                    alert("Error: Could not create folder. Desktop not found.");
+                                }
+                            }
+                        }
+                    },
+                    {
+                        label: "New Text File",
+                        action: () => {
+                            const fileName = prompt("Enter file name:", "New Text File.txt");
+                            if (fileName) {
+                                let desktopNode = getFileSystemNode('/Desktop');
+                                if (desktopNode && desktopNode.type === 'folder') {
+                                    if (desktopNode.children[fileName]) {
+                                        alert("A file with this name already exists on the Desktop.");
+                                        return;
+                                    }
+                                    desktopNode.children[fileName] = { type: 'file', content: "" };
+                                    saveFileSystem();
+                                    updateDesktopAndFileExplorer('/Desktop');
+                                } else {
+                                    console.error("Desktop node not found or is not a folder.");
+                                    alert("Error: Could not create file. Desktop not found.");
+                                }
+                            }
+                        }
+                    },
+                    {
+                        label: "Change Wallpaper",
+                        action: () => {
+                            createWindow('control-panel');
+                        }
+                    }
+                ];
+                createContextMenu(event, menuItems);
+            });
+        }
+
         const dock = document.getElementById('dock');
         const root = document.documentElement;
         let zIndexCounter = 100;
+
+        // Lock Screen Elements
+        const lockScreen = document.getElementById('lock-screen');
+        const lockScreenClock = document.getElementById('lock-screen-clock');
+        const lockPasswordInput = document.getElementById('lock-password-input');
+        const unlockButton = document.getElementById('unlock-button');
         let fileSystem = {}; // Será carregado do localStorage
+
+        // OS State Variables
+        let isLoggedIn = false;
+        let isLocked = false;
 
         // --- DEFINIÇÃO DOS APLICATIVOS ---
         const apps = {
@@ -2478,6 +2631,90 @@
         }
 
         // --- SISTEMA DE ARQUIVOS E PERSISTÊNCIA ---
+        function deleteItem(itemPath) {
+            if (!itemPath || itemPath === '/') {
+                alert("Error: Cannot delete the root directory or an invalid path.");
+                return false;
+            }
+
+            const pathParts = itemPath.split('/');
+            const itemName = pathParts.pop();
+            const parentPath = pathParts.join('/') || '/';
+
+            const parentNode = getFileSystemNode(parentPath);
+            if (!parentNode || parentNode.type !== 'folder') {
+                alert("Error: Parent directory not found.");
+                console.error(`[deleteItem] Parent node not found for path: ${parentPath}`);
+                return false;
+            }
+
+            if (!parentNode.children[itemName]) {
+                alert(`Error: Item to delete ('${itemName}') not found in '${parentPath}'.`);
+                console.error(`[deleteItem] Item to delete not found: ${itemName} in ${parentPath}`);
+                return false;
+            }
+
+            delete parentNode.children[itemName];
+            saveFileSystem();
+            updateDesktopAndFileExplorer(parentPath);
+            console.log(`Item deleted: ${itemPath}`);
+            return true;
+        }
+
+        function renameItem(itemPath, newName) {
+            if (!itemPath || !newName || newName.trim() === "") {
+                alert("Error: Invalid new name provided.");
+                return false;
+            }
+
+            let sanitizedNewName = newName.trim().replace(/[\/\\:*?"<>|]/g, '_');
+            if (sanitizedNewName !== newName.trim()) {
+                alert(`Name contained invalid characters and was sanitized to: ${sanitizedNewName}`);
+            }
+            if (!sanitizedNewName) {
+                alert("Error: Sanitized name is empty. Please provide a valid name.");
+                return false;
+            }
+            newName = sanitizedNewName; // Use the sanitized name
+
+            if (itemPath === '/') {
+                alert("Error: Cannot rename the root directory.");
+                return false;
+            }
+
+            const pathParts = itemPath.split('/');
+            const oldName = pathParts.pop();
+            const parentPath = pathParts.join('/') || '/'; // Handle case where parent is root
+
+            const parentNode = getFileSystemNode(parentPath);
+            if (!parentNode || parentNode.type !== 'folder') {
+                alert("Error: Parent directory not found or is not a folder.");
+                console.error(`[renameItem] Parent node not found for path: ${parentPath}`);
+                return false;
+            }
+
+            if (!parentNode.children[oldName]) {
+                alert(`Error: Item to rename ('${oldName}') not found in '${parentPath}'.`);
+                console.error(`[renameItem] Item to rename not found: ${oldName} in ${parentPath}`);
+                return false;
+            }
+
+            if (oldName !== newName && parentNode.children[newName]) {
+                alert(`Error: An item with the name '${newName}' already exists in '${parentPath}'.`);
+                return false;
+            }
+
+            if (oldName !== newName) {
+                parentNode.children[newName] = parentNode.children[oldName];
+                delete parentNode.children[oldName];
+            }
+
+            saveFileSystem();
+            updateDesktopAndFileExplorer(parentPath);
+            console.log(`Item renamed: ${itemPath} to ${parentPath === '/' ? '/' : parentPath + '/'}${newName}`);
+            return true;
+        }
+
         function getFileSystemNode(path) {
             const parts = path.split('/').filter(p => p);
             let currentNode = fileSystem['/'];
@@ -2705,55 +2942,209 @@
                     iconEl.addEventListener('dblclick', () => {
                         if (item.type === 'folder') {
                             const folderPath = `${desktopPath}/${name}`;
-                            // Check if a file explorer is already open for this path (optional, for focusing)
-                            // For simplicity, always create a new one or focus if one exists for 'file-explorer' app ID
                             createWindow('file-explorer', { path: folderPath, title: `Explorador - ${name}` });
                         } else { // File
                             const filePath = `${desktopPath}/${name}`;
                             openFile(filePath);
                         }
                     });
+
+                    // Context menu for desktop icons
+                    const itemPath = `${desktopPath}/${name}`;
+                    const itemType = item.type;
+                    iconEl.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent desktop's context menu
+
+                        const menuItems = [];
+                        menuItems.push({
+                            label: "Open",
+                            action: () => {
+                                if (itemType === 'folder') {
+                                    createWindow('file-explorer', { path: itemPath, title: `Explorador - ${name}` });
+                                } else {
+                                    openFile(itemPath);
+                                }
+                            }
+                        });
+                        menuItems.push({
+                            label: "Rename",
+                            action: () => {
+                                const currentName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
+                                const newNamePrompt = prompt("Enter new name:", currentName);
+                                if (newNamePrompt) {
+                                    renameItem(itemPath, newNamePrompt);
+                                }
+                            }
+                        });
+                        menuItems.push({
+                            label: "Delete",
+                            action: () => {
+                                const currentName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
+                                if (confirm(`Are you sure you want to delete ${currentName}?`)) {
+                                    deleteItem(itemPath);
+                                }
+                            }
+                        });
+                        createContextMenu(e, menuItems);
+                    });
                 });
             }
         }
         
-        // --- INICIALIZAÇÃO ---
-        document.getElementById('login-button').addEventListener('click', () => {
-            const loginScreen = document.getElementById('login-screen');
-            loginScreen.style.opacity = '0';
+        // --- FUNÇÕES LOCK SCREEN ---
+        function showLockScreen() {
+            if (!lockScreen) return; // Safety check
+            isLocked = true; // Update state
+            lockScreen.style.display = 'flex';
+            lockScreenClock.textContent = new Date().toLocaleTimeString('pt-BR'); // Initial time update
             setTimeout(() => {
-                loginScreen.style.display = 'none';
-                document.getElementById('aura-os-container').style.display = 'block';
-                
-                // Carregar configurações e sistema de arquivos
-                loadFileSystem();
-                applySystemState();
-                renderDesktopIcons(); // <-- Add this line
-                
-                // Clock
-                setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+                lockScreen.style.opacity = '1';
+            }, 10); // Short delay for CSS transition
+            lockPasswordInput.value = '';
+            lockPasswordInput.focus();
+            // Clock update will be handled by the main interval
+        }
 
-                // Dock
-                dock.addEventListener('click', (e) => {
-                    const dockItem = e.target.closest('.dock-item');
-                    if (dockItem) {
-                        const appId = dockItem.dataset.appId;
-                        const windowEl = document.getElementById(appId) || document.querySelector(`.window[id^="${appId}-"]`);
-                        if (windowEl && !windowEl.classList.contains('minimized')) {
-                            focusWindow(windowEl);
-                        } else {
-                            createWindow(appId, { allowMultiple: apps[appId].allowMultiple });
+        function hideLockScreen() {
+            if (!lockScreen) return; // Safety check
+            lockScreen.style.opacity = '0';
+            setTimeout(() => {
+                lockScreen.style.display = 'none';
+            }, 500); // Match CSS transition duration
+        }
+
+        // --- INICIALIZAÇÃO ---
+        // Event listener para o botão de bloquear OS
+        const lockOsButton = document.getElementById('lock-os-button');
+        if (lockOsButton) {
+            lockOsButton.addEventListener('click', () => {
+                showLockScreen();
+            });
+        }
+
+        // Event listener para o botão de desbloquear
+        if (unlockButton) {
+            unlockButton.addEventListener('click', () => {
+                if (lockPasswordInput.value === "admin") {
+                    isLocked = false; // Update state
+                    hideLockScreen();
+                } else {
+                    alert("Senha incorreta!");
+                    lockPasswordInput.value = '';
+                    lockPasswordInput.focus();
+                }
+            });
+        }
+
+        document.getElementById('login-button').addEventListener('click', () => {
+            const passwordInput = document.getElementById('password-input');
+            const password = passwordInput.value;
+
+            if (password === "admin") {
+                isLoggedIn = true; // Update state
+                isLocked = false;   // Update state
+                const loginScreen = document.getElementById('login-screen');
+                loginScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    document.getElementById('aura-os-container').style.display = 'block';
+
+                    // Carregar configurações e sistema de arquivos
+                    loadFileSystem();
+                    applySystemState();
+                    renderDesktopIcons(); // <-- Add this line
+
+                    // Clock
+                    setInterval(() => {
+                        const currentTime = new Date().toLocaleTimeString('pt-BR');
+                        document.getElementById('clock').textContent = currentTime;
+                        if (lockScreen && lockScreen.style.display !== 'none') {
+                            lockScreenClock.textContent = currentTime;
                         }
-                    }
-                });
+                    }, 1000);
 
-                // Ícones
-                document.querySelectorAll('.desktop-icon').forEach(icon => {
-                    icon.addEventListener('dblclick', () => createWindow(icon.dataset.appId));
-                });
+                    // Dock
+                    dock.addEventListener('click', (e) => {
+                        const dockItem = e.target.closest('.dock-item');
+                        if (dockItem) {
+                            const appId = dockItem.dataset.appId;
+                            const windowEl = document.getElementById(appId) || document.querySelector(`.window[id^="${appId}-"]`);
+                            if (windowEl && !windowEl.classList.contains('minimized')) {
+                                focusWindow(windowEl);
+                            } else {
+                                createWindow(appId, { allowMultiple: apps[appId].allowMultiple });
+                            }
+                        }
+                    });
 
-            }, 500);
+                    // Ícones
+                    // Selecionar apenas ícones que são de apps e não dinâmicos (arquivos/pastas no desktop)
+                    document.querySelectorAll('.desktop-icon:not([data-dynamic="true"])').forEach(icon => {
+                        if (icon.dataset.appId) { // Certifique-se que é um ícone de app
+                             icon.addEventListener('dblclick', () => createWindow(icon.dataset.appId));
+                        }
+                    });
+
+                }, 500);
+            } else {
+                alert("Senha incorreta!");
+                passwordInput.value = ''; // Limpar o campo da senha
+                passwordInput.focus(); // Focar no campo da senha novamente
+            }
         });
+
+        // --- CONTEXT MENU FUNCTION ---
+        function createContextMenu(event, menuItems) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Remove any existing context menu
+            const existingMenu = document.querySelector('.context-menu');
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.style.top = `${event.clientY}px`;
+            menu.style.left = `${event.clientX}px`;
+
+            // Use CSS variables for styling
+            menu.style.backgroundColor = 'var(--glass-background)';
+            menu.style.border = '1px solid var(--glass-border)';
+            menu.style.borderRadius = 'var(--ui-corner-radius-small)';
+            menu.style.boxShadow = 'var(--window-shadow)';
+            menu.style.padding = '5px';
+            menu.style.zIndex = '100000'; // Ensure it's on top
+
+            menuItems.forEach(item => {
+                const menuItemEl = document.createElement('div');
+                menuItemEl.className = 'context-menu-item';
+                menuItemEl.textContent = item.label;
+                menuItemEl.addEventListener('click', () => {
+                    item.action();
+                    menu.remove();
+                    window.removeEventListener('click', handleWindowClick); // Clean up window listener
+                });
+                menu.appendChild(menuItemEl);
+            });
+
+            document.body.appendChild(menu);
+
+            // Click outside to close
+            const handleWindowClick = (e) => {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    window.removeEventListener('click', handleWindowClick);
+                }
+            };
+
+            // Add listener with a slight delay to prevent immediate closing due to the same click event
+            setTimeout(() => {
+                window.addEventListener('click', handleWindowClick);
+            }, 0);
+        }
 
     });
     </script>
