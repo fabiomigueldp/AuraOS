@@ -207,6 +207,11 @@
         #terminal-app .window-body { background: rgba(0,0,0,0.8); padding: 10px; font-family: 'Fira Code', monospace; line-height: 1.6; }
         .terminal-output { height: 100%; overflow-y: auto; }
         .terminal-line { display: flex; }
+
+        /* Notes App General Font */
+        #notes-app {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
         .terminal-prompt { color: var(--highlight-secondary); margin-right: 8px; white-space: nowrap; }
         .terminal-input { flex-grow: 1; background: none; border: none; color: var(--text-color); font-family: 'Fira Code', monospace; outline: none; }
         .terminal-output .command { color: #8be9fd; }
@@ -221,8 +226,8 @@
             width: 200px; /* Initial width, can be made resizable later if needed */
             flex-shrink: 0;
             height: 100%;
-            background: var(--glass-background); /* Glassmorphism effect */
-            border-right: 1px solid var(--glass-border);
+            /* background: var(--glass-background); /* REMOVED - Will be theme-specific */
+            /* border-right: 1px solid var(--glass-border); /* REMOVED - Will be theme-specific */
             padding: 10px;
             box-sizing: border-box;
             display: flex;
@@ -240,62 +245,65 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            /* background-color will be set by theme-specific rules below */
+            padding: 20px; /* Add padding to the container */
+            box-sizing: border-box; /* Important if adding padding */
+        }
+
+        /* Light Theme Editor Area Background */
+        .light-theme #notes-app .notes-editor-area {
+            background-color: #f9f9f9; /* Off-white, paper-like */
+        }
+
+        /* Dark Theme Editor Area Background */
+        .dark-theme #notes-app .notes-editor-area {
+            background-color: #2c2c2e; /* Dark gray */
         }
 
         /* Ensure textarea and status bar are correctly styled within the new structure */
         #notes-app .notes-editor-area textarea {
             flex-grow: 1;
             width: 100%;
-            background: transparent; /* Already there, ensure it's maintained */
+            background: transparent; /* Correct, shows parent's new background */
             border: none;
             outline: none;
-            color: var(--text-color);
-            font-family: 'Fira Code', monospace;
-            font-size: 1rem;
+            color: var(--text-color); /* Theme-adaptive */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Set in previous step */
+            font-size: 14px; /* Adjusted font size */
             resize: none;
-            padding: 15px; /* Reduced from 20px */
-            box-sizing: border-box;
+            padding: 0; /* Remove textarea's own padding, rely on container's padding */
+            box-sizing: border-box; /* Good practice */
         }
 
-        #notes-app .notes-editor-area .notes-status-bar {
-            flex-shrink: 0;
-            padding: 5px 15px;
-            font-size: 0.8rem;
-            color: var(--subtle-text-color);
-            text-align: right;
-            background: transparent; /* Make status bar background transparent */
-            border-top: 1px solid var(--glass-border); /* Keep this subtle separator */
+        /* CSS for #notes-app .notes-editor-area .notes-status-bar and its theme-specific variants REMOVED */
+
+        /* Light Theme Sidebar Background & Separators */
+        .light-theme #notes-app .notes-sidebar {
+            background-color: #f0f0f0; /* Light gray, slightly different from editor's off-white */
+            border-right: 1px solid #dcdcdc; /* Subtle light gray line */
+        }
+
+        /* Dark Theme Sidebar Background & Separators */
+        .dark-theme #notes-app .notes-sidebar {
+            background-color: #363638; /* Dark gray, distinct from editor's dark gray */
+            border-right: 1px solid #2a2a2c; /* Subtle dark gray line, darker than sidebar */
         }
 
         #notes-app .note-item {
-            padding: 10px;
-            cursor: pointer;
-            border-radius: var(--ui-corner-radius-small);
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px; /* Adjusted padding */
+            margin-bottom: 1px; /* Or a very small margin for slight separation */
+            border-radius: 5px; /* Consistent radius for items */
+            font-size: 0.9rem; /* Re-evaluate if specific pixel size is known for SF Pro Text in Notes */
+            transition: background-color 0.1s ease-out; /* Faster, more responsive transition */
+            /* color: var(--text-color); /* Already inherited */
+            cursor: pointer; /* Ensure cursor remains pointer */
         }
 
         #notes-app .note-item:hover {
-            background-color: rgba(128, 128, 128, 0.2);
-        }
-
-        #notes-app .note-item {
-            display: flex; /* To align note name and delete button */
-            justify-content: space-between; /* Pushes delete button to the right */
-            align-items: center; /* Vertically align items */
-            padding: 10px;
-            cursor: pointer;
-            border-radius: var(--ui-corner-radius-small);
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            /* white-space: nowrap; // Remove this if note-name handles ellipsis */
-            /* overflow: hidden; // Remove this if note-name handles ellipsis */
-            /* text-overflow: ellipsis; // Remove this if note-name handles ellipsis */
-            transition: background-color 0.2s;
+             background-color: rgba(128, 128, 128, 0.15); /* Make hover even more subtle */
         }
 
         #notes-app .note-item .note-name {
@@ -324,29 +332,33 @@
             background-color: rgba(128, 128, 128, 0.3); /* Slight background on hover */
         }
 
-        #notes-app .note-item.active .delete-note-btn {
-            color: var(--text-color); /* Ensure delete icon is visible on new active background */
-        }
-
-        #notes-app .note-item.active:hover .delete-note-btn {
-            background-color: rgba(128, 128, 128, 0.3); /* Consistent with non-active delete hover */
-            color: var(--text-color); /* Consistent with non-active delete hover */
-        }
-
         #notes-app .note-item.active {
-            /* background-color: rgba(138, 99, 210, 0.25); /* REMOVED - Will be theme-specific */
-            color: var(--text-color); /* This is already theme-adaptive */
-            font-weight: 600;     /* This is already set */
+            /* font-weight: 600; /* Removed, assuming macOS doesn't change weight */
+            /* color is set by theme-specific rules */
         }
 
-        /* Dark Theme specific active note item background */
+        /* Dark Theme Active Note Item (macOS style) */
         .dark-theme #notes-app .note-item.active {
-            background-color: rgba(138, 99, 210, 0.25); /* Translucent purple for dark theme (from #8a63d2) */
+            background-color: rgb(45, 115, 230);
+            color: #FFFFFF;
+        }
+        .dark-theme #notes-app .note-item.active .delete-note-btn {
+            color: #FFFFFF;
+        }
+        .dark-theme #notes-app .note-item.active:hover .delete-note-btn {
+            background-color: rgba(255, 255, 255, 0.15);
         }
 
-        /* Light Theme specific active note item background */
+        /* Light Theme Active Note Item (macOS style) */
         .light-theme #notes-app .note-item.active {
-            background-color: rgba(0, 122, 255, 0.15); /* Translucent blue for light theme (from #007aff), with slightly lower alpha for subtlety on light backgrounds */
+            background-color: rgb(0, 122, 255);
+            color: #FFFFFF;
+        }
+        .light-theme #notes-app .note-item.active .delete-note-btn {
+            color: #FFFFFF;
+        }
+        .light-theme #notes-app .note-item.active:hover .delete-note-btn {
+            background-color: rgba(255, 255, 255, 0.2);
         }
 
         #notes-app .no-notes-message {
@@ -712,9 +724,9 @@
                         if (currentOpenNotePath === notePath) {
                             // The currently open note is being deleted
                             const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                            const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                            // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                             if (textarea) textarea.value = '';
-                            if (statusBar) statusBar.textContent = 'Anotação excluída.';
+                            // if (statusBar) statusBar.textContent = 'Anotação excluída.'; // REMOVED
                             delete notesAppWindow.dataset.currentNotePath; // Clear current path
 
                             // Re-render and attempt to load the first available note
@@ -727,7 +739,7 @@
                             //     const noteContent = getFileSystemNode(newCurrentNotePath);
                             //     if (textarea && noteContent) {
                             //         textarea.value = noteContent.content;
-                            //         statusBar.textContent = 'Pronto';
+                            //         // statusBar.textContent = 'Pronto'; // REMOVED
                             //     }
                             // } else {
                             //     // No other notes to load
@@ -750,11 +762,11 @@
 
                 listItem.addEventListener('click', () => {
                     const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                    const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                    // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                     const noteContent = getFileSystemNode(notePath);
                     if (textarea && noteContent) {
                         textarea.value = noteContent.content;
-                        statusBar.textContent = 'Pronto';
+                        // statusBar.textContent = 'Pronto'; // REMOVED
                         textarea.placeholder = "Comece a digitar aqui..."; // Reset placeholder
                     }
 
@@ -775,22 +787,22 @@
                     firstNoteItem.classList.add('active');
                     notesAppWindow.dataset.currentNotePath = firstNotePath;
                     const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                    const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                    // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                     const noteContent = getFileSystemNode(firstNotePath);
                     if (textarea && noteContent) {
                         textarea.value = noteContent.content;
                         textarea.placeholder = "Comece a digitar aqui...";
-                        if (statusBar) statusBar.textContent = 'Pronto';
+                        // if (statusBar) statusBar.textContent = 'Pronto'; // REMOVED
                     }
                 }
             } else if (noteFiles.length === 0) { // If no notes left or initially
                 const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                 if(textarea) {
                     textarea.value = '';
                     textarea.placeholder = "Nenhuma anotação. Crie uma nova!";
                 }
-                if(statusBar) statusBar.textContent = 'Nenhuma anotação.';
+                // if(statusBar) statusBar.textContent = 'Nenhuma anotação.'; // REMOVED
                 delete notesAppWindow.dataset.currentNotePath;
             } else if (noteFiles.length > 0 && currentNotePath && !getFileSystemNode(currentNotePath)) {
                 // currentNotePath was invalid (e.g. deleted externally), select first note
@@ -801,12 +813,12 @@
                     firstNoteItem.classList.add('active');
                     notesAppWindow.dataset.currentNotePath = firstNotePath;
                     const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
-                    const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                    // const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                     const noteContent = getFileSystemNode(firstNotePath);
                     if (textarea && noteContent) {
                         textarea.value = noteContent.content;
                         textarea.placeholder = "Comece a digitar aqui...";
-                        if (statusBar) statusBar.textContent = 'Pronto';
+                        // if (statusBar) statusBar.textContent = 'Pronto'; // REMOVED
                     }
                 }
             }
@@ -911,11 +923,11 @@
                         </div>
                         <div class="notes-editor-area">
                             <textarea placeholder="Selecione uma nota para editar ou crie uma nova."></textarea>
-                            <div class="notes-status-bar">Pronto</div>
+                            {/* <div class="notes-status-bar">Pronto</div> REMOVED from innerHTML */}
                         </div>
                     `;
                     const textarea = body.querySelector('.notes-editor-area textarea');
-                    const statusBar = body.querySelector('.notes-editor-area .notes-status-bar');
+                    // const statusBar = body.querySelector('.notes-editor-area .notes-status-bar'); // REMOVED
                     let currentNotePath = windowEl.dataset.currentNotePath || null;
 
                     const newNoteBtn = body.querySelector('.new-note-btn');
@@ -959,7 +971,7 @@
                             // Update current note path, clear textarea, and refresh list
                             windowEl.dataset.currentNotePath = newNotePath;
                             textarea.value = ''; // New note is empty
-                            statusBar.textContent = 'Nova anotação criada.';
+                            // statusBar.textContent = 'Nova anotação criada.'; // REMOVED
 
                             renderNoteList(windowEl, newNotePath); // This will re-render and highlight the new note
 
@@ -978,24 +990,24 @@
                             const noteContent = getFileSystemNode(currentNotePath);
                             if (textarea && noteContent) {
                                 textarea.value = noteContent.content;
-                                statusBar.textContent = 'Pronto';
+                                // statusBar.textContent = 'Pronto'; // REMOVED
                             }
                             // Re-render to highlight the first note as active
                             renderNoteList(windowEl, currentNotePath);
                         } else {
                             textarea.value = ''; // No notes, clear textarea
-                            statusBar.textContent = 'Nenhuma nota selecionada.';
+                            // statusBar.textContent = 'Nenhuma nota selecionada.'; // REMOVED
                         }
                     } else {
                         // Load existing currentNotePath if valid
                         const noteContent = getFileSystemNode(currentNotePath);
                         if (textarea && noteContent) {
                             textarea.value = noteContent.content;
-                            statusBar.textContent = 'Pronto';
+                            // statusBar.textContent = 'Pronto'; // REMOVED
                         } else {
                             // If currentNotePath is invalid (e.g. deleted externally)
                             textarea.value = '';
-                            statusBar.textContent = 'Erro ao carregar a nota.';
+                            // statusBar.textContent = 'Erro ao carregar a nota.'; // REMOVED
                             delete windowEl.dataset.currentNotePath; // Clear invalid path
                             renderNoteList(windowEl, null); // Re-render, which might pick the first note or show "no notes"
                         }
@@ -1008,16 +1020,16 @@
                         const activeNotePath = windowEl.dataset.currentNotePath;
                         if (!activeNotePath) return; // Don't save if no note is selected
 
-                        statusBar.textContent = 'Salvando...';
+                        // statusBar.textContent = 'Salvando...'; // REMOVED
                         clearTimeout(saveTimeout);
                         saveTimeout = setTimeout(() => {
                             const noteNode = getFileSystemNode(activeNotePath);
                             if (noteNode) {
                                 noteNode.content = textarea.value;
                                 saveFileSystem();
-                                statusBar.textContent = `Salvo às ${new Date().toLocaleTimeString()}`;
+                                // statusBar.textContent = `Salvo às ${new Date().toLocaleTimeString()}`; // REMOVED
                             } else {
-                                statusBar.textContent = 'Erro ao salvar. Nota não encontrada.';
+                                // statusBar.textContent = 'Erro ao salvar. Nota não encontrada.'; // REMOVED
                             }
                         }, 1500);
                     });
