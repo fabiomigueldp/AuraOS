@@ -563,28 +563,6 @@
             }
         }
 
-        /* Save indicator for Notes */
-        #notes-app .save-indicator {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            font-size: 12px;
-            color: var(--subtle-text-color);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-
-        #notes-app .save-indicator.saving {
-            opacity: 0.8;
-            color: var(--highlight-primary);
-        }
-
-        #notes-app .save-indicator.saved {
-            opacity: 0.6;
-            color: var(--highlight-secondary);
-        }
-
         /* Aura Music (Novo) */
         #music-player-app .window-body { padding: 0; display: flex; }
         .music-playlist { width: 200px; flex-shrink: 0; border-right: 1px solid var(--glass-border); overflow-y: auto; }
@@ -726,6 +704,45 @@
         .login-box button { background: var(--highlight-primary); color: var(--text-color); border: none; padding: 12px 25px; border-radius: var(--ui-corner-radius-small); font-weight: 600; cursor: pointer; transition: transform 0.2s, background-color 0.2s; }
         .login-box button:hover { transform: scale(1.05); background-color: var(--highlight-secondary); }
 
+/* --- Notification System --- */
+#notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.notification-toast {
+    background-color: var(--glass-background);
+    color: var(--text-color);
+    padding: 15px 20px;
+    border-radius: var(--ui-corner-radius-small, 12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px) saturate(1.5);
+    -webkit-backdrop-filter: blur(10px) saturate(1.5);
+    min-width: 250px;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    cursor: default;
+}
+
+.notification-toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-toast h4 { margin: 0 0 5px 0; font-size: 1rem; font-weight: 600; }
+.notification-toast p { margin: 0; font-size: 0.9rem; }
+.notification-toast .notification-icon { margin-right: 10px; width: 20px; height: 20px; fill: var(--icon-fill); }
+.notification-content { display: flex; align-items: center; }
+
 /* --- File Explorer Enhancements --- */
 .file-explorer-container {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Ensure consistent font */
@@ -856,7 +873,7 @@
     </style>
 </head>
 <body>
-
+    <div id="notification-container"></div>
     <div id="login-screen">
         <div class="login-box">
             <h1>AuraOS</h1>
@@ -904,6 +921,82 @@
     </div>
     
     <script>
+    // --- AURA OS Global Object and Notification System ---
+    if (typeof window.AuraOS === 'undefined') {
+        window.AuraOS = {};
+    }
+
+    window.AuraOS.showNotification = function({ title = 'Notification', message = '', icon = '', duration = 4000 }) {
+        const container = document.getElementById('notification-container');
+        if (!container) {
+            console.error('Notification container not found!');
+            return;
+        }
+
+        const notificationId = 'toast-' + Date.now() + Math.random().toString(36).substring(2, 7);
+        const notificationEl = document.createElement('div');
+        notificationEl.className = 'notification-toast';
+        notificationEl.id = notificationId;
+
+        let iconHTML = '';
+        if (icon) {
+            // Basic check if icon is SVG or an image URL
+            if (icon.trim().startsWith('<svg')) {
+                iconHTML = `<div class="notification-icon">${icon}</div>`;
+            } else if (icon.match(/\.(jpeg|jpg|gif|png|svg)$/i)) {
+                iconHTML = `<div class="notification-icon"><img src="${icon}" alt="icon" style="width:100%; height:100%;"></div>`;
+            } else {
+                // Default to a simple info icon if a generic string is passed
+                iconHTML = `<div class="notification-icon">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path>
+                                </svg>
+                            </div>`;
+            }
+        }
+
+        notificationEl.innerHTML = `
+            <div class="notification-content">
+                ${iconHTML}
+                <div class="notification-text">
+                    <h4>${title}</h4>
+                    ${message ? `<p>${message}</p>` : ''}
+                </div>
+            </div>
+            <button class="notification-close-btn" style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 16px; line-height: 1;">&times;</button>
+        `;
+
+        container.appendChild(notificationEl);
+
+        // Trigger the show animation
+        // Needs a slight delay to allow the element to be added to DOM before adding class for transition
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                notificationEl.classList.add('show');
+            }, 50); // Small delay
+        });
+
+        const removeNotification = () => {
+            notificationEl.classList.remove('show'); // Trigger fade out
+            setTimeout(() => {
+                if (notificationEl.parentNode === container) { // Check if still child of container
+                    container.removeChild(notificationEl);
+                }
+            }, 500); // Wait for fade out transition to complete
+        };
+
+        const timeoutId = setTimeout(removeNotification, duration);
+
+        // Add event listener for manual close button
+        const closeButton = notificationEl.querySelector('.notification-close-btn');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                clearTimeout(timeoutId); // Cancel automatic removal
+                removeNotification();
+            });
+        }
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
 
         // --- ELEMENTOS GLOBAIS E ESTADO ---
@@ -1781,7 +1874,6 @@
                         <div class="notes-editor-area">
                             <div class="editor-header">
                                 <input type="text" class="editor-title" placeholder="Título da anotação" style="display: none;">
-                                <div class="save-indicator">Salvando...</div>
                             </div>
                             <textarea placeholder="Comece a digitar sua anotação..."></textarea>
                         </div>
@@ -1875,17 +1967,18 @@
                     // Enhanced auto-save logic with title tracking and visual feedback
                     let saveTimeout;
                     let lastTitle = '';
-                    const saveIndicator = body.querySelector('.save-indicator');
+                    // const saveIndicator = body.querySelector('.save-indicator'); // Old save indicator
                     
                     textarea.addEventListener('input', () => {
                         const activeNotePath = windowEl.dataset.currentNotePath;
                         if (!activeNotePath) return; // Don't save if no note is selected
 
-                        // Show saving indicator
-                        if (saveIndicator) {
-                            saveIndicator.className = 'save-indicator saving';
-                            saveIndicator.textContent = 'Salvando...';
-                        }
+                        // Show "Salvando..." notification
+                        AuraOS.showNotification({
+                            title: 'Notas',
+                            message: 'Salvando sua anotação...',
+                            duration: 1500 // Shorter, as it will be replaced
+                        });
 
                         // Get current title (first line) to detect changes
                         const lines = textarea.value.split('\n');
@@ -1900,14 +1993,13 @@
                                 noteNode.content = textarea.value;
                                 saveFileSystem();
                                 
-                                // Show saved indicator
-                                if (saveIndicator) {
-                                    saveIndicator.className = 'save-indicator saved';
-                                    saveIndicator.textContent = 'Salvo';
-                                    setTimeout(() => {
-                                        saveIndicator.className = 'save-indicator';
-                                    }, 2000);
-                                }
+                                // Show "Salvo" notification
+                                AuraOS.showNotification({
+                                    title: 'Nota Salva!',
+                                    message: 'Sua anotação foi salva com sucesso.',
+                                    icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path></svg>',
+                                    duration: 3000
+                                });
                                 
                                 // If title changed, refresh the note list to show updated title
                                 if (titleChanged) {
