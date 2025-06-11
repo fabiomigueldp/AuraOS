@@ -13,6 +13,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
     <script src="DBManager.js"></script> <!-- DBManager.js linked -->
+    <script src="AuraGameSDK.js"></script>
+    <script src="AuraBreaker.js"></script> <!-- Add this line -->
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
         :root {
@@ -1835,6 +1837,284 @@
             background-color: rgba(255,255,255,0.05);
         }
 
+        /* --- Game Center Styles --- */
+        #game-center .window-body { /* Target the window-body of game-center specifically */
+            padding: 0; /* Remove default window-body padding if container handles it */
+        }
+
+        .game-center-container {
+            /* Basic structure already inline, can add more specific overall styles here if needed */
+        }
+
+        .game-library-sidebar {
+            /* Dark theme background is inline, ensure light theme is handled */
+            /* border-right is inline */
+            /* padding and box-sizing are inline */
+            display: flex; /* Already inline */
+            flex-direction: column; /* Already inline */
+        }
+
+        .dark-theme .game-library-sidebar {
+            background: rgba(40, 40, 42, 0.8); /* As per plan */
+            border-right: 1px solid var(--glass-border); /* Ensure consistency */
+        }
+
+        .light-theme .game-library-sidebar {
+            background: rgba(242, 242, 247, 0.75); /* Similar to notes light theme sidebar */
+            border-right: 1px solid rgba(0,0,0,0.08); /* Light theme border */
+            color: var(--text-color); /* Ensure text is readable in light theme */
+        }
+
+        .game-library-sidebar h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-color); /* Ensure title color matches theme */
+        }
+        .light-theme .game-library-sidebar h3 {
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+
+        .game-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 5px; /* Space for scrollbar if visible */
+        }
+        /* Webkit Scrollbar for Game List */
+        .game-list::-webkit-scrollbar { width: 6px; }
+        .game-list::-webkit-scrollbar-track { background: transparent; }
+        .game-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.05); }
+        .game-list::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+        /* Light Theme Scrollbar for Game List */
+        .light-theme .game-list::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-color: rgba(0, 0, 0, 0.05); }
+        .light-theme .game-list::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+        /* Firefox Scrollbar */
+        .game-list { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.1) transparent; }
+        .light-theme .game-list { scrollbar-color: rgba(0, 0, 0, 0.1) transparent; }
+
+
+        .game-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px; /* Adjusted padding */
+            margin-bottom: 4px; /* Subtle spacing */
+            border-radius: var(--ui-corner-radius-small, 8px);
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+            gap: 10px;
+            border: 1px solid transparent; /* For active state consistency */
+        }
+
+        .game-item .game-item-icon svg { /* Assuming SVG for game icons */
+            width: 32px;
+            height: 32px;
+            fill: var(--icon-fill);
+            flex-shrink: 0;
+        }
+        .game-item .game-item-icon img { /* If using img for game icons */
+            width: 32px;
+            height: 32px;
+            object-fit: cover;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+
+        .game-item .game-item-title {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .light-theme .game-item .game-item-title {
+            color: var(--text-color);
+        }
+
+
+        /* Hover and Active States for .game-item */
+        .dark-theme .game-item:hover {
+            background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.1);
+        }
+        .dark-theme .game-item.active {
+            background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.25);
+            border-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.4);
+            color: white; /* Ensure text is readable */
+        }
+        .dark-theme .game-item.active .game-item-title {
+            color: white;
+            font-weight: 600;
+        }
+
+
+        .light-theme .game-item:hover {
+            background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.08);
+        }
+        .light-theme .game-item.active {
+            background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.2);
+            border-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.3);
+            color: var(--highlight-primary); /* Text color for active item in light theme */
+        }
+        .light-theme .game-item.active .game-item-title {
+            color: var(--highlight-primary);
+            font-weight: 600;
+        }
+
+
+        .game-content-area {
+            /* flex-grow, padding, box-sizing, display, flex-direction, align-items, justify-content are inline */
+            /* Can add specific background or other properties if needed, but often transparent to show window glass */
+        }
+
+        .game-content-area .initial-message { /* For the "Select a game" text */
+            color: var(--subtle-text-color);
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        /* --- Game Center Detail View Styles --- */
+        .game-detail-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            text-align: left; /* Align text to left for details */
+        }
+
+        .game-banner {
+            width: 100%;
+            height: 200px; /* Adjust as needed */
+            background-color: var(--subtle-text-color); /* Placeholder background */
+            background-size: cover;
+            background-position: center;
+            border-radius: var(--ui-corner-radius-small);
+            margin-bottom: 20px;
+            flex-shrink: 0; /* Prevent banner from shrinking */
+        }
+
+        .game-info-debajo-banner {
+            padding: 0px 10px; /* Add some padding if needed */
+            overflow-y: auto; /* Allow content to scroll if it overflows */
+            flex-grow: 1;
+        }
+
+        .game-title-detail {
+            font-size: 1.8rem; /* Larger title for detail view */
+            font-weight: 600;
+            color: var(--text-color);
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .light-theme .game-title-detail {
+            color: var(--text-color);
+        }
+
+        .game-description {
+            font-size: 0.95rem;
+            color: var(--subtle-text-color);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .light-theme .game-description {
+            color: var(--subtle-text-color);
+        }
+
+        .play-button {
+            background-color: var(--highlight-primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--ui-corner-radius-small);
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            display: inline-block; /* To allow margin and padding */
+            margin-bottom: 25px;
+        }
+        .play-button:hover {
+            background-color: color-mix(in srgb, var(--highlight-primary) 85%, black);
+            transform: scale(1.03);
+        }
+        .play-button:active {
+            transform: scale(0.98);
+        }
+        .light-theme .play-button {
+            /* Adjust if needed for light theme highlight */
+             background-color: var(--highlight-primary); /* Assuming light theme highlight is okay with white text */
+        }
+         .light-theme .play-button:hover {
+            background-color: color-mix(in srgb, var(--highlight-primary) 85%, #333); /* Darken for light theme */
+        }
+
+
+        .leaderboard-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--glass-border);
+        }
+        .light-theme .leaderboard-section {
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .leaderboard-section h3 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .light-theme .leaderboard-section h3 {
+            color: var(--text-color);
+        }
+        .leaderboard-section p {
+            color: var(--subtle-text-color);
+            font-style: italic;
+        }
+
+        /* --- Game Canvas View Styles --- */
+        .game-canvas-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Center canvas and button */
+            background-color: transparent; /* Or match the game's desired background under canvas */
+        }
+
+        #auraBreakerCanvas { /* ID of the canvas for Aura Breaker */
+            background-color: #111; /* Dark background for the game area */
+            border-radius: var(--ui-corner-radius-small, 8px);
+            /* Max width/height will be handled by JS to maintain aspect ratio */
+            display: block; /* Remove extra space below canvas if any */
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); /* Subtle shadow for depth */
+        }
+
+        .exit-game-button {
+            margin-top: 15px;
+            padding: 8px 18px; /* Slightly more padding */
+            background-color: var(--red-accent);
+            color: white;
+            border: none;
+            border-radius: var(--ui-corner-radius-small, 8px);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .exit-game-button:hover {
+            background-color: color-mix(in srgb, var(--red-accent) 80%, black);
+            transform: scale(1.05);
+        }
+        .exit-game-button:active {
+            transform: scale(0.97);
+        }
 
     </style>
 </head>
@@ -1902,6 +2182,10 @@
                         </svg>
                         <p>Calculadora</p>
                     </div>
+                    <div class="desktop-icon" data-app-id="game-center" title="Game Center">
+                        <svg viewBox="0 0 24 24" fill="var(--icon-fill)"><path d="M16.5 9.5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6.75 3.25c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zm-4.5 0c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-13c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
+                        <p>Game Center</p>
+                    </div>
                 </div>
                 
                 <!-- Divisor visual -->
@@ -1954,6 +2238,10 @@
                     <rect x="17.5" y="17.5" width="10" height="5" rx="2.5" transform="rotate(45 22.5 20)"/>
                     <rect x="32.5" y="17.5" width="10" height="5" rx="2.5" transform="rotate(-45 37.5 20)"/>
                 </svg>
+                <div class="active-indicator"></div>
+            </div>
+            <div class="dock-item" data-app-id="game-center" title="Game Center">
+                <svg viewBox="0 0 24 24" fill="var(--icon-fill)"><path d="M16.5 9.5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6.75 3.25c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zm-4.5 0c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-13c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
                 <div class="active-indicator"></div>
             </div>
         </div>
@@ -2337,6 +2625,7 @@
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
             'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
             'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
+            'game-center': { title: 'Game Center', width: 800, height: 600 },
         };
         
         // --- NOVO: AURA MUSIC SONG DATABASE ---
@@ -4653,6 +4942,174 @@
 
                     windowEl.addEventListener('aura:close', () => {
                         clearInterval(taskManagerIntervalId);
+                    });
+                    break;
+                case 'game-center':
+                    body.innerHTML = `
+                        <div class="game-center-container" style="display: flex; height: 100%; background: transparent;">
+                            <div class="game-library-sidebar" style="width: 220px; height: 100%; /* other styles from previous step */ padding: 10px; box-sizing: border-box; display: flex; flex-direction: column;">
+                                <h3 style="margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">Games</h3>
+                                <div class="game-list" style="flex-grow: 1; overflow-y: auto;">
+                                    {/* Placeholder will be cleared by JS */}
+                                </div>
+                            </div>
+                            <div class="game-content-area" style="flex-grow: 1; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <h2 class="initial-message">Select a game</h2>
+                                {/* Game Detail View or Game Canvas View will be rendered here */}
+                            </div>
+                        </div>
+                    `;
+
+                    const gameListDiv = body.querySelector('.game-list');
+                    const gameContentArea = body.querySelector('.game-content-area');
+                    let currentGameInstance = null;
+                    let detailedGameId = null;
+
+                    // Clear placeholder
+                    gameListDiv.innerHTML = '';
+
+                    const games = [
+                        { id: 'aura-breaker', title: 'Aura Breaker', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM6 16H4v-2h2v2zm0-3H4v-2h2v2zm0-3H4V8h2v2zm10 6h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm4 6h-2v-2h2v2zm0-3h-2v-2h2v2zM8 9H6V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"/></svg>' }
+                        // { id: 'space-shooter', title: 'Space Shooter', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M12 2L2.5 6.5V17.5L12 22L21.5 17.5V6.5L12 2ZM4.5 7.65L12 11.54V19.5L4.5 15.35V7.65ZM13.5 11.54L20.5 7.65V15.35L13.5 19.5V11.54Z"/></svg>' }
+                    ];
+
+                    function showGameDetails(gameData) {
+                        detailedGameId = gameData.id;
+                        gameContentArea.innerHTML = `
+                            <div class="game-detail-view">
+                                <div class="game-banner" style="background-image: url('https://via.placeholder.com/600x200.png?text=${encodeURIComponent(gameData.title)}+Banner');"></div>
+                                <div class="game-info-debajo-banner">
+                                    <h2 class="game-title-detail">${gameData.title}</h2>
+                                    <p class="game-description">
+                                        A classic brick-breaking adventure! Use your paddle to bounce the ball and destroy all the bricks to advance through levels. Aim for the high score!
+                                    </p>
+                                    <button class="play-button" data-game-id="${gameData.id}">Play Game</button>
+                                    <div class="leaderboard-section">
+                                        <h3>Leaderboard</h3>
+                                        <div id="leaderboard-list"><p><em>Loading high scores...</em></p></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        const playButton = gameContentArea.querySelector('.play-button');
+                        if (playButton) {
+                            playButton.addEventListener('click', () => {
+                                if (currentGameInstance && currentGameInstance.isRunning()) {
+                                    currentGameInstance.stop();
+                                }
+                                gameContentArea.innerHTML = `
+                                    <div class="game-canvas-view" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content: center;">
+                                        <canvas id="auraBreakerCanvas" style="background-color: #111; border-radius: var(--ui-corner-radius-small); max-width: 100%; aspect-ratio: 4/3;"></canvas>
+                                        <button class="exit-game-button" style="margin-top: 15px;">Exit Game</button>
+                                    </div>
+                                `;
+                                const canvas = document.getElementById('auraBreakerCanvas');
+                                const containerWidth = gameContentArea.clientWidth * 0.95;
+                                const containerHeight = gameContentArea.clientHeight * 0.80;
+
+                                let canvasWidth = containerWidth;
+                                let canvasHeight = containerWidth * (3/4);
+
+                                if (canvasHeight > containerHeight) {
+                                    canvasHeight = containerHeight;
+                                    canvasWidth = canvasHeight * (4/3);
+                                }
+                                canvas.width = Math.floor(canvasWidth);
+                                canvas.height = Math.floor(canvasHeight);
+
+                                if (typeof AuraBreakerGame === 'function') {
+                                    currentGameInstance = new AuraBreakerGame(canvas);
+                                    currentGameInstance.start();
+                                } else {
+                                    console.error("AuraBreakerGame function not found!");
+                                    gameContentArea.innerHTML = "<p>Error: Game module not loaded.</p>";
+                                }
+
+                                const exitButton = gameContentArea.querySelector('.exit-game-button');
+                                if (exitButton) {
+                                    exitButton.addEventListener('click', () => {
+                                        if (currentGameInstance && currentGameInstance.isRunning()) {
+                                            currentGameInstance.stop();
+                                        }
+                                        currentGameInstance = null;
+                                        const gameToReDetail = games.find(g => g.id === gameData.id);
+                                        if (gameToReDetail) {
+                                            showGameDetails(gameToReDetail);
+                                            AuraGameSDK.leaderboard.getHighScores(5).then(scores => {
+                                                const lbList = document.getElementById('leaderboard-list');
+                                                if (lbList) {
+                                                    if (scores && scores.length > 0) {
+                                                        lbList.innerHTML = '<ul style="list-style:none; padding:0; text-align:left;">' + scores.map(s => `<li style="padding: 3px 0; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between;"><span style="font-weight:500;">${s.playerName}</span><span>${s.score}</span></li>`).join('') + '</ul>';
+                                                    } else {
+                                                        lbList.innerHTML = '<p style="text-align:center;"><em>No high scores yet. Be the first!</em></p>';
+                                                    }
+                                                }
+                                            }).catch(err => {
+                                                console.error("Failed to load high scores for detail view:", err);
+                                                const lbList = document.getElementById('leaderboard-list');
+                                                if (lbList) lbList.innerHTML = '<p style="text-align:center;"><em>Could not load high scores.</em></p>';
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+
+                        AuraGameSDK.leaderboard.getHighScores(5)
+                            .then(scores => {
+                                const lbList = document.getElementById('leaderboard-list');
+                                if (lbList) {
+                                    if (scores && scores.length > 0) {
+                                        lbList.innerHTML = '<ul style="list-style:none; padding:0; text-align:left;">' + scores.map(s => `<li style="padding: 3px 0; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between;"><span style="font-weight:500;">${s.playerName}</span><span>${s.score}</span></li>`).join('') + '</ul>';
+                                    } else {
+                                        lbList.innerHTML = '<p style="text-align:center;"><em>No high scores yet. Be the first!</em></p>';
+                                    }
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Failed to load high scores for", gameData.id, err);
+                                const lbList = document.getElementById('leaderboard-list');
+                                if (lbList) {
+                                     lbList.innerHTML = '<p style="text-align:center;"><em>Could not load high scores.</em></p>';
+                                }
+                            });
+                    }
+
+                    games.forEach(game => {
+                        const gameItemEl = document.createElement('div');
+                        gameItemEl.className = 'game-item';
+                        gameItemEl.dataset.gameId = game.id;
+                        gameItemEl.innerHTML = `
+                            <div class="game-item-icon">${game.iconSvg}</div>
+                            <span class="game-item-title">${game.title}</span>
+                        `;
+                        gameListDiv.appendChild(gameItemEl);
+
+                        gameItemEl.addEventListener('click', () => {
+                            if (currentGameInstance && currentGameInstance.isRunning()) {
+                                currentGameInstance.stop();
+                                currentGameInstance = null;
+                            }
+                            const currentlyActive = gameListDiv.querySelector('.game-item.active');
+                            if (currentlyActive) {
+                                currentlyActive.classList.remove('active');
+                            }
+                            gameItemEl.classList.add('active');
+                            showGameDetails(game);
+                        });
+                    });
+
+                    if (games.length === 0) {
+                        gameListDiv.innerHTML = '<p style="color: var(--subtle-text-color); font-style: italic; padding: 10px;">No games available.</p>';
+                    }
+
+                    windowEl.addEventListener('aura:close', () => {
+                        console.log('Game Center window closing. Stopping game if running.');
+                        if (currentGameInstance && currentGameInstance.isRunning()) {
+                            currentGameInstance.stop();
+                        }
+                        currentGameInstance = null;
                     });
                     break;
             }
