@@ -2508,7 +2508,27 @@
             const output = container.querySelector('.terminal-output');
             
             const commands = {
-                help: () => termLog(`Comandos disponíveis:\nls, cd, pwd, cat, mkdir, touch, rm, open, theme, wallpaper, taskmgr, reboot, shutdown, clear, neofetch, echo, help`, 'output-text'),
+                help: () => termLog(`Comandos disponíveis:
+  ls [-l] [-a] [path]       - Lista arquivos e diretórios. -l para formato longo, -a para mostrar ocultos.
+  cd <diretorio>            - Muda o diretório atual.
+  pwd                       - Mostra o caminho do diretório atual.
+  cat <arquivo>             - Exibe o conteúdo de um arquivo.
+  mkdir <diretorio>         - Cria um novo diretório.
+  touch <arquivo>           - Cria um novo arquivo vazio.
+  rm <arquivo/diretorio>    - Remove um arquivo ou diretório.
+  cp <origem> <destino>     - Copia arquivos ou diretórios (recursivamente).
+  mv <origem> <destino>     - Move (renomeia) arquivos ou diretórios.
+  df                        - Exibe informações de uso do disco (simulado).
+  open <app_id>             - Abre um aplicativo (ex: open control-panel).
+  theme [dark|light]        - Muda o tema do sistema.
+  wallpaper [nome]          - Muda o papel de parede (ex: wallpaper aurora).
+  taskmgr                   - Abre o Gerenciador de Tarefas.
+  reboot                    - Reinicia o AuraOS.
+  shutdown                  - Desliga o AuraOS (volta para tela de login).
+  clear                     - Limpa o terminal.
+  neofetch                  - Exibe informações do sistema (estilo Neofetch).
+  echo [texto]              - Exibe o texto fornecido.
+  help                      - Mostra esta lista de comandos.`, 'output-text'),
                 clear: () => output.innerHTML = '',
                 pwd: () => termLog(currentPath, 'output-text'),
                 reboot: () => window.location.reload(),
@@ -2535,8 +2555,54 @@
                     const node = getFileSystemNode(currentPath);
                     if (!node || node.type !== 'folder') return termLog('Diretório inválido', 'output-error');
                     let items = Object.keys(node.children);
-                    if (!args.includes('-a')) items = items.filter(name => !name.startsWith('.'));
-                    termLog(items.join('  '), 'output-text');
+                    const showAll = args.includes('-a');
+                    const longFormat = args.includes('-l');
+
+                    let items = Object.entries(node.children)
+                        .map(([name, details]) => ({ name, ...details }));
+
+                    if (!showAll) {
+                        items = items.filter(item => !item.name.startsWith('.'));
+                    }
+
+                    if (longFormat) {
+                        items.forEach(item => {
+                            const permissions = item.type === 'folder' ? 'drwxr-xr-x' : '-rw-r--r--';
+                            const owner = 'AuraUser';
+                            // Mock size: Folders get 4.0K, files get random size with K, M, or B suffix
+                            let size;
+                            if (item.type === 'folder') {
+                                size = '4.0K';
+                            } else {
+                                const randomSize = Math.random() * 1024 * 10; // Max 10MB for variety
+                                if (randomSize > 1024 * 1024) { // Megabytes
+                                    size = (randomSize / (1024 * 1024)).toFixed(1) + 'M';
+                                } else if (randomSize > 1024) { // Kilobytes
+                                    size = (randomSize / 1024).toFixed(1) + 'K';
+                                } else { // Bytes
+                                    size = Math.floor(randomSize) + 'B';
+                                }
+                            }
+                            // Mock date - simplified, e.g., "Jan 01 10:00"
+                            // More realistic date generation can be added if needed
+                            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                            const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+                            const month = months[Math.floor(Math.random() * 12)];
+                            const hour = String(Math.floor(Math.random() * 24)).padStart(2, '0');
+                            const minute = String(Math.floor(Math.random() * 60)).padStart(2, '0');
+                            const date = `${month} ${day} ${hour}:${minute}`;
+
+                            //termLog(`${permissions} ${owner} ${size.padStart(6)} ${date} ${item.name}`, 'output-text');
+                            // Using span for better alignment (though true columns are hard in simple HTML)
+                            // For more precise alignment, one might use a table or CSS grid within the terminal line,
+                            // but that adds complexity. This approach uses pre/whitespace for basic alignment.
+                            const sizePadded = size.padStart(7);
+                            const ownerPadded = owner.padEnd(10);
+                            termLog(`${permissions} ${ownerPadded} ${sizePadded} ${date}  ${item.name}`, 'output-text');
+                        });
+                    } else {
+                        termLog(items.map(item => item.name).join('  '), 'output-text');
+                    }
                 },
                 cd: (args) => {
                     if (!args[0]) return;
@@ -2615,7 +2681,259 @@
                     `;
                     termLog(neofetchArt, 'output-text');
                 },
-                 echo: (args) => termLog(args.join(' '), 'output-text')
+                echo: (args) => termLog(args.join(' '), 'output-text'),
+                cp: (args) => {
+                    if (args.length < 2) {
+                        return termLog('cp: missing source or destination argument', 'output-error');
+                    }
+
+                    const sourcePath = resolvePath(currentPath, args[0]);
+                    const destPath = resolvePath(currentPath, args[1]);
+
+                    // Placeholder for permission denied
+                    if (sourcePath.startsWith('/System') || destPath.startsWith('/System')) {
+                        return termLog(`cp: ${sourcePath.startsWith('/System') ? sourcePath : destPath}: Permission denied (mock)`, 'output-error');
+                    }
+
+                    const sourceNode = getFileSystemNode(sourcePath);
+                    if (!sourceNode) {
+                        return termLog(`cp: ${args[0]}: No such file or directory`, 'output-error');
+                    }
+
+                    const sourceName = sourcePath.substring(sourcePath.lastIndexOf('/') + 1);
+
+                    function copyRecursive(currentSourceNode, currentDestPath) {
+                        const targetName = currentDestPath.substring(currentDestPath.lastIndexOf('/') + 1);
+                        const parentDestPath = currentDestPath.substring(0, currentDestPath.lastIndexOf('/')) || '/';
+                        const parentDestNode = getFileSystemNode(parentDestPath);
+
+                        if (!parentDestNode || parentDestNode.type !== 'folder') {
+                            termLog(`cp: cannot create '${currentDestPath}': Parent directory '${parentDestPath}' is not a directory or does not exist.`, 'output-error');
+                            return false;
+                        }
+
+                        if (parentDestNode.children[targetName]) {
+                            // Check if the target is a directory and source is a file, then it's fine (handled by initial destNode check)
+                            // Otherwise, it's a conflict.
+                             if (!(parentDestNode.children[targetName].type === 'folder' && currentSourceNode.type === 'file')) {
+                                termLog(`cp: cannot copy '${currentSourceNode.name || sourceName}' to '${currentDestPath}': File or directory already exists.`, 'output-error');
+                                return false;
+                            }
+                        }
+
+
+                        if (currentSourceNode.type === 'file') {
+                            parentDestNode.children[targetName] = { type: 'file', content: currentSourceNode.content };
+                        } else if (currentSourceNode.type === 'folder') {
+                            parentDestNode.children[targetName] = { type: 'folder', children: {} };
+                            for (const childName in currentSourceNode.children) {
+                                if (!copyRecursive(currentSourceNode.children[childName], currentDestPath + '/' + childName)) {
+                                    return false; // Propagate failure
+                                }
+                            }
+                        }
+                        return true;
+                    }
+
+                    const destNode = getFileSystemNode(destPath);
+                    let finalDestPath = destPath;
+
+                    if (destNode) { // Destination exists
+                        if (destNode.type === 'folder') {
+                            // Scenario 1: Destination is an existing folder. Copy inside it.
+                            finalDestPath = destPath + '/' + sourceName;
+                            // Check for existing item at finalDestPath before recursive call
+                            const finalDestItemName = finalDestPath.substring(finalDestPath.lastIndexOf('/') + 1);
+                            const finalDestParentNode = getFileSystemNode(destPath); // destPath is the folder itself
+                            if (finalDestParentNode && finalDestParentNode.children[finalDestItemName]) {
+                                return termLog(`cp: cannot copy to '${finalDestPath}': File or directory already exists`, 'output-error');
+                            }
+
+                        } else { // Destination is an existing file
+                            if (sourceNode.type === 'folder') {
+                                return termLog(`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`, 'output-error');
+                            }
+                            // Overwriting a file with another file
+                            // For now, let's prevent overwrite as per instructions, but one could add overwrite logic here.
+                            // To prevent overwrite:
+                            return termLog(`cp: '${destPath}': File exists. Overwrite not implemented.`, 'output-error');
+                            // If overwrite was desired:
+                            // const parentDestPath = destPath.substring(0, destPath.lastIndexOf('/')) || '/';
+                            // const parentDestNode = getFileSystemNode(parentDestPath);
+                            // if (parentDestNode) {
+                            //     delete parentDestNode.children[destPath.substring(destPath.lastIndexOf('/') + 1)];
+                            // } else { // Should not happen if destNode exists
+                            //    return termLog(`cp: Error accessing parent of '${destPath}'`, 'output-error');
+                            // }
+                            // finalDestPath remains destPath
+                        }
+                    }
+                    // If destNode is null, it's Scenario 2 (new path), finalDestPath is already destPath.
+
+                    if (copyRecursive(sourceNode, finalDestPath)) {
+                        saveFileSystem();
+                        // Determine a relevant path for UI update.
+                        // If finalDestPath is '/Desktop/something', update '/Desktop'.
+                        // Otherwise, update the parent of finalDestPath.
+                        let updatePath = finalDestPath.substring(0, finalDestPath.lastIndexOf('/')) || '/';
+                        if (updatePath === '/' && finalDestPath.startsWith("/Desktop/")) {
+                            updatePath = "/Desktop";
+                        } else if (updatePath === '') { // case where finalDestPath was like '/file.txt'
+                            updatePath = '/';
+                        }
+                        updateDesktopAndFileExplorer(updatePath);
+                        termLog(`cp: Copied '${args[0]}' to '${args[1]}'`, 'output-text');
+                    }
+                    // Errors inside copyRecursive are already logged.
+                },
+                mv: (args) => {
+                    if (args.length < 2) {
+                        return termLog('mv: missing source or destination argument', 'output-error');
+                    }
+
+                    const sourcePath = resolvePath(currentPath, args[0]);
+                    const destPath = resolvePath(currentPath, args[1]);
+
+                    if (sourcePath === destPath) {
+                        return termLog(`mv: '${args[0]}' and '${args[1]}' are the same file`, 'output-error');
+                    }
+
+                    // Placeholder for permission denied
+                    if (sourcePath.startsWith('/System') || destPath.startsWith('/System')) {
+                        const problematicPath = sourcePath.startsWith('/System') ? sourcePath : destPath;
+                        return termLog(`mv: ${problematicPath}: Permission denied (mock)`, 'output-error');
+                    }
+
+                    const sourceNode = getFileSystemNode(sourcePath);
+                    if (!sourceNode) {
+                        return termLog(`mv: ${args[0]}: No such file or directory`, 'output-error');
+                    }
+
+                    const sourceName = sourcePath.substring(sourcePath.lastIndexOf('/') + 1);
+                    const sourceParentPath = sourcePath.substring(0, sourcePath.lastIndexOf('/')) || '/';
+
+                    const destName = destPath.substring(destPath.lastIndexOf('/') + 1);
+                    const destParentPath = destPath.substring(0, destPath.lastIndexOf('/')) || '/';
+
+                    // Handle Renaming (Optimization for same directory)
+                    if (sourceParentPath === destParentPath) {
+                        const parentNode = getFileSystemNode(sourceParentPath);
+                        if (parentNode && parentNode.children[destName]) {
+                            return termLog(`mv: cannot rename '${sourceName}' to '${destName}': File exists`, 'output-error');
+                        }
+                        if (parentNode) {
+                            parentNode.children[destName] = parentNode.children[sourceName];
+                            delete parentNode.children[sourceName];
+                            saveFileSystem();
+                            updateDesktopAndFileExplorer(sourceParentPath);
+                            termLog(`mv: Renamed '${args[0]}' to '${args[1]}'`, 'output-text');
+                        } else {
+                            termLog(`mv: Error accessing parent directory '${sourceParentPath}'`, 'output-error');
+                        }
+                        return;
+                    }
+
+                    // Implement Move Logic (Copy then Delete)
+                    let targetDestPath = destPath;
+                    const destNode = getFileSystemNode(destPath);
+
+                    if (destNode && destNode.type === 'folder') {
+                        targetDestPath = destPath + '/' + sourceName;
+                        if (getFileSystemNode(targetDestPath)) {
+                            return termLog(`mv: cannot move '${sourceName}' to '${targetDestPath}': File or directory already exists`, 'output-error');
+                        }
+                    } else if (destNode && destNode.type === 'file') {
+                        return termLog(`mv: cannot overwrite non-directory '${destPath}' with '${sourcePath}' or file already exists. Overwrite not implemented.`, 'output-error');
+                    }
+                     // If destNode is null, targetDestPath is already destPath (moving to a new name/location)
+                     else if (!destNode) {
+                        // Ensure the parent of the new location exists
+                        const parentOfFinalDest = getFileSystemNode(destParentPath);
+                        if (!parentOfFinalDest || parentOfFinalDest.type !== 'folder') {
+                            return termLog(`mv: cannot move to '${destPath}': Parent directory '${destParentPath}' does not exist or is not a directory.`, 'output-error');
+                        }
+                    }
+
+
+                    // Recursive copy function (can be shared or adapted from cp)
+                    function copyRecursiveForMv(currentSourceNode, currentDestPath) {
+                        const currentTargetName = currentDestPath.substring(currentDestPath.lastIndexOf('/') + 1);
+                        const currentParentDestPath = currentDestPath.substring(0, currentDestPath.lastIndexOf('/')) || '/';
+                        const currentParentDestNode = getFileSystemNode(currentParentDestPath);
+
+                        if (!currentParentDestNode || currentParentDestNode.type !== 'folder') {
+                            termLog(`mv: (during copy) cannot create '${currentDestPath}': Parent directory '${currentParentDestPath}' is not a directory.`, 'output-error');
+                            return false;
+                        }
+                         // This check might be redundant if targetDestPath existence is checked before calling copyRecursiveForMv the first time
+                        if (currentParentDestNode.children[currentTargetName]) {
+                            termLog(`mv: (during copy) cannot copy to '${currentDestPath}': File or directory already exists.`, 'output-error');
+                            return false;
+                        }
+
+                        if (currentSourceNode.type === 'file') {
+                            currentParentDestNode.children[currentTargetName] = { type: 'file', content: currentSourceNode.content };
+                        } else if (currentSourceNode.type === 'folder') {
+                            currentParentDestNode.children[currentTargetName] = { type: 'folder', children: {} };
+                            for (const childNameKey in currentSourceNode.children) {
+                                if (!copyRecursiveForMv(currentSourceNode.children[childNameKey], currentDestPath + '/' + childNameKey)) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    }
+
+                    if (copyRecursiveForMv(sourceNode, targetDestPath)) {
+                        // If copy is successful, delete the original source
+                        const sourceParentNode = getFileSystemNode(sourceParentPath);
+                        if (sourceParentNode && sourceParentNode.children[sourceName]) {
+                            delete sourceParentNode.children[sourceName];
+                        } else {
+                            // This should ideally not happen if sourceNode was found initially
+                            termLog(`mv: Error finding original source '${sourcePath}' for deletion after copy. File system might be inconsistent.`, 'output-error');
+                            // Attempt to clean up the copied part if possible, or leave as is. For now, log and proceed.
+                        }
+
+                        saveFileSystem();
+                        updateDesktopAndFileExplorer(sourceParentPath); // Update original location
+                        updateDesktopAndFileExplorer(targetDestPath.substring(0, targetDestPath.lastIndexOf('/')) || '/'); // Update new location's parent
+
+                        termLog(`mv: Moved '${args[0]}' to '${args[1]}'`, 'output-text');
+                    } else {
+                        // Copy failed, error already logged by copyRecursiveForMv or pre-checks
+                        // No need to delete source if copy didn't complete
+                    }
+                },
+                df: (args) => {
+                    const totalSizeGB = 1.0; // Mock total size in GB
+                    const usedPercentage = 30; // Mock used percentage
+
+                    const totalSizeMB = totalSizeGB * 1024;
+                    const usedSizeMB = (totalSizeMB * usedPercentage) / 100;
+                    const availableSizeMB = totalSizeMB - usedSizeMB;
+
+                    // Prepare formatted output strings
+                    const totalStr = totalSizeGB.toFixed(1) + 'G';
+                    const usedStr = Math.round(usedSizeMB) + 'M'; // Round to nearest MB
+                    const availableStr = Math.round(availableSizeMB) + 'M'; // Round to nearest MB
+                    const usePercentStr = usedPercentage + '%';
+
+                    // Header - using spaces for alignment. Adjust spacing as needed for your terminal font.
+                    // The class 'output-text' has 'white-space: pre-wrap;' which helps.
+                    const header = "Filesystem     Type        Total     Used Available Use% Mounted on";
+                    // Data row - padding values to align with header
+                    const dataRow =
+                        "IndexedDB".padEnd(15) +
+                        "AuraFS".padEnd(12) +
+                        totalStr.padStart(7) + " " +
+                        usedStr.padStart(7) + " " +
+                        availableStr.padStart(9) + " " +
+                        usePercentStr.padStart(4) + " /";
+
+                    termLog(header, 'output-text');
+                    termLog(dataRow, 'output-text');
+                }
             };
 
             function termLog(html, className) {
