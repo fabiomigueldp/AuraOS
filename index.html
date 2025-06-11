@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
-
+    <script src="DBManager.js"></script> <!-- DBManager.js linked -->
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
         :root {
@@ -1822,6 +1822,8 @@
     </div>
     
     <script>
+    const dbManager = new DBManager(); // DBManager instantiated
+
     // --- AURA OS Global Object and Notification System ---
     if (typeof window.AuraOS === 'undefined') {
         window.AuraOS = {};
@@ -2010,9 +2012,75 @@
         dialogEl.focus();
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => { // Made async
+        try {
+            console.log("Initializing DBManager...");
+            await dbManager.init();
+            console.log("DBManager initialized.");
 
-        // --- ELEMENTOS GLOBAIS E ESTADO ---
+            console.log("Starting localStorage migration (if any)...");
+            await dbManager.migrateFromLocalStorage();
+            console.log("LocalStorage migration complete.");
+
+            // --- ELEMENTOS GLOBAIS E ESTADO ---
+            const desktop = document.getElementById('desktop');
+            // ... (rest of the original DOMContentLoaded, which will be integrated with async loads later) ...
+            // For now, just ensuring the original setup runs after DB init.
+            // The existing loadFileSystem(), loadSystemState(), applySystemState() will be called here.
+            // They will be refactored to be async in subsequent steps.
+
+            // Original initializations from DOMContentLoaded:
+            const dock = document.getElementById('dock');
+            const root = document.documentElement;
+            let zIndexCounter = 1000;
+
+            const lockScreen = document.getElementById('lock-screen');
+            const lockScreenClock = document.getElementById('lock-screen-clock');
+            const lockPasswordInput = document.getElementById('lock-password-input');
+            const unlockButton = document.getElementById('unlock-button');
+            let fileSystem = {};
+            let isLoggedIn = false;
+            let isLocked = false;
+
+            const apps = {
+                'control-panel': { title: 'Painel de Controle', width: 600, height: 550 },
+                'file-explorer': { title: 'Explorador de Arquivos', width: 700, height: 500 },
+                'notes-app': { title: 'Notes', width: 500, height: 600, allowMultiple: true },
+                'music-player-app': { title: 'Aura Music', width: 650, height: 450 },
+                'terminal-app': { title: 'Terminal', width: 650, height: 400 },
+                'task-manager': { title: 'Gerenciador de Tarefas', width: 500, height: 400 },
+                'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
+                'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
+                'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
+            };
+            const songDatabase = [ /* ... song data ... */ ]; // Keep original song data for now
+            const fileAssociations = { /* ... associations ... */ }; // Keep original associations
+
+            // Call original load functions (these will be made async later)
+            loadFileSystem();
+            loadSystemState();
+            applySystemState();
+            renderDesktopIcons();
+            initializeDesktopIcons();
+            initializeDesktopContextMenu();
+            // ... other initializations from the original DOMContentLoaded ...
+            console.log("AuraOS original initialization sequence (post-DB) complete.");
+
+        } catch (error) {
+            console.error("Critical error during AuraOS initialization:", error);
+            AuraOS.showNotification({ title: 'Erro Crítico na Inicialização', message: `Não foi possível carregar dados: ${error.message}`, type: 'error', duration: 10000 });
+            const body = document.querySelector('body');
+            if (body) {
+                body.innerHTML = `<div style="color: white; text-align: center; padding-top: 50px;">
+                                    <h1>Erro Crítico na Inicialização</h1>
+                                    <p>AuraOS não pôde iniciar corretamente. Por favor, atualize a página ou limpe os dados do navegador se o problema persistir.</p>
+                                    <p>Detalhes: ${error.message}</p>
+                                  </div>`;
+            }
+            return; // Stop further execution
+        }
+
+        // --- ELEMENTOS GLOBAIS E ESTADO (original content, some might be duplicated from above temporarily but will be cleaned) ---
         const desktop = document.getElementById('desktop');
 
         const dock = document.getElementById('dock');
@@ -2106,6 +2174,14 @@
 
         // --- FUNÇÕES DE GERENCIAMENTO DE JANELAS (CORRIGIDO) ---
         function createWindow(appId, data = {}) {
+            // Ensure fileSystem is loaded before creating windows that might depend on it.
+            // This is a basic check; a more robust system might use promises or events.
+            if (Object.keys(fileSystem).length === 0 && appId !== 'control-panel') { // Allow control panel to open for recovery
+                 AuraOS.showNotification({ title: 'Sistema de Arquivos Não Carregado', message: 'Aguardando o carregamento do sistema de arquivos. Tente novamente em breve.', type: 'warning' });
+                 console.warn("Attempted to create window before file system was fully loaded:", appId);
+                 return;
+            }
+
             if (document.getElementById(appId) && !apps[appId]?.allowMultiple) {
                 focusWindow(document.getElementById(appId));
                 return;
@@ -2521,10 +2597,7 @@
                     windowEl.querySelector('#accent-color-picker').addEventListener('input', e => setSystemProperty('--highlight-primary', e.target.value));
                     windowEl.querySelector('#wallpaper-select').addEventListener('change', e => setWallpaper(e.target.value));
                     windowEl.querySelector('#ui-corner-radius-slider').addEventListener('input', e => setSystemProperty('--ui-corner-radius', e.target.value + 'px'));
-                    windowEl.querySelector('#system-font-select').addEventListener('change', e => {
-                        document.body.style.fontFamily = e.target.value;
-                        saveSystemState();
-                    });
+                    windowEl.querySelector('#system-font-select').addEventListener('change', async e => await updateSystemFont(e.target.value) ); // Correctly uses updateSystemFont
                     
                     windowEl.querySelector('#theme-buttons').addEventListener('click', e => { if(e.target.dataset.theme) setTheme(e.target.dataset.theme); });
                     windowEl.querySelector('#dock-pos-buttons').addEventListener('click', e => { if(e.target.dataset.pos) setDockPosition(e.target.dataset.pos); });
@@ -3060,46 +3133,63 @@
                     // Enhanced auto-save logic with title tracking and visual feedback
                     let saveTimeout;
                     let lastTitle = '';
-                    // const saveIndicator = body.querySelector('.save-indicator'); // Old save indicator
                     
-                    textarea.addEventListener('input', () => {
+                    textarea.addEventListener('input', async () => { // Made async
                         const activeNotePath = windowEl.dataset.currentNotePath;
-                        if (!activeNotePath) return; // Don't save if no note is selected
+                        if (!activeNotePath) return;
 
-                        // Show "Salvando..." notification
-                        AuraOS.showNotification({
-                            title: 'Notas',
-                            message: 'Salvando sua anotação...',
-                            duration: 1500 // Shorter, as it will be replaced
-                        });
+                        // Instant visual feedback can be added here if desired (e.g., "Saving..." indicator)
+                        // AuraOS.showNotification({ title: 'Notas', message: 'Salvando...', duration: 1000 });
 
-                        // Get current title (first line) to detect changes
+
                         const lines = textarea.value.split('\n');
-                        const currentTitle = lines[0] || '';
+                        const currentTitle = lines[0] || ''; // Title is the first line
                         const titleChanged = currentTitle !== lastTitle;
                         lastTitle = currentTitle;
 
                         clearTimeout(saveTimeout);
-                        saveTimeout = setTimeout(() => {
-                            const noteNode = getFileSystemNode(activeNotePath);
-                            if (noteNode) {
-                                noteNode.content = textarea.value;
-                                saveFileSystem();
+                        saveTimeout = setTimeout(async () => {
+                            const newContent = textarea.value;
+                            const newLastModified = Date.now();
+
+                            const metadata = {
+                                path: activeNotePath,
+                                type: 'file',
+                                lastModified: newLastModified,
+                                // Potentially add other metadata if notes need it, e.g., custom title from an input field
+                            };
+                            try {
+                                await dbManager.saveFile(metadata, newContent); // Save to DB
                                 
-                                // Show "Salvo" notification
+                                // Update in-memory representation AFTER successful DB operation
+                                const noteNodeInMemory = getFileSystemNode(activeNotePath);
+                                if (noteNodeInMemory) {
+                                    noteNodeInMemory.content = newContent;
+                                    noteNodeInMemory.lastModified = newLastModified;
+                                } else {
+                                    // If not in memory (e.g., edge case), it will be loaded correctly next time.
+                                    // Or, could trigger a selective load/update here.
+                                    console.warn(`Note ${activeNotePath} was saved to DB but not found in current in-memory FS for update.`);
+                                }
+
+                                console.log(`Note ${activeNotePath} saved to DB.`);
                                 AuraOS.showNotification({
                                     title: 'Nota Salva!',
                                     message: 'Sua anotação foi salva com sucesso.',
                                     icon: '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path></svg>',
-                                    duration: 3000
+                                    duration: 2000 // Shorter duration for less intrusive success
                                 });
-                                
-                                // If title changed, refresh the note list to show updated title
+
                                 if (titleChanged) {
+                                    // Title changed, so the display name in the list might need an update.
+                                    // Re-render the list to reflect new title/preview.
                                     renderNoteList(windowEl, activeNotePath);
                                 }
+                            } catch (error) {
+                                console.error(`Error saving note ${activeNotePath} to DB:`, error);
+                                AuraOS.showNotification({ title: 'Erro ao Salvar Nota', message: `Falha ao salvar: ${error.message}`, type: 'error' });
                             }
-                        }, titleChanged ? 500 : 1500); // Faster save when title changes
+                        }, titleChanged ? 300 : 1000); // Shorter delay for title changes, longer for content
                     });
 
                     // Initialize lastTitle when a note is loaded
@@ -3108,15 +3198,19 @@
                         lastTitle = lines[0] || '';
                     }
 
-                    // Call updateLastTitle whenever a note is loaded
-                    const originalTextareaValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+                    // Call updateLastTitle whenever a note is loaded (or its content is set programmatically)
+                    // This ensures lastTitle is correct when a note is first opened.
+                    const originalTextareaValueSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
                     Object.defineProperty(textarea, 'value', {
-                        get: originalTextareaValue.get,
+                        get: function() {
+                            return Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').get.call(this);
+                        },
                         set: function(newValue) {
-                            originalTextareaValue.set.call(this, newValue);
-                            updateLastTitle();
+                            originalTextareaValueSet.call(this, newValue);
+                            updateLastTitle(); // Update our tracked title when content changes
                         }
                     });
+
 
                     // Keyboard shortcuts for Notes app
                     windowEl.addEventListener('keydown', (e) => {
@@ -4271,8 +4365,8 @@
             newTermLine();
         }
 
-        // --- SISTEMA DE ARQUIVOS E PERSISTÊNCIA ---
-        function createItem(itemPath, type, content = '') {
+        // --- SISTEMA DE ARQUIVOS E PERSISTÊNCIA --- (Refactored for DB)
+        async function createItem(itemPath, type, content = '') { // Made async
             if (!itemPath || itemPath === '/') {
                 AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Cannot create item at root or with invalid path.", type: 'error' });
                 return false;
@@ -4282,7 +4376,6 @@
             const itemName = pathParts.pop();
             const parentPath = pathParts.join('/') || '/';
 
-            // Sanitizar nome do item
             const sanitizedName = itemName.replace(/[\/\\:*?"<>|]/g, '_');
             if (sanitizedName !== itemName) {
                 AuraOS.showNotification({ title: 'Nome Inválido', message: `Nome continha caracteres inválidos e foi sanitizado para: ${sanitizedName}`, type: 'warning' });
@@ -4291,117 +4384,221 @@
                 AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Nome do item inválido após sanitização.", type: 'error' });
                 return false;
             }
+            const finalItemName = sanitizedName.trim();
+            const finalItemPath = parentPath === '/' ? `/${finalItemName}` : `${parentPath}/${finalItemName}`;
 
-            const parentNode = getFileSystemNode(parentPath);
-            if (!parentNode || parentNode.type !== 'folder') {
-                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Diretório pai não encontrado.", type: 'error' });
-                console.error(`[createItem] Parent node not found for path: ${parentPath}`);
+            const parentNodeInMemory = getFileSystemNode(parentPath);
+            if (!parentNodeInMemory || parentNodeInMemory.type !== 'folder') {
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Diretório pai não encontrado na memória.", type: 'error' });
+                return false;
+            }
+            if (parentNodeInMemory.children[finalItemName]) {
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: `Um item com o nome '${finalItemName}' já existe em '${parentPath}'.`, type: 'error' });
                 return false;
             }
 
-            if (parentNode.children[sanitizedName]) {
-                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: `Um item com o nome '${sanitizedName}' já existe em '${parentPath}'.`, type: 'error' });
-                return false;
-            }
+            const itemMetadata = {
+                path: finalItemPath,
+                type: type,
+                lastModified: Date.now()
+            };
+            let fileContentForDB = null;
 
-            // Criar o item
             if (type === 'folder') {
-                parentNode.children[sanitizedName] = { type: 'folder', children: {} };
+                // For folders, children are managed by their own entries in DB.
+                // We might store some folder-specific metadata if needed.
             } else if (type === 'file') {
-                parentNode.children[sanitizedName] = { type: 'file', content: content || '' };
+                fileContentForDB = content || ''; // Ensure content is not undefined
+                itemMetadata.content = content || ''; // Also store in metadata for dbManager.saveFile if it expects it there
             } else {
-                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Tipo de item inválido. Use 'folder' ou 'file'.", type: 'error' });
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Tipo de item inválido.", type: 'error' });
                 return false;
             }
 
-            saveFileSystem();
-            updateDesktopAndFileExplorer(parentPath);
-            console.log(`Item created: ${parentPath}/${sanitizedName} (type: ${type})`);
-            return true;
+            try {
+                // dbManager.saveFile expects (metadata, fileData).
+                // Ensure metadata includes path, type, lastModified. fileData is content for files.
+                await dbManager.saveFile(itemMetadata, fileContentForDB);
+
+                // Update in-memory representation AFTER successful DB operation
+                parentNodeInMemory.children[finalItemName] = {
+                    type: type,
+                    lastModified: itemMetadata.lastModified,
+                    ...(type === 'file' && { content: content || '' }), // Keep content in memory for files
+                    ...(type === 'folder' && { children: {} }) // Initialize children for folders in memory
+                };
+
+                console.log(`Item ${finalItemPath} (type: ${type}) created in DB and memory.`);
+                AuraOS.showNotification({ title: 'Sucesso', message: `Item '${finalItemName}' (${type}) criado em ${parentPath}.`, type: 'info' });
+                updateDesktopAndFileExplorer(parentPath);
+                return true;
+            } catch (error) {
+                console.error(`Error creating item ${finalItemPath} in DB:`, error);
+                AuraOS.showNotification({ title: 'Erro de DB', message: `Falha ao criar item '${finalItemName}': ${error.message}`, type: 'error' });
+                return false;
+            }
         }
 
-        function deleteItem(itemPath) {
+        async function deleteItem(itemPath) { // Made async
             if (!itemPath || itemPath === '/') {
-                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Cannot delete the root directory or an invalid path.", type: 'error' });
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Não é possível excluir o diretório raiz.", type: 'error' });
                 return false;
             }
 
             const pathParts = itemPath.split('/');
             const itemName = pathParts.pop();
             const parentPath = pathParts.join('/') || '/';
+            const itemToDeleteInMemory = getFileSystemNode(itemPath); // Get item before attempting delete
 
-            const parentNode = getFileSystemNode(parentPath);
-            if (!parentNode || parentNode.type !== 'folder') {
-                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Parent directory not found.", type: 'error' });
-                console.error(`[deleteItem] Parent node not found for path: ${parentPath}`);
+            try {
+                if (itemToDeleteInMemory && itemToDeleteInMemory.type === 'folder') {
+                    // If it's a folder, recursively delete its contents from DB first
+                    const filesInFolder = await dbManager.listFiles(itemPath); // Assuming listFiles gets direct children
+                    for (const child of filesInFolder) {
+                        await deleteItem(child.path); // Recursive call for children
+                    }
+                    // After children are deleted, delete the folder entry itself
+                    await dbManager.deleteFile(itemPath);
+                } else {
+                    // It's a file or an empty folder (or listFiles didn't find children)
+                    await dbManager.deleteFile(itemPath);
+                }
+
+                // Then, update in-memory representation
+                const parentNodeInMemory = getFileSystemNode(parentPath);
+                if (parentNodeInMemory && parentNodeInMemory.type === 'folder' && parentNodeInMemory.children[itemName]) {
+                    delete parentNodeInMemory.children[itemName];
+                } else {
+                    console.warn(`Item ${itemName} not found in-memory at ${parentPath} after DB deletion, but proceeding.`);
+                }
+
+                console.log(`Item ${itemPath} deleted from DB and memory.`);
+                AuraOS.showNotification({ title: 'Sucesso', message: `Item '${itemName}' excluído de ${parentPath}.`, type: 'info' });
+                updateDesktopAndFileExplorer(parentPath);
+                return true;
+            } catch (error) {
+                console.error(`Error deleting item ${itemPath} from DB:`, error);
+                AuraOS.showNotification({ title: 'Erro de DB', message: `Falha ao excluir '${itemName}': ${error.message}`, type: 'error' });
+                // Attempt to re-sync if delete failed, as FS might be out of sync
+                // Consider only reloading FS if error indicates potential desync, e.g. not just "item not found"
+                if (error.name !== 'NotFoundError') { // Example: Avoid reloading if DB already confirms not found
+                    await loadFileSystem();
+                }
+                updateDesktopAndFileExplorer(); // Always refresh UI based on current (possibly reloaded) FS
                 return false;
             }
-
-            if (!parentNode.children[itemName]) {
-                AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Item to delete ('${itemName}') not found in '${parentPath}'.`, type: 'error' });
-                console.error(`[deleteItem] Item to delete not found: ${itemName} in ${parentPath}`);
-                return false;
-            }
-
-            delete parentNode.children[itemName];
-            saveFileSystem();
-            updateDesktopAndFileExplorer(parentPath);
-            console.log(`Item deleted: ${itemPath}`);
-            return true;
         }
 
-        function renameItem(itemPath, newName) {
-            if (!itemPath || !newName || newName.trim() === "") {
-                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Invalid new name provided.", type: 'error' });
+        async function renameItem(itemPath, newName) { // Made async
+            if (!itemPath || itemPath === '/' || !newName || newName.trim() === "") {
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Caminho/nome inválido.", type: 'error' });
                 return false;
             }
 
-            let sanitizedNewName = newName.trim().replace(/[\/\\:*?"<>|]/g, '_');
+            const sanitizedNewName = newName.trim().replace(/[\/\\:*?"<>|]/g, '_');
             if (sanitizedNewName !== newName.trim()) {
-                AuraOS.showNotification({ title: 'Aviso de Nome', message: `Name contained invalid characters and was sanitized to: ${sanitizedNewName}`, type: 'warning' });
+                AuraOS.showNotification({ title: 'Nome Inválido', message: `Nome continha caracteres inválidos: ${sanitizedNewName}`, type: 'warning' });
             }
             if (!sanitizedNewName) {
-                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Sanitized name is empty. Please provide a valid name.", type: 'error' });
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Nome inválido após sanitização.", type: 'error' });
                 return false;
             }
-            newName = sanitizedNewName; // Use the sanitized name
-
-            if (itemPath === '/') {
-                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Cannot rename the root directory.", type: 'error' });
-                return false;
-            }
+            newName = sanitizedNewName;
 
             const pathParts = itemPath.split('/');
             const oldName = pathParts.pop();
-            const parentPath = pathParts.join('/') || '/'; // Handle case where parent is root
+            const parentPath = pathParts.join('/') || '/';
+            const newPath = parentPath === '/' ? `/${newName}` : `${parentPath}/${newName}`;
 
-            const parentNode = getFileSystemNode(parentPath);
-            if (!parentNode || parentNode.type !== 'folder') {
-                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Parent directory not found or is not a folder.", type: 'error' });
-                console.error(`[renameItem] Parent node not found for path: ${parentPath}`);
+            if (itemPath === newPath) return true;
+
+            const parentNodeInMemory = getFileSystemNode(parentPath);
+            if (!parentNodeInMemory || parentNodeInMemory.type !== 'folder' || !parentNodeInMemory.children[oldName]) {
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Item original não encontrado na memória.", type: 'error' });
+                return false;
+            }
+            if (parentNodeInMemory.children[newName]) {
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `Um item com o nome '${newName}' já existe.`, type: 'error' });
                 return false;
             }
 
-            if (!parentNode.children[oldName]) {
-                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `Item to rename ('${oldName}') not found in '${parentPath}'.`, type: 'error' });
-                console.error(`[renameItem] Item to rename not found: ${oldName} in ${parentPath}`);
+            try {
+                const oldItemDataFromDB = await dbManager.loadFile(itemPath);
+                if (!oldItemDataFromDB) {
+                    AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Item não encontrado no DB.", type: 'error' });
+                    return false;
+                }
+
+                const newItemMetadata = { ...oldItemDataFromDB, path: newPath, lastModified: Date.now() };
+                // Content is part of oldItemDataFromDB if it was a file, so it's spread into newItemMetadata.
+                // dbManager.saveFile expects metadata and separate content.
+                const { content: fileContent, ...metadataToSave } = newItemMetadata;
+
+                await dbManager.saveFile(metadataToSave, fileContent);
+                await dbManager.deleteFile(itemPath);
+
+                if (oldItemDataFromDB.type === 'folder') {
+                    console.log(`Folder ${itemPath} renamed to ${newPath}. Updating children paths if any.`);
+                    const allDbFiles = await dbManager.getAllFiles();
+                    const childrenUpdatePromises = [];
+                    const oldPathPrefix = itemPath + '/';
+                    const newPathPrefix = newPath + '/';
+
+                    allDbFiles.forEach(fileInDb => {
+                        if (fileInDb.path.startsWith(oldPathPrefix)) {
+                            const oldChildPath = fileInDb.path;
+                            const newChildPath = newPathPrefix + fileInDb.path.substring(oldPathPrefix.length);
+
+                            const { content: childDbContent, ...childDbMetadata } = fileInDb;
+                            childDbMetadata.path = newChildPath;
+                            childDbMetadata.lastModified = Date.now();
+
+                            childrenUpdatePromises.push(
+                                dbManager.saveFile(childDbMetadata, childDbContent)
+                                    .then(() => dbManager.deleteFile(oldChildPath))
+                            );
+                        }
+                    });
+                    await Promise.all(childrenUpdatePromises);
+                    console.log(`Children of folder ${itemPath} (if any) had their paths updated in DB.`);
+                }
+
+                // Update in-memory FS
+                parentNodeInMemory.children[newName] = { ...parentNodeInMemory.children[oldName] }; // Copy data
+                if (oldItemDataFromDB.type === 'file' && typeof fileContent !== 'undefined') {
+                     parentNodeInMemory.children[newName].content = fileContent;
+                }
+                parentNodeInMemory.children[newName].lastModified = newItemMetadata.lastModified;
+                delete parentNodeInMemory.children[oldName];
+                // If it was a folder, its children structure in memory needs to be moved/recreated under newName.
+                // The current simple in-memory FS update might not perfectly reflect deep rename for folders until next full load.
+                // For a more robust in-memory update for folders:
+                if (oldItemDataFromDB.type === 'folder' && parentNodeInMemory.children[newName]) {
+                     // If the original item had children in memory, they are implicitly "moved" by renaming the parent.
+                     // However, the paths within those children objects in memory are not updated by this simple rename.
+                     // This implies getFileSystemNode and path resolution should be robust, or a deep in-memory rename is needed.
+                }
+
+
+                console.log(`Item ${itemPath} renamed to ${newPath} in DB and memory.`);
+                AuraOS.showNotification({ title: 'Sucesso', message: `Item '${oldName}' renomeado para '${newName}'.`, type: 'info' });
+                updateDesktopAndFileExplorer(parentPath); // Update the view of the parent directory
+                if (oldItemDataFromDB.type === 'folder') { // If a folder was renamed, its previous path might be open in another explorer
+                    updateDesktopAndFileExplorer(itemPath); // Also trigger update for the old path, in case it was a view root
+                    updateDesktopAndFileExplorer(newPath);  // And for the new path
+                }
+                return true;
+
+            } catch (error) {
+                console.error(`Error renaming item ${itemPath} to ${newPath} in DB:`, error);
+                AuraOS.showNotification({ title: 'Erro de DB', message: `Falha ao renomear '${oldName}': ${error.message}`, type: 'error' });
+                // Attempt to re-sync if rename failed partially
+                if (error.name !== 'NotFoundError') {
+                     await loadFileSystem();
+                }
+                updateDesktopAndFileExplorer();
                 return false;
             }
-
-            if (oldName !== newName && parentNode.children[newName]) {
-                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `An item with the name '${newName}' already exists in '${parentPath}'.`, type: 'error' });
-                return false;
-            }
-
-            if (oldName !== newName) {
-                parentNode.children[newName] = parentNode.children[oldName];
-                delete parentNode.children[oldName];
-            }
-
-            saveFileSystem();
-            updateDesktopAndFileExplorer(parentPath);
-            console.log(`Item renamed: ${itemPath} to ${parentPath === '/' ? '/' : parentPath + '/'}${newName}`);
-            return true;
         }
 
         function getFileSystemNode(path) {
@@ -4426,160 +4623,281 @@
             return '/' + newParts.join('/');
         }
         
-        function saveFileSystem() {
+        // FileSystem and State Persistence (Modified for IndexedDB)
+        async function saveFileSystem() { // Made async
+            console.log("Saving entire file system to IndexedDB (item by item)...");
+            const promises = [];
+
+            // Helper recursive function to traverse the in-memory fileSystem
+            function recursiveSave(node, currentPath) {
+                for (const name in node) {
+                    const item = node[name];
+                    // Construct the full path for the item
+                    // Ensure root items get a path like '/Desktop', not '//Desktop'
+                    const itemPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+
+                    const fileMetadata = {
+                        path: itemPath,
+                        type: item.type,
+                        lastModified: item.lastModified || Date.now(),
+                        // Preserve existing metadata if any (e.g., for recycle_bin icon)
+                        ...(item.metadata && { metadata: item.metadata })
+                    };
+
+                    let fileContent = null; // Default for folders
+                    if (item.type === 'file') {
+                        fileContent = item.content;
+                    }
+
+                    promises.push(dbManager.saveFile(fileMetadata, fileContent));
+
+                    if (item.type === 'folder' && item.children) {
+                        recursiveSave(item.children, itemPath); // Recursively save children
+                    }
+                }
+            }
+
+            // Start recursion from the children of the root node
+            if (fileSystem['/'] && fileSystem['/'].children) {
+                 recursiveSave(fileSystem['/'].children, "/");
+            }
+
             try {
-                localStorage.setItem('auraOS_fileSystem', JSON.stringify(fileSystem));
-            } catch (e) {
-                console.error("Error saving file system to localStorage:", e);
-                // Optionally, notify the user through a status message or alert,
-                // though this might be too intrusive for a background save.
-                // For now, a console error is sufficient for developer awareness.
-                // Consider adding a non-modal user notification if this becomes critical.
-                // For example, update a global status indicator if one existed.
+                await Promise.all(promises);
+                console.log("Full file system sync to IndexedDB complete.");
+            } catch (error) {
+                console.error("Error during full file system sync to IndexedDB:", error);
+                AuraOS.showNotification({ title: 'Erro ao Salvar FS', message: `Falha ao salvar sistema de arquivos: ${error.message}`, type: 'error' });
             }
         }
 
-        function loadFileSystem() {
-            const savedFS = localStorage.getItem('auraOS_fileSystem');
-            if (savedFS) {
-                fileSystem = JSON.parse(savedFS);
-            } else {
-                // Sistema de arquivos padrão
-                fileSystem = {
-                    '/': {
-                        type: 'folder',
-                        children: {
+
+        async function loadFileSystem() { // Made async
+            try {
+                const allFilesFromDB = await dbManager.getAllFiles();
+                fileSystem = { '/': { type: 'folder', children: {} } }; // Initialize root
+
+                if (allFilesFromDB.length === 0 && !localStorage.getItem('auraOS_initial_fs_created')) {
+                    console.log("DBManager: No files in DB, initializing default file system structure...");
+                    const defaultFSInMemory = {
+                        '/': { type: 'folder', children: {
                             'Desktop': { type: 'folder', children: {
-                                'Welcome.txt': { // ADDED THIS ITEM
-                                    type: 'file',
-                                    content: 'Bem-vindo ao AuraOS!\\n\\nEste é um arquivo de exemplo no seu Desktop.\\nVocê pode criar pastas e arquivos usando o Explorador de Arquivos ou o Terminal.'
-                                }
-                            } },
+                                'Welcome.txt': { type: 'file', content: 'Bem-vindo ao AuraOS!\\n\\nEste é um arquivo de exemplo no seu Desktop.', lastModified: Date.now() }
+                            }, lastModified: Date.now() },
                             'Documents': { type: 'folder', children: {
-                                'AuraOS_Project.txt': { type: 'file', content: 'Metas para a v2:\n- Multi-threading simulado\n- API de plugins\n- Melhor gerenciamento de memória' },
-                                'ideas.txt': { type: 'file', content: 'Uma ideia para um novo app: um player de video!' }
-                            }},
-                            'Music': { type: 'folder', children: {} },
+                                'AuraOS_Project.txt': { type: 'file', content: 'Metas para a v2:\n- Multi-threading simulado', lastModified: Date.now() },
+                                'ideas.txt': { type: 'file', content: 'Player de vídeo.', lastModified: Date.now() }
+                            }, lastModified: Date.now() },
+                            'Music': { type: 'folder', children: {}, lastModified: Date.now() },
                             'Pictures': { type: 'folder', children: {
-                                'astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' }
-                            }},
-                            'System': { type: 'folder', children: {} }
+                                 'astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', lastModified: Date.now() }
+                            }, lastModified: Date.now() },
+                            'System': { type: 'folder', children: {}, lastModified: Date.now() }
+                        }}
+                    };
+
+                    fileSystem = defaultFSInMemory; // Set in-memory FS to default
+                    await saveFileSystem(); // Save this default structure to DB
+
+                    localStorage.setItem('auraOS_initial_fs_created', 'true');
+                    console.log("Default file system initialized, saved to DB, and loaded into memory.");
+                    // No need to re-read from DB here, as we've just populated it.
+                    return;
+                }
+
+                // Reconstruct fileSystem from flat list from DB
+                allFilesFromDB.sort((a, b) => a.path.localeCompare(b.path));
+
+                allFilesFromDB.forEach(fileObject => {
+                    const pathParts = fileObject.path.split('/').filter(p => p);
+                    let currentLevel = fileSystem['/'].children; // Start from root's children
+                    let currentBuiltPath = '';
+
+                    pathParts.forEach((part, index) => {
+                        currentBuiltPath += '/' + part;
+                        if (index === pathParts.length - 1) { // This part is the file/folder itself
+                            currentLevel[part] = {
+                                type: fileObject.type,
+                                // Only add content if it's a file and content is not null/undefined
+                                ...(fileObject.type === 'file' && typeof fileObject.content !== 'undefined' && fileObject.content !== null && { content: fileObject.content }),
+                                lastModified: fileObject.lastModified || Date.now(),
+                                ...(fileObject.metadata && { metadata: fileObject.metadata })
+                            };
+                            if (fileObject.type === 'folder') {
+                                currentLevel[part].children = currentLevel[part].children || {}; // Ensure children object exists
+                            }
+                        } else { // This part is an intermediate directory
+                            if (!currentLevel[part]) {
+                                currentLevel[part] = { type: 'folder', children: {}, lastModified: fileObject.lastModified || Date.now() };
+                            } else if (currentLevel[part].type !== 'folder') {
+                                // This case implies a conflict, e.g. a file exists where a folder is expected.
+                                console.error(`FS Reconstruction: Conflict - expected folder at ${currentBuiltPath}, found ${currentLevel[part].type}`);
+                                // Resolve by overwriting with a folder structure to allow deeper paths.
+                                currentLevel[part] = { type: 'folder', children: {}, lastModified: fileObject.lastModified || Date.now() };
+                            }
+                            currentLevel = currentLevel[part].children;
                         }
-                    }
-                };
-                saveFileSystem();
+                    });
+                });
+                console.log("File system reconstructed from IndexedDB:", fileSystem);
+
+            } catch (error) {
+                console.error("Error loading file system from IndexedDB:", error);
+                AuraOS.showNotification({ title: 'Erro ao Carregar FS', message: `Falha ao carregar sistema de arquivos: ${error.message}`, type: 'error' });
+                fileSystem = { '/': { type: 'folder', children: { Error: {type: 'file', content: 'Failed to load FS'} } } }; // Fallback
             }
         }
         
-        // --- SISTEMA DE CONFIGURAÇÕES (THEMING, ETC) ---
-        function setSystemProperty(prop, value) {
-            root.style.setProperty(prop, value);
-            saveSystemState();
+        // --- SISTEMA DE CONFIGURAÇÕES (THEMING, ETC) --- (Modified for IndexedDB)
+        async function setSystemProperty(prop, value, save = true) { // Made async
+            if (prop.startsWith('--')) {
+                 root.style.setProperty(prop, value);
+            }
+            state[prop] = value; // Always update in-memory state
+
+            if (save) {
+                try {
+                    await dbManager.saveSetting(prop, value);
+                    console.log(`Setting ${prop}=${value} saved to DB.`);
+                } catch (error) {
+                    console.error(`Error saving setting ${prop} to DB:`, error);
+                    AuraOS.showNotification({ title: 'Erro ao Salvar Config.', message: `Falha ao salvar '${prop}'.`, type: 'error' });
+                }
+            }
         }
 
-        function setWallpaper(wallpaperName) {
+        async function setWallpaper(wallpaperName, save = true) { // Made async
             console.log('[setWallpaper] Received wallpaperName:', wallpaperName);
             const bgElementForSet = document.querySelector('.background-effect');
-            console.log('[setWallpaper] .background-effect element at start of function:', bgElementForSet ? bgElementForSet.className : 'NOT FOUND');
-
-            bgElementForSet.className = 'background-effect'; // Reset classes
+            bgElementForSet.className = 'background-effect';
             bgElementForSet.classList.add(`wallpaper-${wallpaperName}`);
-            console.log('[setWallpaper] .background-effect classList after add:', bgElementForSet ? bgElementForSet.className : 'NOT FOUND');
-
-            saveSystemState();
+            console.log('[setWallpaper] .background-effect classList after add:', bgElementForSet.className);
+            await setSystemProperty('wallpaper', wallpaperName, save);
         }
-        function setTheme(themeName) {
+
+        async function setTheme(themeName, save = true) { // Made async
             root.className = themeName === 'light' ? 'light-theme' : 'dark-theme';
-            saveSystemState();
-            updateThemeControls();
+            await setSystemProperty('theme', themeName, save);
+            updateThemeControls(); // This will read from the updated global 'state'
         }
-        function setDockPosition(position) {
-            dock.className = `dock-${position}`;
-            saveSystemState();
-            updateThemeControls();
-        }
-        function setIconSize(size) {
-            setSystemProperty('--desktop-icon-size', size);
+
+        async function setDockPosition(position, save = true) { // Made async
+            dock.className = `dock dock-${position}`;
+            await setSystemProperty('dockPosition', position, save);
             updateThemeControls();
         }
 
-        function updateThemeControls() {
+        async function setIconSize(size, save = true) { // Made async
+            await setSystemProperty('--desktop-icon-size', size, save); // This is a CSS var
+            updateThemeControls();
+        }
+
+
+        function updateThemeControls() { // Reads from global 'state' or root.style for CSS vars
             const cpWindow = document.getElementById('control-panel');
             if(!cpWindow) return;
-            const state = loadSystemState();
             
-            cpWindow.querySelectorAll('#theme-buttons button').forEach(b => b.classList.toggle('active', b.dataset.theme === state.theme));
-            cpWindow.querySelectorAll('#dock-pos-buttons button').forEach(b => b.classList.toggle('active', b.dataset.pos === state.dockPosition));
-            cpWindow.querySelectorAll('#icon-size-buttons button').forEach(b => b.classList.toggle('active', b.dataset.size === (state.themeSettings['--desktop-icon-size'] || '60px')));
+            // For direct class/style manipulations, read from DOM if state isn't the single source of truth yet for these
+            const currentTheme = state.theme || (root.className.includes('light') ? 'light' : 'dark');
+            const currentDockPos = state.dockPosition || dock.className.replace(/dock\s*/, ''); // More robust class removal
+            const currentIconSize = state['--desktop-icon-size'] || root.style.getPropertyValue('--desktop-icon-size') || '60px';
+
+            cpWindow.querySelectorAll('#theme-buttons button').forEach(b => b.classList.toggle('active', b.dataset.theme === currentTheme));
+            cpWindow.querySelectorAll('#dock-pos-buttons button').forEach(b => b.classList.toggle('active', b.dataset.pos === currentDockPos));
+            cpWindow.querySelectorAll('#icon-size-buttons button').forEach(b => b.classList.toggle('active', b.dataset.size === currentIconSize));
+
+            // For other settings, read from the global 'state' object
+            if (state.wallpaper) cpWindow.querySelector('#wallpaper-select').value = state.wallpaper;
+            if (state['--highlight-primary']) cpWindow.querySelector('#accent-color-picker').value = state['--highlight-primary'];
+
+            const currentCornerRadius = state['--ui-corner-radius'] ? parseInt(state['--ui-corner-radius'].replace('px', '')) : 20;
+            cpWindow.querySelector('#ui-corner-radius-slider').value = currentCornerRadius;
+
+            if (state.systemFont) cpWindow.querySelector('#system-font-select').value = state.systemFont;
+            if (state['--background-brightness']) cpWindow.querySelector('#brightness-slider').value = state['--background-brightness'];
         }
         
-        // --- GERENCIAMENTO DE ESTADO E INICIALIZAÇÃO ---
-        function loadSystemState() {
-            const state = JSON.parse(localStorage.getItem('auraOS_systemState'));
-            return state || {
-                theme: 'dark',
-                dockPosition: 'bottom',
-                systemFont: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                themeSettings: {
-                    '--background-brightness': '1' // Ensure default for brightness
-                }
-            };
-        }
+        // --- GERENCIAMENTO DE ESTADO E INICIALIZAÇÃO --- (Modified for IndexedDB)
+        let state = {}; // Global state object, populated by loadSystemState
 
-        function saveSystemState() {
-            const state = {
-                theme: root.className.includes('light') ? 'light' : 'dark',
-                dockPosition: dock.className.replace('dock-', ''),
-                systemFont: document.body.style.fontFamily || "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-                themeSettings: {
-                    '--highlight-primary': root.style.getPropertyValue('--highlight-primary'),
-                    '--background-brightness': root.style.getPropertyValue('--background-brightness'),
-                    '--desktop-icon-size': root.style.getPropertyValue('--desktop-icon-size'),
-                    '--ui-corner-radius': root.style.getPropertyValue('--ui-corner-radius'),
-                    'wallpaper': document.querySelector('.background-effect').className.split(' ').find(c => c.startsWith('wallpaper-'))?.replace('wallpaper-', '')
-                }
-            };
-            localStorage.setItem('auraOS_systemState', JSON.stringify(state));
-        }
+        async function loadSystemState() { // Made async
+            try {
+                const settingsFromDB = await dbManager.getAllSettings();
+                state = settingsFromDB; // Populate global state directly
 
-        function saveDesktopState() { /* Salvamento de janelas, etc. */ }
-        
-        function applySystemState() {
-            const state = loadSystemState();
-            setTheme(state.theme);
-            setDockPosition(state.dockPosition);
-            if (state.systemFont) {
-                document.body.style.fontFamily = state.systemFont;
-            }
-            Object.keys(state.themeSettings).forEach(prop => {
-                if (prop === 'wallpaper') {
-                    if(state.themeSettings[prop]) {
-                        console.log('[applySystemState] Attempting to apply wallpaper:', state.themeSettings.wallpaper);
-                        const bgElementForApply = document.querySelector('.background-effect');
-                        console.log('[applySystemState] .background-effect element before setWallpaper:', bgElementForApply ? bgElementForApply.className : 'NOT FOUND');
-                        setWallpaper(state.themeSettings.wallpaper);
-                        console.log('[applySystemState] .background-effect element after setWallpaper:', bgElementForApply ? bgElementForApply.className : 'NOT FOUND');
+                // Check if DB was empty and it's the first run (after migration attempt)
+                if (Object.keys(settingsFromDB).length === 0 && !localStorage.getItem('auraOS_initial_state_created')) {
+                    console.log("DBManager: No settings in DB, initializing default system state...");
+                    const defaultState = {
+                        theme: 'dark',
+                        dockPosition: 'bottom',
+                        systemFont: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        wallpaper: 'default',
+                        '--background-brightness': '1',
+                        '--highlight-primary': '#8a63d2',
+                        '--desktop-icon-size': '60px',
+                        '--ui-corner-radius': '20px'
+                        // Add other initial settings directly here
+                    };
+                    state = defaultState; // Update global state with defaults
+                    for (const key in defaultState) {
+                        // No need to call setSystemProperty here, as that might trigger UI updates we don't want yet
+                        await dbManager.saveSetting(key, defaultState[key]);
                     }
-                } else if (prop === '--background-brightness') {
-                    if (state.themeSettings[prop]) {
-                        root.style.setProperty(prop, state.themeSettings[prop]);
-                    } else {
-                        console.log('[applySystemState] --background-brightness not found in state, setting to 1.');
-                        root.style.setProperty('--background-brightness', '1');
-                    }
+                    localStorage.setItem('auraOS_initial_state_created', 'true');
+                    console.log("Default system state initialized, saved to DB, and loaded into memory:", state);
                 } else {
-                    if (state.themeSettings[prop]) root.style.setProperty(prop, state.themeSettings[prop]);
+                    console.log("System state loaded from DB into memory:", state);
                 }
-            });
-            // Ensure brightness is applied if not in themeSettings (e.g. first load after reset)
-            if (!state.themeSettings.hasOwnProperty('--background-brightness')) {
-                 console.log('[applySystemState] --background-brightness was not in themeSettings, ensuring default of 1.');
-                root.style.setProperty('--background-brightness', '1');
+
+            } catch (error) {
+                console.error("Error loading system state from IndexedDB:", error);
+                AuraOS.showNotification({ title: 'Erro ao Carregar Config.', message: `Falha ao carregar configurações: ${error.message}`, type: 'error' });
+                // Fallback to basic defaults for UI stability if DB load fails
+                state = {
+                    theme: 'dark',
+                    dockPosition: 'bottom',
+                    systemFont: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    wallpaper: 'default',
+                    '--background-brightness': '1',
+                    '--highlight-primary': '#8a63d2',
+                    '--desktop-icon-size': '60px',
+                    '--ui-corner-radius': '20px'
+                };
             }
         }
+
+        // saveSystemState() is now effectively removed/obsolete.
+        // Individual settings are saved by setSystemProperty (via setX functions).
+        // The loadSystemState populates the 'state' object on startup.
+
+
+        function saveDesktopState() { /* Placeholder for window positions, etc. Not FS/System state. */ }
+
+        async function applySystemState() { // Made async
+            // Applies the global 'state' object (already loaded by loadSystemState) to the UI.
+            // Calls to setX functions are now async and will handle their own saving if 'save=true' (default).
+            // Here, we pass 'false' for 'save' because we are just applying loaded state.
+            console.log("Applying system state from in-memory object:", state);
+
+            await setTheme(state.theme || 'dark', false);
+            await setDockPosition(state.dockPosition || 'bottom', false);
+
+            if (state.systemFont) document.body.style.fontFamily = state.systemFont; // Direct DOM manipulation is fine for font
+
+            // Apply CSS variables from state using setSystemProperty (which handles in-memory state and optionally DB)
+            if (state['--highlight-primary']) await setSystemProperty('--highlight-primary', state['--highlight-primary'], false);
+            await setSystemProperty('--background-brightness', state['--background-brightness'] || '1', false);
+            if (state['--desktop-icon-size']) await setSystemProperty('--desktop-icon-size', state['--desktop-icon-size'], false);
+            if (state['--ui-corner-radius']) await setSystemProperty('--ui-corner-radius', state['--ui-corner-radius'], false);
+
+            await setWallpaper(state.wallpaper || 'default', false);
+            console.log("System state applied from in-memory state.");
+        }
+
 
         function updateDesktopAndFileExplorer(changedPath = null) {
-            renderDesktopIcons(); // Always re-render desktop icons
+            renderDesktopIcons();
 
             document.querySelectorAll('.window').forEach(win => {
                 if (win.id.startsWith('file-explorer')) { // Check if it's a file explorer window
