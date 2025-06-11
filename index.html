@@ -759,6 +759,126 @@
         .featured-title { font-size: 0.8rem; color: var(--highlight-primary); padding: 5px 15px; font-weight: 600; }
         .no-results { padding: 20px; text-align: center; color: var(--subtle-text-color); font-style: italic; }
 
+        /* Calculator App Styles */
+        #calculator-app .window-body {
+            padding: 0; /* Remove default padding */
+            display: flex;
+            flex-direction: column;
+            background-color: #3c3c3c; /* macOS dark mode calculator background */
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        /* Prevent resizing for calculator-app if resizable:false is not handled by JS */
+        .window#calculator-app {
+            resize: none;
+        }
+
+        .calculator-display {
+            background-color: #3c3c3c; /* Match window body */
+            color: white;
+            font-size: 48px; /* Large font */
+            font-weight: 300;
+            text-align: right;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-grow: 1; /* Allow display to take available space */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Align text to bottom */
+            min-height: 70px; /* Minimum height for the display area */
+        }
+
+        .calculator-display-text {
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            white-space: nowrap; /* Prevent wrapping */
+        }
+
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 8px; /* Increased gap for round buttons */
+            padding: 10px; /* Add some padding around the button grid */
+            background-color: #3c3c3c; /* Match window body, lines are not needed for round buttons */
+        }
+
+        .calculator-buttons button {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 20px; /* Adjusted font size for round buttons */
+            font-weight: 400;
+            border: none;
+            /* padding: 18px 0; Remove padding or adjust significantly */
+            background-color: #505050; /* Dark gray for numbers and general buttons */
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease; /* Added transform transition */
+            border-radius: 50%; /* Make buttons round */
+            width: 60px; /* Fixed width for round buttons */
+            height: 60px; /* Fixed height for round buttons */
+            margin: auto; /* Center buttons in grid cells if cell is larger */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            line-height: 1; /* Ensure text is vertically centered */
+        }
+
+        .calculator-buttons button:hover {
+            filter: brightness(1.2);
+        }
+
+        .calculator-buttons button:active {
+            filter: brightness(0.8);
+        }
+
+        /* Specific button styles based on macOS theme */
+        .calculator-buttons button.btn-operator {
+            background-color: #FF9500; /* Orange for operators */
+            color: white;
+        }
+        .calculator-buttons button.btn-operator:hover { filter: brightness(1.1); }
+        .calculator-buttons button.btn-operator:active { filter: brightness(0.9); }
+
+
+        .calculator-buttons button.btn-light-gray {
+            background-color: #D4D4D2; /* Light gray for AC, +/-, % */
+            color: black;
+        }
+        .calculator-buttons button.btn-light-gray:hover { filter: brightness(0.95); }
+        .calculator-buttons button.btn-light-gray:active { filter: brightness(0.85); }
+
+
+        /* Zero button spanning two columns */
+        .calculator-buttons button.btn-zero {
+            grid-column: span 2;
+            width: calc(60px * 2 + 8px); /* (button width * 2) + grid-gap */
+            border-radius: 30px; /* Elongated pill shape */
+        }
+
+        /* Styling for light theme (Optional for now, focus on dark mode as per AC) */
+        .light-theme #calculator-app .window-body {
+            background-color: #f2f2f7;
+        }
+        .light-theme .calculator-display {
+            background-color: #f2f2f7;
+            color: black;
+        }
+        .light-theme .calculator-buttons {
+            background-color: #cccccc; /* Lighter grid lines for light theme */
+        }
+        .light-theme .calculator-buttons button {
+            background-color: #e8e8e8; /* Light theme number buttons */
+            color: black;
+        }
+        .light-theme .calculator-buttons button.btn-operator {
+            background-color: #FF9500; /* Orange can stay same or be adjusted */
+            color: white;
+        }
+        .light-theme .calculator-buttons button.btn-light-gray {
+            background-color: #D4D4D2; /* Light gray can stay same or be adjusted */
+            color: black;
+        }
+
         /* Outros elementos (Login, Context Menu, etc) */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(20px); transition: opacity 0.5s ease; }
         .login-box { text-align: center; padding: 40px; background: var(--glass-background); border-radius: var(--ui-corner-radius); border: 1px solid var(--glass-border); box-shadow: var(--window-shadow); }
@@ -805,6 +925,107 @@
 .notification-toast p { margin: 0; font-size: 0.9rem; }
 .notification-toast .notification-icon { margin-right: 10px; width: 20px; height: 20px; fill: var(--icon-fill); }
 .notification-content { display: flex; align-items: center; }
+
+.notification-toast-error {
+    border-left: 4px solid var(--red-accent, #ff5f56);
+}
+.notification-toast-error .notification-icon svg {
+    fill: var(--red-accent, #ff5f56);
+}
+
+.notification-toast-warning {
+    border-left: 4px solid var(--yellow-accent, #ffbd2e);
+}
+.notification-toast-warning .notification-icon svg {
+    fill: var(--yellow-accent, #ffbd2e);
+}
+
+.notification-toast-info {
+    border-left: 4px solid var(--highlight-primary, #8a63d2); /* Or a neutral blue */
+}
+.notification-toast-info .notification-icon svg {
+    fill: var(--highlight-primary, #8a63d2);
+}
+
+/* --- Confirmation Dialog --- */
+#aura-dialog-confirm {
+    background-color: var(--glass-background);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--ui-corner-radius);
+    box-shadow: var(--window-shadow);
+    backdrop-filter: blur(20px) saturate(1.8); /* Enhance glassmorphism */
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    color: var(--text-color);
+    padding: 25px; /* More spacious padding */
+    min-width: 320px;
+    max-width: 450px;
+    /* Transitions for entry/exit are already handled by inline styles in JS */
+}
+
+.aura-dialog-content #aura-dialog-message {
+    font-size: 1rem; /* Standardized font size */
+    margin-bottom: 25px; /* More space before buttons */
+    line-height: 1.5; /* Improved readability */
+    color: var(--text-color);
+}
+
+.aura-dialog-buttons {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 12px; /* Slightly more gap */
+}
+
+.aura-dialog-button {
+    padding: 10px 18px; /* Larger click target */
+    border-radius: var(--ui-corner-radius-small, 8px); /* Use small radius or a fixed value */
+    border: none;
+    font-weight: 500; /* Medium weight */
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    font-size: 0.9rem;
+}
+
+.aura-dialog-button:active {
+    transform: scale(0.97); /* Subtle press effect */
+}
+
+.aura-dialog-button-confirm {
+    background-color: var(--highlight-primary);
+    color: white; /* Ensure contrast */
+    border: 1px solid transparent; /* For consistency */
+}
+
+.aura-dialog-button-confirm:hover {
+    background-color: color-mix(in srgb, var(--highlight-primary) 90%, black); /* Darken on hover */
+}
+
+.aura-dialog-button-cancel {
+    background-color: rgba(128, 128, 128, 0.2); /* Subtle background */
+    color: var(--text-color);
+    border: 1px solid var(--glass-border); /* Subtle border */
+}
+
+.aura-dialog-button-cancel:hover {
+    background-color: rgba(128, 128, 128, 0.3); /* Slightly more opaque on hover */
+    border-color: var(--glass-border-focus);
+}
+
+/* Light theme adjustments for dialog buttons */
+.light-theme #aura-dialog-confirm .aura-dialog-button-confirm {
+    /* Confirm button in light theme might need adjusted text color if highlight-primary is too light */
+    /* color: white; /* Assuming highlight-primary is dark enough */
+}
+
+.light-theme #aura-dialog-confirm .aura-dialog-button-cancel {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: var(--text-color);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.light-theme #aura-dialog-confirm .aura-dialog-button-cancel:hover {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-color: rgba(0, 0, 0, 0.2);
+}
 
         #lock-screen {
             position: fixed;
@@ -1073,6 +1294,22 @@
                         <svg viewBox="0 0 24 24"><path d="M4 3h16c.55 0 1 .45 1 1v16c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1V4c0-.55.45-1 1-1zm2 4v2h4V7H6zm0 4v2h6v-2H6z" fill="var(--icon-fill)"/></svg>
                         <p>Terminal</p>
                     </div>
+
+                    <div class="desktop-icon" data-app-id="calculator-app" title="Calculadora">
+                        <svg viewBox="0 0 60 60" fill="var(--icon-fill)">
+                            <rect x="10" y="5" width="40" height="50" rx="5" ry="5" fill="#333"/>
+                            <rect x="15" y="10" width="30" height="10" rx="2" ry="2" fill="#555"/>
+                            <circle cx="20" cy="28" r="3" fill="#777"/>
+                            <circle cx="30" cy="28" r="3" fill="#777"/>
+                            <circle cx="40" cy="28" r="3" fill="#777"/>
+                            <circle cx="20" cy="38" r="3" fill="#777"/>
+                            <circle cx="30" cy="38" r="3" fill="#777"/>
+                            <circle cx="40" cy="38" r="3" fill="#777"/>
+                            <circle cx="20" cy="48" r="3" fill="#FF9500"/>
+                            <circle cx="30" cy="48" r="3" fill="#D4D4D2"/>
+                        </svg>
+                        <p>Calculadora</p>
+                    </div>
                 </div>
                 
                 <!-- Divisor visual -->
@@ -1117,6 +1354,21 @@
                 <svg viewBox="0 0 24 24"><path d="M4 3h16c.55 0 1 .45 1 1v16c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1V4c0-.55.45-1 1-1zm2 4v2h4V7H6zm0 4v2h6v-2H6z"/></svg>
                 <div class="active-indicator"></div>
             </div>
+            <div class="dock-item" data-app-id="calculator-app" title="Calculadora">
+                <svg viewBox="0 0 60 60" fill="var(--icon-fill)">
+                    <rect x="10" y="5" width="40" height="50" rx="5" ry="5" fill="#333"/>
+                    <rect x="15" y="10" width="30" height="10" rx="2" ry="2" fill="#555"/>
+                    <circle cx="20" cy="28" r="3" fill="#777"/>
+                    <circle cx="30" cy="28" r="3" fill="#777"/>
+                    <circle cx="40" cy="28" r="3" fill="#777"/>
+                    <circle cx="20" cy="38" r="3" fill="#777"/>
+                    <circle cx="30" cy="38" r="3" fill="#777"/>
+                    <circle cx="40" cy="38" r="3" fill="#777"/>
+                    <circle cx="20" cy="48" r="3" fill="#FF9500"/>
+                    <circle cx="30" cy="48" r="3" fill="#D4D4D2"/>
+                </svg>
+                <div class="active-indicator"></div>
+            </div>
         </div>
     </div>
 
@@ -1138,7 +1390,7 @@
         window.AuraOS = {};
     }
 
-    window.AuraOS.showNotification = function({ title = 'Notification', message = '', icon = '', duration = 4000 }) {
+    window.AuraOS.showNotification = function({ title = 'Notification', message = '', icon = '', type = 'info', duration = 4000 }) {
         const container = document.getElementById('notification-container');
         if (!container) {
             console.error('Notification container not found!');
@@ -1149,21 +1401,33 @@
         const notificationEl = document.createElement('div');
         notificationEl.className = 'notification-toast';
         notificationEl.id = notificationId;
+        notificationEl.classList.add(`notification-toast-${type}`); // Add type-specific class
 
         let iconHTML = '';
-        if (icon) {
+        if (icon) { // Custom icon takes precedence
             // Basic check if icon is SVG or an image URL
             if (icon.trim().startsWith('<svg')) {
                 iconHTML = `<div class="notification-icon">${icon}</div>`;
             } else if (icon.match(/\.(jpeg|jpg|gif|png|svg)$/i)) {
                 iconHTML = `<div class="notification-icon"><img src="${icon}" alt="icon" style="width:100%; height:100%;"></div>`;
             } else {
-                // Default to a simple info icon if a generic string is passed
-                iconHTML = `<div class="notification-icon">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path>
-                                </svg>
-                            </div>`;
+                 // Fallback for non-svg/image custom icon strings (though ideally SVGs or URLs are passed)
+                iconHTML = `<div class="notification-icon"><span>${icon}</span></div>`;
+            }
+        } else { // Type-based default icons
+            switch (type) {
+                case 'error':
+                    iconHTML = `<div class="notification-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="var(--red-accent)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>`;
+                    if (!title || title === 'Notification') title = 'Erro'; // Default title for errors
+                    break;
+                case 'warning':
+                    iconHTML = `<div class="notification-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="var(--yellow-accent)"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2V7h2v7z"/></svg></div>`;
+                    if (!title || title === 'Notification') title = 'Aviso'; // Default title for warnings
+                    break;
+                case 'info':
+                default:
+                    iconHTML = `<div class="notification-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="var(--highlight-primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>`;
+                    break;
             }
         }
 
@@ -1209,6 +1473,106 @@
         }
     };
 
+    if (typeof window.AuraOS === 'undefined') {
+        window.AuraOS = {};
+    }
+    if (typeof window.AuraOS.dialog === 'undefined') {
+        window.AuraOS.dialog = {};
+    }
+
+    window.AuraOS.dialog.confirm = function(message = 'Are you sure?', onConfirm, onCancel) {
+        // Remove any existing dialog and overlay first to prevent duplicates
+        const existingDialog = document.getElementById('aura-dialog-confirm');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        const existingOverlay = document.getElementById('aura-dialog-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+
+        const dialogId = 'aura-dialog-confirm';
+        const dialogOverlayId = 'aura-dialog-overlay';
+
+        // Create overlay
+        const overlayEl = document.createElement('div');
+        overlayEl.id = dialogOverlayId;
+        // Styles for overlay are now primarily in CSS
+
+        // Create dialog
+        const dialogEl = document.createElement('div');
+        dialogEl.id = dialogId;
+        // Basic positioning styles, main styling will be in CSS
+        dialogEl.style.position = 'fixed';
+        dialogEl.style.top = '50%';
+        dialogEl.style.left = '50%';
+        dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)'; // Start slightly scaled down for entry animation
+        dialogEl.style.zIndex = '2000000';
+        dialogEl.style.opacity = '0'; // Start transparent for entry animation
+        dialogEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease'; // CSS transitions
+
+        dialogEl.innerHTML = `
+            <div class="aura-dialog-content"> <!-- Class for styling -->
+                <p id="aura-dialog-message" style="margin-bottom: 20px; font-size: 1rem;"></p>
+                <div class="aura-dialog-buttons" style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="aura-dialog-cancel-btn" class="aura-dialog-button aura-dialog-button-cancel">Cancel</button>
+                    <button id="aura-dialog-confirm-btn" class="aura-dialog-button aura-dialog-button-confirm">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        dialogEl.querySelector('#aura-dialog-message').textContent = message;
+
+        document.body.appendChild(overlayEl);
+        document.body.appendChild(dialogEl);
+        document.body.classList.add('aura-dialog-open'); // Prevent body scroll
+
+        // Trigger entry animation for overlay and dialog
+        requestAnimationFrame(() => {
+            overlayEl.classList.add('show');
+            dialogEl.style.opacity = '1';
+            dialogEl.style.transform = 'translate(-50%, -50%) scale(1)';
+        });
+
+
+        const confirmButton = dialogEl.querySelector('#aura-dialog-confirm-btn');
+        const cancelButton = dialogEl.querySelector('#aura-dialog-cancel-btn');
+
+        const closeDialog = (callback) => {
+            dialogEl.style.opacity = '0';
+            dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            overlayEl.classList.remove('show');
+
+            setTimeout(() => {
+                if (document.getElementById(dialogId)) {
+                    document.getElementById(dialogId).remove();
+                }
+                if (document.getElementById(dialogOverlayId)) {
+                    document.getElementById(dialogOverlayId).remove();
+                }
+                document.body.classList.remove('aura-dialog-open');
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            }, 300); // Match transition duration
+        };
+
+        confirmButton.addEventListener('click', () => {
+            closeDialog(onConfirm);
+        });
+
+        cancelButton.addEventListener('click', () => {
+            closeDialog(onCancel);
+        });
+
+        overlayEl.addEventListener('click', () => {
+            closeDialog(onCancel); // Clicking overlay acts as cancel
+        });
+
+        dialogEl.setAttribute('tabindex', '-1');
+        dialogEl.focus();
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
 
         // --- ELEMENTOS GLOBAIS E ESTADO ---
@@ -1239,6 +1603,7 @@
             'task-manager': { title: 'Gerenciador de Tarefas', width: 500, height: 400 },
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
             'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
+            'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
         };
         
         // --- NOVO: AURA MUSIC SONG DATABASE ---
@@ -1294,11 +1659,11 @@
                 createWindow(appId, { filePath: filePath, title: `${apps[appId].title} - ${fileName}` });
             } else {
                 console.error(`App ID '${appId}' defined in fileAssociations but not found in apps object.`);
-                alert(`Erro: Aplicativo '${appId}' não encontrado para abrir '${fileName}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Abrir Arquivo', message: `Aplicativo '${appId}' não encontrado para abrir '${fileName}'.`, type: 'error' });
             }
         } else {
             console.warn(`No application associated with extension '${fileExtension}' for file '${fileName}'.`);
-            alert(`Nenhum aplicativo associado para abrir '${fileName}'.`);
+            AuraOS.showNotification({ title: 'Erro ao Abrir Arquivo', message: `Nenhum aplicativo associado para abrir '${fileName}'.`, type: 'warning' });
         }
     }
 
@@ -1500,10 +1865,35 @@
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation(); // Prevent note selection when clicking delete
 
-                    if (!confirm(`Tem certeza que deseja excluir "${title}"?`)) {
-                        return;
-                    }
+                    AuraOS.dialog.confirm(
+                        `Tem certeza que deseja excluir "${title}"?`,
+                        () => { // onConfirm
+                            const notesDirNode = getFileSystemNode('/Anotações/');
+                            if (notesDirNode && notesDirNode.children[fileName]) {
+                                delete notesDirNode.children[fileName];
+                                saveFileSystem();
 
+                                const currentOpenNotePath = notesAppWindow.dataset.currentNotePath;
+                                if (currentOpenNotePath === notePath) {
+                                    // The currently open note is being deleted
+                                    const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                                    if (textarea) textarea.value = '';
+                                    delete notesAppWindow.dataset.currentNotePath; // Clear current path
+
+                                    // Re-render and attempt to load the first available note
+                                    renderNoteList(notesAppWindow, null); // Pass null to select the first or show empty
+                                } else {
+                                    // Deleting a note that is not currently open
+                                    renderNoteList(notesAppWindow, notesAppWindow.dataset.currentNotePath);
+                                }
+                            }
+                        }
+                        // No onCancel needed as original if block only had a return.
+                    );
+                });
+
+                // Original logic moved into onConfirm callback above
+                /*
                     const notesDirNode = getFileSystemNode('/Anotações/');
                     if (notesDirNode && notesDirNode.children[fileName]) {
                         delete notesDirNode.children[fileName];
@@ -1523,7 +1913,7 @@
                             renderNoteList(notesAppWindow, notesAppWindow.dataset.currentNotePath);
                         }
                     }
-                });
+                */
 
                 if (notePath === currentNotePath) { // Check if this item should be active
                     listItem.classList.add('active');
@@ -1703,6 +2093,7 @@
                     windowEl.querySelector('#dock-pos-buttons').addEventListener('click', e => { if(e.target.dataset.pos) setDockPosition(e.target.dataset.pos); });
                     windowEl.querySelector('#icon-size-buttons').addEventListener('click', e => { if(e.target.dataset.size) setIconSize(e.target.dataset.size); });
                     windowEl.querySelector('#reset-settings-button').addEventListener('click', () => {
+                        // This confirm call is intentionally NOT REPLACED as per instructions.
                         if (confirm("⚠️ AVISO: Esta ação irá restaurar o AuraOS para as configurações de fábrica.\n\nTodos os seus arquivos, pastas, configurações personalizadas, tema, papel de parede e dados salvos serão PERMANENTEMENTE DELETADOS.\n\nEsta ação NÃO PODE SER DESFEITA.\n\nTem certeza que deseja continuar?")) {
                             // Clear all AuraOS localStorage data
                             Object.keys(localStorage).forEach(key => {
@@ -1853,7 +2244,7 @@
                         if (!newFolderName || newFolderName.trim() === "") {
                             // User cancelled or entered empty/whitespace name
                             if (newFolderName !== null) { // Only alert if not cancelled
-                                 alert("Nome da pasta não pode ser vazio.");
+                                 AuraOS.showNotification({title: 'Nome Inválido', message: "Nome da pasta não pode ser vazio.", type: 'warning'});
                             }
                             return;
                         }
@@ -1863,11 +2254,11 @@
                         // You might want a more robust sanitization function for a real OS
                         const sanitizedFolderName = newFolderName.replace(/[\/:*?"<>|]/g, '_');
                         if (sanitizedFolderName !== newFolderName) {
-                            alert(`Nome da pasta continha caracteres inválidos. Foi sanitizado para: ${sanitizedFolderName}`);
+                            AuraOS.showNotification({title: 'Nome Sanitizado', message: `Nome da pasta continha caracteres inválidos. Foi sanitizado para: ${sanitizedFolderName}`, type: 'warning'});
                             newFolderName = sanitizedFolderName;
                         }
                         if (!newFolderName) { // If sanitization resulted in empty string
-                            alert("Nome de pasta inválido após sanitização.");
+                            AuraOS.showNotification({title: 'Nome Inválido', message: "Nome de pasta inválido após sanitização.", type: 'error'});
                             return;
                         }
 
@@ -1875,7 +2266,7 @@
                         const parentNode = getFileSystemNode(currentExplorerPath);
                         if (parentNode && parentNode.type === 'folder') {
                             if (parentNode.children[newFolderName]) {
-                                alert("Um item com este nome já existe neste local.");
+                                AuraOS.showNotification({title: 'Erro ao Criar Pasta', message: "Um item com este nome já existe neste local.", type: 'error'});
                                 return;
                             }
                             parentNode.children[newFolderName] = { type: 'folder', children: {} };
@@ -1883,19 +2274,19 @@
                             updateDesktopAndFileExplorer(currentExplorerPath); // This triggers refresh in current and other relevant views
                             selectItem(null, null); // Deselect any current selection
                         } else {
-                            alert("Não foi possível criar a pasta no caminho atual. Diretório pai não encontrado ou inválido.");
+                            AuraOS.showNotification({title: 'Erro ao Criar Pasta', message: "Não foi possível criar a pasta no caminho atual. Diretório pai não encontrado ou inválido.", type: 'error'});
                         }
                     });
 
                     deleteButton.addEventListener('click', () => {
                         if (!selectedItemPath) {
-                            alert("Nenhum item selecionado para excluir.");
+                            AuraOS.showNotification({title: 'Nenhum Item Selecionado', message: "Nenhum item selecionado para excluir.", type: 'warning'});
                             return;
                         }
 
                         // Prevent deleting the root directory or ".." representation if it was somehow selected with a root-like path
                         if (selectedItemPath === '/') {
-                            alert("Não é possível excluir o diretório raiz.");
+                            AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório raiz.", type: 'error'});
                             selectItem(null, null); // Clear selection
                             return;
                         }
@@ -1905,7 +2296,7 @@
                         // This check is a bit indirect. A truly selected ".." item has its selectedItemPath as the parent dir.
                         // So, if itemName is empty, it means selectedItemPath was like "/" or "/Desktop/" instead of "/Desktop/MyFile.txt"
                         if (itemName === "" && getFileSystemNode(selectedItemPath)?.type === 'folder') {
-                             alert("Não é possível excluir o diretório atual ou pai desta forma. Selecione um arquivo ou subpasta específica.");
+                             AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório atual ou pai desta forma. Selecione um arquivo ou subpasta específica.", type: 'warning'});
                              selectItem(null, null);
                              return;
                         }
@@ -1918,10 +2309,38 @@
                         }
 
 
-                        if (!confirm(`Tem certeza que deseja excluir '${itemName}'? Esta ação não pode ser desfeita.`)) {
-                            return;
-                        }
+                        AuraOS.dialog.confirm(
+                            `Tem certeza que deseja excluir '${itemName}'? Esta ação não pode ser desfeita.`,
+                            () => { // onConfirm
+                                const parts = selectedItemPath.split('/').filter(p => p); // Get path components
+                                if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
+                                    AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório raiz.", type: 'error'});
+                                    return;
+                                }
+                                parts.pop(); // Remove item name to get parent's components
+                                const parentOfSelectedItemPath = '/' + parts.join('/');
 
+                                const parentNode = getFileSystemNode(parentOfSelectedItemPath);
+
+                                if (parentNode && parentNode.type === 'folder' && parentNode.children[itemName]) {
+                                    delete parentNode.children[itemName];
+                                    saveFileSystem();
+                                    const pathToUpdate = parentOfSelectedItemPath;
+                                    selectItem(null, null); // Clear selection
+                                    updateDesktopAndFileExplorer(pathToUpdate);
+                                } else {
+                                    AuraOS.showNotification({title: 'Erro ao Excluir', message: `Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfSelectedItemPath}'. (Caminho completo: ${selectedItemPath})`, type: 'error'});
+                                    // It's possible the item was deleted by another process/tab, refresh view
+                                    selectItem(null, null);
+                                    updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
+                                }
+                            }
+                            // No onCancel needed
+                        );
+                    });
+
+                    // Original logic moved into onConfirm callback
+                    /*
                         const parts = selectedItemPath.split('/').filter(p => p); // Get path components
                         if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
                             alert("Não é possível excluir o diretório raiz.");
@@ -1944,7 +2363,7 @@
                             selectItem(null, null);
                             updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
                         }
-                    });
+                    */
 
                     function renderFileExplorerView(path) {
                         windowEl.dataset.currentPath = path; // Update current path
@@ -2521,6 +2940,347 @@
                 case 'terminal-app':
                     initializeTerminal(body);
                     break;
+                case 'calculator-app':
+                    body.innerHTML = `
+                        <div class="calculator-display">
+                            <span class="calculator-display-text">0</span>
+                        </div>
+                        <div class="calculator-buttons">
+                            <button class="btn-light-gray" data-action="clear">AC</button>
+                            <button class="btn-light-gray" data-action="toggle-sign">+/-</button>
+                            <button class="btn-light-gray" data-action="percentage">%</button>
+                            <button class="btn-operator" data-action="divide">÷</button>
+
+                            <button data-action="digit" data-value="7">7</button>
+                            <button data-action="digit" data-value="8">8</button>
+                            <button data-action="digit" data-value="9">9</button>
+                            <button class="btn-operator" data-action="multiply">×</button>
+
+                            <button data-action="digit" data-value="4">4</button>
+                            <button data-action="digit" data-value="5">5</button>
+                            <button data-action="digit" data-value="6">6</button>
+                            <button class="btn-operator" data-action="subtract">−</button>
+
+                            <button data-action="digit" data-value="1">1</button>
+                            <button data-action="digit" data-value="2">2</button>
+                            <button data-action="digit" data-value="3">3</button>
+                            <button class="btn-operator" data-action="add">+</button>
+
+                            <button class="btn-zero" data-action="digit" data-value="0">0</button>
+                            <button data-action="decimal">.</button>
+                            <button data-action="equals">=</button>
+                        </div>
+                    `;
+
+                    const displayElement = body.querySelector('.calculator-display-text');
+                    const buttons = body.querySelectorAll('.calculator-buttons button');
+
+                    let currentInput = '0';
+                    let previousInput = null;
+                    let operator = null;
+                    let shouldResetDisplay = false; // True if next digit should overwrite current display
+
+                    function updateDisplay() {
+                        displayElement.textContent = currentInput;
+                        // Basic overflow handling: if text is too long, reduce font size slightly.
+                        if (currentInput.length > 9 && currentInput.length <= 13) { // Adjusted thresholds
+                            displayElement.style.fontSize = '38px';
+                        } else if (currentInput.length > 13) {
+                            displayElement.style.fontSize = '28px';
+                        } else {
+                            displayElement.style.fontSize = '48px'; // Default large font
+                        }
+                    }
+
+                    function clearAll() {
+                        currentInput = '0';
+                        previousInput = null;
+                        operator = null;
+                        shouldResetDisplay = false;
+                        if (clearButton) clearButton.textContent = 'AC'; // Ensure button text resets to AC
+                        updateDisplay();
+                    }
+
+                    function toggleSign() {
+                        if (currentInput === '0' || currentInput === null || currentInput === 'Error') return;
+                        if (currentInput.startsWith('-')) {
+                            currentInput = currentInput.substring(1);
+                        } else {
+                            currentInput = '-' + currentInput;
+                        }
+                        updateDisplay();
+                    }
+
+                    function percentage() {
+                        if (currentInput === 'Error') return;
+                        const value = parseFloat(currentInput);
+                        if (isNaN(value)) return;
+                        currentInput = (value / 100).toString();
+                        updateDisplay();
+                        shouldResetDisplay = true;
+                    }
+
+                    function inputDigit(digit) {
+                        if (currentInput === 'Error') currentInput = '0'; // Clear error on new input
+                        if (shouldResetDisplay) {
+                            currentInput = '0';
+                            shouldResetDisplay = false;
+                        }
+
+                        // Update clear button text to C if it's AC and we are starting fresh input
+                        if (clearButton && clearButton.textContent === 'AC' && currentInput === '0' && digit !== '.') {
+                            clearButton.textContent = 'C';
+                        }
+
+                        if (currentInput === '0' && digit !== '.') {
+                            currentInput = digit;
+                        } else {
+                            if (digit === '.' && currentInput.includes('.')) return;
+                            if (currentInput.length >= 18) return; // Limit input length
+                            currentInput += digit;
+                        }
+                        updateDisplay();
+                    }
+
+                    function inputDecimal() {
+                        if (currentInput === 'Error') currentInput = '0';
+                        if (shouldResetDisplay) {
+                            currentInput = '0';
+                            shouldResetDisplay = false;
+                        }
+                        if (!currentInput.includes('.')) {
+                            currentInput += '.';
+                        }
+                        if (clearButton && clearButton.textContent === 'AC') {
+                            clearButton.textContent = 'C';
+                        }
+                        updateDisplay();
+                    }
+
+
+                    function handleOperation(op) {
+                        if (currentInput === 'Error') return;
+
+                        if (operator !== null && !shouldResetDisplay) {
+                            // If there is an existing operator and we haven't just finished a calculation (shouldResetDisplay is false)
+                            // This means user is chaining operations e.g. 5 + 5 + (new op)
+                            performCalculation();
+                            if (currentInput === 'Error') return; // Stop if calculation resulted in error
+                        }
+
+                        if (currentInput !== null) { // currentInput could be the result of a previous calculation
+                            previousInput = currentInput;
+                        }
+                        operator = op;
+                        shouldResetDisplay = true; // Next digit input will start a new number
+                        // After an operator, next clear should be AC, but only if an actual calculation is pending.
+                        // If previousInput is null, it means we are starting a new calculation (e.g. after AC or initial load)
+                        // In this case, the clear button might still be 'C' if the user was typing the first number.
+                        // So, only change to AC if previousInput is set, implying a first operand is locked in.
+                        if (clearButton && previousInput !== null) {
+                            clearButton.textContent = 'AC';
+                        }
+                    }
+
+                    function performCalculation() {
+                        if (previousInput === null || operator === null || currentInput === null || currentInput === 'Error') {
+                            return;
+                        }
+
+                        const prev = parseFloat(previousInput);
+                        const current = parseFloat(currentInput);
+
+                        if (isNaN(prev) || isNaN(current)) {
+                            currentInput = 'Error';
+                            operator = null;
+                            previousInput = null;
+                            shouldResetDisplay = true;
+                            updateDisplay();
+                            return;
+                        }
+
+                        let resultValue;
+                        switch (operator) {
+                            case 'add':
+                                resultValue = prev + current;
+                                break;
+                            case 'subtract':
+                                resultValue = prev - current;
+                                break;
+                            case 'multiply':
+                                resultValue = prev * current;
+                                break;
+                            case 'divide':
+                                if (current === 0) {
+                                    currentInput = 'Error'; // Division by zero
+                                    operator = null;
+                                    previousInput = null;
+                                    shouldResetDisplay = true;
+                                    updateDisplay();
+                                    return;
+                                }
+                                resultValue = prev / current;
+                                break;
+                            default:
+                                return;
+                        }
+
+                        // Format result: Show up to 8 decimal places, remove trailing zeros for integers
+                        if (Number.isInteger(resultValue)) {
+                            currentInput = resultValue.toString();
+                        } else {
+                            // Use toFixed for precision, then parseFloat to remove trailing zeros from the string version
+                            currentInput = parseFloat(resultValue.toFixed(8)).toString();
+                        }
+
+                        // Handle potential overflow from calculation result
+                        if (currentInput.length > 18 && currentInput !== 'Error') {
+                            // Attempt scientific notation for very large/small numbers
+                            const num = parseFloat(currentInput);
+                            if (Math.abs(num) > 1e18 || (Math.abs(num) < 1e-8 && Math.abs(num) > 0) ) {
+                                currentInput = num.toExponential(4); // 4 decimal places in scientific
+                            } else {
+                                 // If not suitable for scientific, but still too long, it's an overflow error
+                                currentInput = 'Error';
+                            }
+                        }
+
+                        operator = null; // Operation complete
+                        // previousInput = currentInput; // Result becomes previousInput for chained operations (this behavior is optional, macOS calc resets previousInput after equals)
+                        previousInput = null; // For macOS like behavior, reset previousInput after equals. Chaining happens if another operator is pressed.
+                        shouldResetDisplay = true; // Next digit starts new input
+                        if (clearButton) clearButton.textContent = 'AC'; // After calculation, next clear should be AC
+                        updateDisplay();
+                    }
+
+                    const clearButton = body.querySelector('button[data-action="clear"]');
+
+                    buttons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            const action = button.dataset.action;
+                            const value = button.dataset.value;
+
+                            switch (action) {
+                                case 'digit':
+                                    inputDigit(value);
+                                    break;
+                                case 'decimal':
+                                    inputDecimal();
+                                    break;
+                                case 'clear':
+                                    if (clearButton && clearButton.textContent === 'C') {
+                                        currentInput = '0';
+                                        shouldResetDisplay = false; // Allow further input
+                                        clearButton.textContent = 'AC';
+                                    } else { // Button shows AC
+                                        clearAll();
+                                    }
+                                    updateDisplay();
+                                    break;
+                                case 'toggle-sign':
+                                    toggleSign();
+                                    break;
+                                case 'percentage':
+                                    percentage();
+                                    break;
+                                case 'divide':
+                                case 'multiply':
+                                case 'subtract':
+                                case 'add':
+                                    handleOperation(action);
+                                    break;
+                                case 'equals':
+                                     if (operator && previousInput !== null) { // Only calculate if there's a pending operation
+                                        performCalculation();
+                                    }
+                                    break;
+                            }
+                        });
+                    });
+
+                    // Initial display update and clear button state
+                    clearAll();
+
+                    // Keyboard Input Handling
+                    windowEl.addEventListener('keydown', (event) => {
+                        // Ensure the calculator window is focused or the event target is within the calculator.
+                        // This check might need refinement depending on how focus is managed globally.
+                        // For now, we assume if the windowEl has the event, it's targeted.
+                        if (!windowEl.classList.contains('focused') && !document.activeElement.closest('#' + uniqueId)) {
+                            // If the window isn't focused and the active element isn't inside this calculator,
+                            // do not process keyboard events for this instance (relevant if multiple calculators could exist).
+                            // However, the current app model doesn't easily allow multiple instances of the same non-'allowMultiple' app.
+                            // A simpler check might be if windowEl.classList.contains('focused')
+                            // For now, let's assume that if the event is on windowEl, it's the active one.
+                        }
+
+                        let handled = true; // Assume event will be handled
+
+                        if (event.key >= '0' && event.key <= '9') {
+                            inputDigit(event.key);
+                        } else {
+                            switch (event.key) {
+                                case '.':
+                                    inputDecimal();
+                                    break;
+                                case '+':
+                                    handleOperation('add');
+                                    break;
+                                case '-':
+                                    handleOperation('subtract');
+                                    break;
+                                case '*':
+                                    handleOperation('multiply');
+                                    break;
+                                case '/':
+                                    handleOperation('divide');
+                                    break;
+                                case '%':
+                                    percentage();
+                                    break;
+                                case 'Enter':
+                                case '=': // Allow both Enter and = for equals
+                                    if (operator && previousInput !== null) {
+                                        performCalculation();
+                                    }
+                                    break;
+                                case 'Backspace':
+                                    if (clearButton && clearButton.textContent === 'C') {
+                                        if (currentInput !== '0') {
+                                            currentInput = '0'; // Clear current entry to 0
+                                            // Operator and previousInput remain for continued calculation
+                                            shouldResetDisplay = false; // Allow further input if needed
+                                        }
+                                        // After 'C' clears the entry to '0', the button should become 'AC'
+                                        clearButton.textContent = 'AC';
+                                    } else if (clearButton && clearButton.textContent === 'AC') {
+                                        clearAll(); // If it's already AC, then do a full clear
+                                    }
+                                    updateDisplay();
+                                    break;
+                                case 'Escape':
+                                    clearAll();
+                                    break;
+                                // No direct universal key for +/-. Will skip direct keyboard mapping for +/- for now.
+                                // User can click the button.
+                                default:
+                                    handled = false; // Event not handled by calculator
+                                    break;
+                            }
+                        }
+
+                        if (handled) {
+                            event.preventDefault(); // Prevent default action if key was handled (e.g., typing in a background input)
+                            event.stopPropagation(); // Stop event from bubbling further
+                        }
+                    });
+
+                    // Ensure the window can receive focus to get keydown events.
+                    // Setting tabIndex makes an element focusable.
+                    windowEl.setAttribute('tabindex', '-1');
+                    // Optionally, focus it when created, though focusWindow should handle this.
+                    // windowEl.focus(); // This might be too aggressive if called directly here.
+                    break;
             }
         }
         
@@ -2534,7 +3294,27 @@
             const output = container.querySelector('.terminal-output');
             
             const commands = {
-                help: () => termLog(`Comandos disponíveis:\nls, cd, pwd, cat, mkdir, touch, rm, open, theme, wallpaper, taskmgr, reboot, shutdown, clear, neofetch, echo, help`, 'output-text'),
+                help: () => termLog(`Comandos disponíveis:
+  ls [-l] [-a] [path]       - Lista arquivos e diretórios. -l para formato longo, -a para mostrar ocultos.
+  cd <diretorio>            - Muda o diretório atual.
+  pwd                       - Mostra o caminho do diretório atual.
+  cat <arquivo>             - Exibe o conteúdo de um arquivo.
+  mkdir <diretorio>         - Cria um novo diretório.
+  touch <arquivo>           - Cria um novo arquivo vazio.
+  rm <arquivo/diretorio>    - Remove um arquivo ou diretório.
+  cp <origem> <destino>     - Copia arquivos ou diretórios (recursivamente).
+  mv <origem> <destino>     - Move (renomeia) arquivos ou diretórios.
+  df                        - Exibe informações de uso do disco (simulado).
+  open <app_id>             - Abre um aplicativo (ex: open control-panel).
+  theme [dark|light]        - Muda o tema do sistema.
+  wallpaper [nome]          - Muda o papel de parede (ex: wallpaper aurora).
+  taskmgr                   - Abre o Gerenciador de Tarefas.
+  reboot                    - Reinicia o AuraOS.
+  shutdown                  - Desliga o AuraOS (volta para tela de login).
+  clear                     - Limpa o terminal.
+  neofetch                  - Exibe informações do sistema (estilo Neofetch).
+  echo [texto]              - Exibe o texto fornecido.
+  help                      - Mostra esta lista de comandos.`, 'output-text'),
                 clear: () => output.innerHTML = '',
                 pwd: () => termLog(currentPath, 'output-text'),
                 reboot: () => window.location.reload(),
@@ -2561,8 +3341,54 @@
                     const node = getFileSystemNode(currentPath);
                     if (!node || node.type !== 'folder') return termLog('Diretório inválido', 'output-error');
                     let items = Object.keys(node.children);
-                    if (!args.includes('-a')) items = items.filter(name => !name.startsWith('.'));
-                    termLog(items.join('  '), 'output-text');
+                    const showAll = args.includes('-a');
+                    const longFormat = args.includes('-l');
+
+                    let items = Object.entries(node.children)
+                        .map(([name, details]) => ({ name, ...details }));
+
+                    if (!showAll) {
+                        items = items.filter(item => !item.name.startsWith('.'));
+                    }
+
+                    if (longFormat) {
+                        items.forEach(item => {
+                            const permissions = item.type === 'folder' ? 'drwxr-xr-x' : '-rw-r--r--';
+                            const owner = 'AuraUser';
+                            // Mock size: Folders get 4.0K, files get random size with K, M, or B suffix
+                            let size;
+                            if (item.type === 'folder') {
+                                size = '4.0K';
+                            } else {
+                                const randomSize = Math.random() * 1024 * 10; // Max 10MB for variety
+                                if (randomSize > 1024 * 1024) { // Megabytes
+                                    size = (randomSize / (1024 * 1024)).toFixed(1) + 'M';
+                                } else if (randomSize > 1024) { // Kilobytes
+                                    size = (randomSize / 1024).toFixed(1) + 'K';
+                                } else { // Bytes
+                                    size = Math.floor(randomSize) + 'B';
+                                }
+                            }
+                            // Mock date - simplified, e.g., "Jan 01 10:00"
+                            // More realistic date generation can be added if needed
+                            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                            const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
+                            const month = months[Math.floor(Math.random() * 12)];
+                            const hour = String(Math.floor(Math.random() * 24)).padStart(2, '0');
+                            const minute = String(Math.floor(Math.random() * 60)).padStart(2, '0');
+                            const date = `${month} ${day} ${hour}:${minute}`;
+
+                            //termLog(`${permissions} ${owner} ${size.padStart(6)} ${date} ${item.name}`, 'output-text');
+                            // Using span for better alignment (though true columns are hard in simple HTML)
+                            // For more precise alignment, one might use a table or CSS grid within the terminal line,
+                            // but that adds complexity. This approach uses pre/whitespace for basic alignment.
+                            const sizePadded = size.padStart(7);
+                            const ownerPadded = owner.padEnd(10);
+                            termLog(`${permissions} ${ownerPadded} ${sizePadded} ${date}  ${item.name}`, 'output-text');
+                        });
+                    } else {
+                        termLog(items.map(item => item.name).join('  '), 'output-text');
+                    }
                 },
                 cd: (args) => {
                     if (!args[0]) return;
@@ -2641,7 +3467,259 @@
                     `;
                     termLog(neofetchArt, 'output-text');
                 },
-                 echo: (args) => termLog(args.join(' '), 'output-text')
+                echo: (args) => termLog(args.join(' '), 'output-text'),
+                cp: (args) => {
+                    if (args.length < 2) {
+                        return termLog('cp: missing source or destination argument', 'output-error');
+                    }
+
+                    const sourcePath = resolvePath(currentPath, args[0]);
+                    const destPath = resolvePath(currentPath, args[1]);
+
+                    // Placeholder for permission denied
+                    if (sourcePath.startsWith('/System') || destPath.startsWith('/System')) {
+                        return termLog(`cp: ${sourcePath.startsWith('/System') ? sourcePath : destPath}: Permission denied (mock)`, 'output-error');
+                    }
+
+                    const sourceNode = getFileSystemNode(sourcePath);
+                    if (!sourceNode) {
+                        return termLog(`cp: ${args[0]}: No such file or directory`, 'output-error');
+                    }
+
+                    const sourceName = sourcePath.substring(sourcePath.lastIndexOf('/') + 1);
+
+                    function copyRecursive(currentSourceNode, currentDestPath) {
+                        const targetName = currentDestPath.substring(currentDestPath.lastIndexOf('/') + 1);
+                        const parentDestPath = currentDestPath.substring(0, currentDestPath.lastIndexOf('/')) || '/';
+                        const parentDestNode = getFileSystemNode(parentDestPath);
+
+                        if (!parentDestNode || parentDestNode.type !== 'folder') {
+                            termLog(`cp: cannot create '${currentDestPath}': Parent directory '${parentDestPath}' is not a directory or does not exist.`, 'output-error');
+                            return false;
+                        }
+
+                        if (parentDestNode.children[targetName]) {
+                            // Check if the target is a directory and source is a file, then it's fine (handled by initial destNode check)
+                            // Otherwise, it's a conflict.
+                             if (!(parentDestNode.children[targetName].type === 'folder' && currentSourceNode.type === 'file')) {
+                                termLog(`cp: cannot copy '${currentSourceNode.name || sourceName}' to '${currentDestPath}': File or directory already exists.`, 'output-error');
+                                return false;
+                            }
+                        }
+
+
+                        if (currentSourceNode.type === 'file') {
+                            parentDestNode.children[targetName] = { type: 'file', content: currentSourceNode.content };
+                        } else if (currentSourceNode.type === 'folder') {
+                            parentDestNode.children[targetName] = { type: 'folder', children: {} };
+                            for (const childName in currentSourceNode.children) {
+                                if (!copyRecursive(currentSourceNode.children[childName], currentDestPath + '/' + childName)) {
+                                    return false; // Propagate failure
+                                }
+                            }
+                        }
+                        return true;
+                    }
+
+                    const destNode = getFileSystemNode(destPath);
+                    let finalDestPath = destPath;
+
+                    if (destNode) { // Destination exists
+                        if (destNode.type === 'folder') {
+                            // Scenario 1: Destination is an existing folder. Copy inside it.
+                            finalDestPath = destPath + '/' + sourceName;
+                            // Check for existing item at finalDestPath before recursive call
+                            const finalDestItemName = finalDestPath.substring(finalDestPath.lastIndexOf('/') + 1);
+                            const finalDestParentNode = getFileSystemNode(destPath); // destPath is the folder itself
+                            if (finalDestParentNode && finalDestParentNode.children[finalDestItemName]) {
+                                return termLog(`cp: cannot copy to '${finalDestPath}': File or directory already exists`, 'output-error');
+                            }
+
+                        } else { // Destination is an existing file
+                            if (sourceNode.type === 'folder') {
+                                return termLog(`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`, 'output-error');
+                            }
+                            // Overwriting a file with another file
+                            // For now, let's prevent overwrite as per instructions, but one could add overwrite logic here.
+                            // To prevent overwrite:
+                            return termLog(`cp: '${destPath}': File exists. Overwrite not implemented.`, 'output-error');
+                            // If overwrite was desired:
+                            // const parentDestPath = destPath.substring(0, destPath.lastIndexOf('/')) || '/';
+                            // const parentDestNode = getFileSystemNode(parentDestPath);
+                            // if (parentDestNode) {
+                            //     delete parentDestNode.children[destPath.substring(destPath.lastIndexOf('/') + 1)];
+                            // } else { // Should not happen if destNode exists
+                            //    return termLog(`cp: Error accessing parent of '${destPath}'`, 'output-error');
+                            // }
+                            // finalDestPath remains destPath
+                        }
+                    }
+                    // If destNode is null, it's Scenario 2 (new path), finalDestPath is already destPath.
+
+                    if (copyRecursive(sourceNode, finalDestPath)) {
+                        saveFileSystem();
+                        // Determine a relevant path for UI update.
+                        // If finalDestPath is '/Desktop/something', update '/Desktop'.
+                        // Otherwise, update the parent of finalDestPath.
+                        let updatePath = finalDestPath.substring(0, finalDestPath.lastIndexOf('/')) || '/';
+                        if (updatePath === '/' && finalDestPath.startsWith("/Desktop/")) {
+                            updatePath = "/Desktop";
+                        } else if (updatePath === '') { // case where finalDestPath was like '/file.txt'
+                            updatePath = '/';
+                        }
+                        updateDesktopAndFileExplorer(updatePath);
+                        termLog(`cp: Copied '${args[0]}' to '${args[1]}'`, 'output-text');
+                    }
+                    // Errors inside copyRecursive are already logged.
+                },
+                mv: (args) => {
+                    if (args.length < 2) {
+                        return termLog('mv: missing source or destination argument', 'output-error');
+                    }
+
+                    const sourcePath = resolvePath(currentPath, args[0]);
+                    const destPath = resolvePath(currentPath, args[1]);
+
+                    if (sourcePath === destPath) {
+                        return termLog(`mv: '${args[0]}' and '${args[1]}' are the same file`, 'output-error');
+                    }
+
+                    // Placeholder for permission denied
+                    if (sourcePath.startsWith('/System') || destPath.startsWith('/System')) {
+                        const problematicPath = sourcePath.startsWith('/System') ? sourcePath : destPath;
+                        return termLog(`mv: ${problematicPath}: Permission denied (mock)`, 'output-error');
+                    }
+
+                    const sourceNode = getFileSystemNode(sourcePath);
+                    if (!sourceNode) {
+                        return termLog(`mv: ${args[0]}: No such file or directory`, 'output-error');
+                    }
+
+                    const sourceName = sourcePath.substring(sourcePath.lastIndexOf('/') + 1);
+                    const sourceParentPath = sourcePath.substring(0, sourcePath.lastIndexOf('/')) || '/';
+
+                    const destName = destPath.substring(destPath.lastIndexOf('/') + 1);
+                    const destParentPath = destPath.substring(0, destPath.lastIndexOf('/')) || '/';
+
+                    // Handle Renaming (Optimization for same directory)
+                    if (sourceParentPath === destParentPath) {
+                        const parentNode = getFileSystemNode(sourceParentPath);
+                        if (parentNode && parentNode.children[destName]) {
+                            return termLog(`mv: cannot rename '${sourceName}' to '${destName}': File exists`, 'output-error');
+                        }
+                        if (parentNode) {
+                            parentNode.children[destName] = parentNode.children[sourceName];
+                            delete parentNode.children[sourceName];
+                            saveFileSystem();
+                            updateDesktopAndFileExplorer(sourceParentPath);
+                            termLog(`mv: Renamed '${args[0]}' to '${args[1]}'`, 'output-text');
+                        } else {
+                            termLog(`mv: Error accessing parent directory '${sourceParentPath}'`, 'output-error');
+                        }
+                        return;
+                    }
+
+                    // Implement Move Logic (Copy then Delete)
+                    let targetDestPath = destPath;
+                    const destNode = getFileSystemNode(destPath);
+
+                    if (destNode && destNode.type === 'folder') {
+                        targetDestPath = destPath + '/' + sourceName;
+                        if (getFileSystemNode(targetDestPath)) {
+                            return termLog(`mv: cannot move '${sourceName}' to '${targetDestPath}': File or directory already exists`, 'output-error');
+                        }
+                    } else if (destNode && destNode.type === 'file') {
+                        return termLog(`mv: cannot overwrite non-directory '${destPath}' with '${sourcePath}' or file already exists. Overwrite not implemented.`, 'output-error');
+                    }
+                     // If destNode is null, targetDestPath is already destPath (moving to a new name/location)
+                     else if (!destNode) {
+                        // Ensure the parent of the new location exists
+                        const parentOfFinalDest = getFileSystemNode(destParentPath);
+                        if (!parentOfFinalDest || parentOfFinalDest.type !== 'folder') {
+                            return termLog(`mv: cannot move to '${destPath}': Parent directory '${destParentPath}' does not exist or is not a directory.`, 'output-error');
+                        }
+                    }
+
+
+                    // Recursive copy function (can be shared or adapted from cp)
+                    function copyRecursiveForMv(currentSourceNode, currentDestPath) {
+                        const currentTargetName = currentDestPath.substring(currentDestPath.lastIndexOf('/') + 1);
+                        const currentParentDestPath = currentDestPath.substring(0, currentDestPath.lastIndexOf('/')) || '/';
+                        const currentParentDestNode = getFileSystemNode(currentParentDestPath);
+
+                        if (!currentParentDestNode || currentParentDestNode.type !== 'folder') {
+                            termLog(`mv: (during copy) cannot create '${currentDestPath}': Parent directory '${currentParentDestPath}' is not a directory.`, 'output-error');
+                            return false;
+                        }
+                         // This check might be redundant if targetDestPath existence is checked before calling copyRecursiveForMv the first time
+                        if (currentParentDestNode.children[currentTargetName]) {
+                            termLog(`mv: (during copy) cannot copy to '${currentDestPath}': File or directory already exists.`, 'output-error');
+                            return false;
+                        }
+
+                        if (currentSourceNode.type === 'file') {
+                            currentParentDestNode.children[currentTargetName] = { type: 'file', content: currentSourceNode.content };
+                        } else if (currentSourceNode.type === 'folder') {
+                            currentParentDestNode.children[currentTargetName] = { type: 'folder', children: {} };
+                            for (const childNameKey in currentSourceNode.children) {
+                                if (!copyRecursiveForMv(currentSourceNode.children[childNameKey], currentDestPath + '/' + childNameKey)) {
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    }
+
+                    if (copyRecursiveForMv(sourceNode, targetDestPath)) {
+                        // If copy is successful, delete the original source
+                        const sourceParentNode = getFileSystemNode(sourceParentPath);
+                        if (sourceParentNode && sourceParentNode.children[sourceName]) {
+                            delete sourceParentNode.children[sourceName];
+                        } else {
+                            // This should ideally not happen if sourceNode was found initially
+                            termLog(`mv: Error finding original source '${sourcePath}' for deletion after copy. File system might be inconsistent.`, 'output-error');
+                            // Attempt to clean up the copied part if possible, or leave as is. For now, log and proceed.
+                        }
+
+                        saveFileSystem();
+                        updateDesktopAndFileExplorer(sourceParentPath); // Update original location
+                        updateDesktopAndFileExplorer(targetDestPath.substring(0, targetDestPath.lastIndexOf('/')) || '/'); // Update new location's parent
+
+                        termLog(`mv: Moved '${args[0]}' to '${args[1]}'`, 'output-text');
+                    } else {
+                        // Copy failed, error already logged by copyRecursiveForMv or pre-checks
+                        // No need to delete source if copy didn't complete
+                    }
+                },
+                df: (args) => {
+                    const totalSizeGB = 1.0; // Mock total size in GB
+                    const usedPercentage = 30; // Mock used percentage
+
+                    const totalSizeMB = totalSizeGB * 1024;
+                    const usedSizeMB = (totalSizeMB * usedPercentage) / 100;
+                    const availableSizeMB = totalSizeMB - usedSizeMB;
+
+                    // Prepare formatted output strings
+                    const totalStr = totalSizeGB.toFixed(1) + 'G';
+                    const usedStr = Math.round(usedSizeMB) + 'M'; // Round to nearest MB
+                    const availableStr = Math.round(availableSizeMB) + 'M'; // Round to nearest MB
+                    const usePercentStr = usedPercentage + '%';
+
+                    // Header - using spaces for alignment. Adjust spacing as needed for your terminal font.
+                    // The class 'output-text' has 'white-space: pre-wrap;' which helps.
+                    const header = "Filesystem     Type        Total     Used Available Use% Mounted on";
+                    // Data row - padding values to align with header
+                    const dataRow =
+                        "IndexedDB".padEnd(15) +
+                        "AuraFS".padEnd(12) +
+                        totalStr.padStart(7) + " " +
+                        usedStr.padStart(7) + " " +
+                        availableStr.padStart(9) + " " +
+                        usePercentStr.padStart(4) + " /";
+
+                    termLog(header, 'output-text');
+                    termLog(dataRow, 'output-text');
+                }
             };
 
             function termLog(html, className) {
@@ -2717,7 +3795,7 @@
         // --- SISTEMA DE ARQUIVOS E PERSISTÊNCIA ---
         function createItem(itemPath, type, content = '') {
             if (!itemPath || itemPath === '/') {
-                alert("Error: Cannot create item at root or with invalid path.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Cannot create item at root or with invalid path.", type: 'error' });
                 return false;
             }
 
@@ -2728,22 +3806,22 @@
             // Sanitizar nome do item
             const sanitizedName = itemName.replace(/[\/\\:*?"<>|]/g, '_');
             if (sanitizedName !== itemName) {
-                alert(`Nome continha caracteres inválidos e foi sanitizado para: ${sanitizedName}`);
+                AuraOS.showNotification({ title: 'Nome Inválido', message: `Nome continha caracteres inválidos e foi sanitizado para: ${sanitizedName}`, type: 'warning' });
             }
             if (!sanitizedName.trim()) {
-                alert("Error: Nome do item inválido após sanitização.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Nome do item inválido após sanitização.", type: 'error' });
                 return false;
             }
 
             const parentNode = getFileSystemNode(parentPath);
             if (!parentNode || parentNode.type !== 'folder') {
-                alert("Error: Diretório pai não encontrado.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Diretório pai não encontrado.", type: 'error' });
                 console.error(`[createItem] Parent node not found for path: ${parentPath}`);
                 return false;
             }
 
             if (parentNode.children[sanitizedName]) {
-                alert(`Error: Um item com o nome '${sanitizedName}' já existe em '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: `Um item com o nome '${sanitizedName}' já existe em '${parentPath}'.`, type: 'error' });
                 return false;
             }
 
@@ -2753,7 +3831,7 @@
             } else if (type === 'file') {
                 parentNode.children[sanitizedName] = { type: 'file', content: content || '' };
             } else {
-                alert("Error: Tipo de item inválido. Use 'folder' ou 'file'.");
+                AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Tipo de item inválido. Use 'folder' ou 'file'.", type: 'error' });
                 return false;
             }
 
@@ -2765,7 +3843,7 @@
 
         function deleteItem(itemPath) {
             if (!itemPath || itemPath === '/') {
-                alert("Error: Cannot delete the root directory or an invalid path.");
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Cannot delete the root directory or an invalid path.", type: 'error' });
                 return false;
             }
 
@@ -2775,13 +3853,13 @@
 
             const parentNode = getFileSystemNode(parentPath);
             if (!parentNode || parentNode.type !== 'folder') {
-                alert("Error: Parent directory not found.");
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: "Parent directory not found.", type: 'error' });
                 console.error(`[deleteItem] Parent node not found for path: ${parentPath}`);
                 return false;
             }
 
             if (!parentNode.children[itemName]) {
-                alert(`Error: Item to delete ('${itemName}') not found in '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Item to delete ('${itemName}') not found in '${parentPath}'.`, type: 'error' });
                 console.error(`[deleteItem] Item to delete not found: ${itemName} in ${parentPath}`);
                 return false;
             }
@@ -2795,22 +3873,22 @@
 
         function renameItem(itemPath, newName) {
             if (!itemPath || !newName || newName.trim() === "") {
-                alert("Error: Invalid new name provided.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Invalid new name provided.", type: 'error' });
                 return false;
             }
 
             let sanitizedNewName = newName.trim().replace(/[\/\\:*?"<>|]/g, '_');
             if (sanitizedNewName !== newName.trim()) {
-                alert(`Name contained invalid characters and was sanitized to: ${sanitizedNewName}`);
+                AuraOS.showNotification({ title: 'Aviso de Nome', message: `Name contained invalid characters and was sanitized to: ${sanitizedNewName}`, type: 'warning' });
             }
             if (!sanitizedNewName) {
-                alert("Error: Sanitized name is empty. Please provide a valid name.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Sanitized name is empty. Please provide a valid name.", type: 'error' });
                 return false;
             }
             newName = sanitizedNewName; // Use the sanitized name
 
             if (itemPath === '/') {
-                alert("Error: Cannot rename the root directory.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Cannot rename the root directory.", type: 'error' });
                 return false;
             }
 
@@ -2820,19 +3898,19 @@
 
             const parentNode = getFileSystemNode(parentPath);
             if (!parentNode || parentNode.type !== 'folder') {
-                alert("Error: Parent directory not found or is not a folder.");
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Parent directory not found or is not a folder.", type: 'error' });
                 console.error(`[renameItem] Parent node not found for path: ${parentPath}`);
                 return false;
             }
 
             if (!parentNode.children[oldName]) {
-                alert(`Error: Item to rename ('${oldName}') not found in '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `Item to rename ('${oldName}') not found in '${parentPath}'.`, type: 'error' });
                 console.error(`[renameItem] Item to rename not found: ${oldName} in ${parentPath}`);
                 return false;
             }
 
             if (oldName !== newName && parentNode.children[newName]) {
-                alert(`Error: An item with the name '${newName}' already exists in '${parentPath}'.`);
+                AuraOS.showNotification({ title: 'Erro ao Renomear', message: `An item with the name '${newName}' already exists in '${parentPath}'.`, type: 'error' });
                 return false;
             }
 
@@ -3161,9 +4239,13 @@
                         menuItems.push({
                             label: "Excluir",
                             action: () => {
-                                if (confirm(`Tem certeza que deseja excluir "${name}"?`)) {
-                                    deleteItem(itemPath);
-                                }
+                                AuraOS.dialog.confirm(
+                                    `Tem certeza que deseja excluir "${name}"?`,
+                                    () => { // onConfirm
+                                        deleteItem(itemPath);
+                                    }
+                                    // No onCancel needed
+                                );
                             }
                         });
                         
@@ -3263,6 +4345,7 @@
                             });
                         }
                     }
+                    AuraOS.showNotification({ title: 'Erro de Autenticação', message: 'Senha incorreta!', type: 'error' });
                     lockPasswordInput.value = '';
                     lockPasswordInput.focus();
                 }
@@ -3373,6 +4456,7 @@
                         });
                     }
                 }
+                AuraOS.showNotification({ title: 'Erro de Login', message: 'Senha incorreta!', type: 'error' });
                 passwordInput.value = ''; // Limpar o campo da senha
                 passwordInput.focus(); // Focar no campo da senha novamente
             }
@@ -3420,6 +4504,8 @@
                                 const folderName = prompt("Nome da nova pasta:", "Nova Pasta");
                                 if (folderName && folderName.trim() !== "") {
                                     createItem('/Desktop/' + folderName.trim(), 'folder');
+                                } else if (folderName !== null) { // Not cancelled, but empty or whitespace
+                                    AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome da pasta não pode ser vazio.', type: 'warning'});
                                 }
                             }
                         },
@@ -3429,6 +4515,8 @@
                                 const fileName = prompt("Nome do novo arquivo:", "novo_arquivo.txt");
                                 if (fileName && fileName.trim() !== "") {
                                     createItem('/Desktop/' + fileName.trim(), 'file', '');
+                                } else if (fileName !== null) { // Not cancelled, but empty or whitespace
+                                    AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome do arquivo não pode ser vazio.', type: 'warning'});
                                 }
                             }
                         },
