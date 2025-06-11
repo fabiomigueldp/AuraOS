@@ -1015,9 +1015,14 @@
         }
 
         function setWallpaper(wallpaperName) {
-            const bg = document.querySelector('.background-effect');
-            bg.className = 'background-effect';
-            bg.classList.add(`wallpaper-${wallpaperName}`);
+            console.log('[setWallpaper] Received wallpaperName:', wallpaperName);
+            const bgElementForSet = document.querySelector('.background-effect');
+            console.log('[setWallpaper] .background-effect element at start of function:', bgElementForSet ? bgElementForSet.className : 'NOT FOUND');
+
+            bgElementForSet.className = 'background-effect'; // Reset classes
+            bgElementForSet.classList.add(`wallpaper-${wallpaperName}`);
+            console.log('[setWallpaper] .background-effect classList after add:', bgElementForSet ? bgElementForSet.className : 'NOT FOUND');
+
             saveSystemState();
         }
         function setTheme(themeName) {
@@ -1083,7 +1088,13 @@
             }
             Object.keys(state.themeSettings).forEach(prop => {
                 if (prop === 'wallpaper') {
-                    if(state.themeSettings[prop]) setWallpaper(state.themeSettings[prop]);
+                    if(state.themeSettings[prop]) {
+                        console.log('[applySystemState] Attempting to apply wallpaper:', state.themeSettings.wallpaper);
+                        const bgElementForApply = document.querySelector('.background-effect');
+                        console.log('[applySystemState] .background-effect element before setWallpaper:', bgElementForApply ? bgElementForApply.className : 'NOT FOUND');
+                        setWallpaper(state.themeSettings.wallpaper);
+                        console.log('[applySystemState] .background-effect element after setWallpaper:', bgElementForApply ? bgElementForApply.className : 'NOT FOUND');
+                    }
                 } else {
                     if(state.themeSettings[prop]) root.style.setProperty(prop, state.themeSettings[prop]);
                 }
