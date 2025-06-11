@@ -759,6 +759,126 @@
         .featured-title { font-size: 0.8rem; color: var(--highlight-primary); padding: 5px 15px; font-weight: 600; }
         .no-results { padding: 20px; text-align: center; color: var(--subtle-text-color); font-style: italic; }
 
+        /* Calculator App Styles */
+        #calculator-app .window-body {
+            padding: 0; /* Remove default padding */
+            display: flex;
+            flex-direction: column;
+            background-color: #3c3c3c; /* macOS dark mode calculator background */
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        /* Prevent resizing for calculator-app if resizable:false is not handled by JS */
+        .window#calculator-app {
+            resize: none;
+        }
+
+        .calculator-display {
+            background-color: #3c3c3c; /* Match window body */
+            color: white;
+            font-size: 48px; /* Large font */
+            font-weight: 300;
+            text-align: right;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-grow: 1; /* Allow display to take available space */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Align text to bottom */
+            min-height: 70px; /* Minimum height for the display area */
+        }
+
+        .calculator-display-text {
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            white-space: nowrap; /* Prevent wrapping */
+        }
+
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 8px; /* Increased gap for round buttons */
+            padding: 10px; /* Add some padding around the button grid */
+            background-color: #3c3c3c; /* Match window body, lines are not needed for round buttons */
+        }
+
+        .calculator-buttons button {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 20px; /* Adjusted font size for round buttons */
+            font-weight: 400;
+            border: none;
+            /* padding: 18px 0; Remove padding or adjust significantly */
+            background-color: #505050; /* Dark gray for numbers and general buttons */
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease; /* Added transform transition */
+            border-radius: 50%; /* Make buttons round */
+            width: 60px; /* Fixed width for round buttons */
+            height: 60px; /* Fixed height for round buttons */
+            margin: auto; /* Center buttons in grid cells if cell is larger */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            line-height: 1; /* Ensure text is vertically centered */
+        }
+
+        .calculator-buttons button:hover {
+            filter: brightness(1.2);
+        }
+
+        .calculator-buttons button:active {
+            filter: brightness(0.8);
+        }
+
+        /* Specific button styles based on macOS theme */
+        .calculator-buttons button.btn-operator {
+            background-color: #FF9500; /* Orange for operators */
+            color: white;
+        }
+        .calculator-buttons button.btn-operator:hover { filter: brightness(1.1); }
+        .calculator-buttons button.btn-operator:active { filter: brightness(0.9); }
+
+
+        .calculator-buttons button.btn-light-gray {
+            background-color: #D4D4D2; /* Light gray for AC, +/-, % */
+            color: black;
+        }
+        .calculator-buttons button.btn-light-gray:hover { filter: brightness(0.95); }
+        .calculator-buttons button.btn-light-gray:active { filter: brightness(0.85); }
+
+
+        /* Zero button spanning two columns */
+        .calculator-buttons button.btn-zero {
+            grid-column: span 2;
+            width: calc(60px * 2 + 8px); /* (button width * 2) + grid-gap */
+            border-radius: 30px; /* Elongated pill shape */
+        }
+
+        /* Styling for light theme (Optional for now, focus on dark mode as per AC) */
+        .light-theme #calculator-app .window-body {
+            background-color: #f2f2f7;
+        }
+        .light-theme .calculator-display {
+            background-color: #f2f2f7;
+            color: black;
+        }
+        .light-theme .calculator-buttons {
+            background-color: #cccccc; /* Lighter grid lines for light theme */
+        }
+        .light-theme .calculator-buttons button {
+            background-color: #e8e8e8; /* Light theme number buttons */
+            color: black;
+        }
+        .light-theme .calculator-buttons button.btn-operator {
+            background-color: #FF9500; /* Orange can stay same or be adjusted */
+            color: white;
+        }
+        .light-theme .calculator-buttons button.btn-light-gray {
+            background-color: #D4D4D2; /* Light gray can stay same or be adjusted */
+            color: black;
+        }
+
         /* Outros elementos (Login, Context Menu, etc) */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(20px); transition: opacity 0.5s ease; }
         .login-box { text-align: center; padding: 40px; background: var(--glass-background); border-radius: var(--ui-corner-radius); border: 1px solid var(--glass-border); box-shadow: var(--window-shadow); }
@@ -1152,6 +1272,22 @@
                         <svg viewBox="0 0 24 24"><path d="M4 3h16c.55 0 1 .45 1 1v16c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1V4c0-.55.45-1 1-1zm2 4v2h4V7H6zm0 4v2h6v-2H6z" fill="var(--icon-fill)"/></svg>
                         <p>Terminal</p>
                     </div>
+
+                    <div class="desktop-icon" data-app-id="calculator-app" title="Calculadora">
+                        <svg viewBox="0 0 60 60" fill="var(--icon-fill)">
+                            <rect x="10" y="5" width="40" height="50" rx="5" ry="5" fill="#333"/>
+                            <rect x="15" y="10" width="30" height="10" rx="2" ry="2" fill="#555"/>
+                            <circle cx="20" cy="28" r="3" fill="#777"/>
+                            <circle cx="30" cy="28" r="3" fill="#777"/>
+                            <circle cx="40" cy="28" r="3" fill="#777"/>
+                            <circle cx="20" cy="38" r="3" fill="#777"/>
+                            <circle cx="30" cy="38" r="3" fill="#777"/>
+                            <circle cx="40" cy="38" r="3" fill="#777"/>
+                            <circle cx="20" cy="48" r="3" fill="#FF9500"/>
+                            <circle cx="30" cy="48" r="3" fill="#D4D4D2"/>
+                        </svg>
+                        <p>Calculadora</p>
+                    </div>
                 </div>
                 
                 <!-- Divisor visual -->
@@ -1194,6 +1330,21 @@
             </div>
             <div class="dock-item" data-app-id="terminal-app" title="Terminal">
                 <svg viewBox="0 0 24 24"><path d="M4 3h16c.55 0 1 .45 1 1v16c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1V4c0-.55.45-1 1-1zm2 4v2h4V7H6zm0 4v2h6v-2H6z"/></svg>
+                <div class="active-indicator"></div>
+            </div>
+            <div class="dock-item" data-app-id="calculator-app" title="Calculadora">
+                <svg viewBox="0 0 60 60" fill="var(--icon-fill)">
+                    <rect x="10" y="5" width="40" height="50" rx="5" ry="5" fill="#333"/>
+                    <rect x="15" y="10" width="30" height="10" rx="2" ry="2" fill="#555"/>
+                    <circle cx="20" cy="28" r="3" fill="#777"/>
+                    <circle cx="30" cy="28" r="3" fill="#777"/>
+                    <circle cx="40" cy="28" r="3" fill="#777"/>
+                    <circle cx="20" cy="38" r="3" fill="#777"/>
+                    <circle cx="30" cy="38" r="3" fill="#777"/>
+                    <circle cx="40" cy="38" r="3" fill="#777"/>
+                    <circle cx="20" cy="48" r="3" fill="#FF9500"/>
+                    <circle cx="30" cy="48" r="3" fill="#D4D4D2"/>
+                </svg>
                 <div class="active-indicator"></div>
             </div>
         </div>
@@ -1426,6 +1577,7 @@
             'task-manager': { title: 'Gerenciador de Tarefas', width: 500, height: 400 },
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
             'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
+            'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
         };
         
         // --- NOVO: AURA MUSIC SONG DATABASE ---
@@ -2761,6 +2913,347 @@
                 
                 case 'terminal-app':
                     initializeTerminal(body);
+                    break;
+                case 'calculator-app':
+                    body.innerHTML = `
+                        <div class="calculator-display">
+                            <span class="calculator-display-text">0</span>
+                        </div>
+                        <div class="calculator-buttons">
+                            <button class="btn-light-gray" data-action="clear">AC</button>
+                            <button class="btn-light-gray" data-action="toggle-sign">+/-</button>
+                            <button class="btn-light-gray" data-action="percentage">%</button>
+                            <button class="btn-operator" data-action="divide">÷</button>
+
+                            <button data-action="digit" data-value="7">7</button>
+                            <button data-action="digit" data-value="8">8</button>
+                            <button data-action="digit" data-value="9">9</button>
+                            <button class="btn-operator" data-action="multiply">×</button>
+
+                            <button data-action="digit" data-value="4">4</button>
+                            <button data-action="digit" data-value="5">5</button>
+                            <button data-action="digit" data-value="6">6</button>
+                            <button class="btn-operator" data-action="subtract">−</button>
+
+                            <button data-action="digit" data-value="1">1</button>
+                            <button data-action="digit" data-value="2">2</button>
+                            <button data-action="digit" data-value="3">3</button>
+                            <button class="btn-operator" data-action="add">+</button>
+
+                            <button class="btn-zero" data-action="digit" data-value="0">0</button>
+                            <button data-action="decimal">.</button>
+                            <button data-action="equals">=</button>
+                        </div>
+                    `;
+
+                    const displayElement = body.querySelector('.calculator-display-text');
+                    const buttons = body.querySelectorAll('.calculator-buttons button');
+
+                    let currentInput = '0';
+                    let previousInput = null;
+                    let operator = null;
+                    let shouldResetDisplay = false; // True if next digit should overwrite current display
+
+                    function updateDisplay() {
+                        displayElement.textContent = currentInput;
+                        // Basic overflow handling: if text is too long, reduce font size slightly.
+                        if (currentInput.length > 9 && currentInput.length <= 13) { // Adjusted thresholds
+                            displayElement.style.fontSize = '38px';
+                        } else if (currentInput.length > 13) {
+                            displayElement.style.fontSize = '28px';
+                        } else {
+                            displayElement.style.fontSize = '48px'; // Default large font
+                        }
+                    }
+
+                    function clearAll() {
+                        currentInput = '0';
+                        previousInput = null;
+                        operator = null;
+                        shouldResetDisplay = false;
+                        if (clearButton) clearButton.textContent = 'AC'; // Ensure button text resets to AC
+                        updateDisplay();
+                    }
+
+                    function toggleSign() {
+                        if (currentInput === '0' || currentInput === null || currentInput === 'Error') return;
+                        if (currentInput.startsWith('-')) {
+                            currentInput = currentInput.substring(1);
+                        } else {
+                            currentInput = '-' + currentInput;
+                        }
+                        updateDisplay();
+                    }
+
+                    function percentage() {
+                        if (currentInput === 'Error') return;
+                        const value = parseFloat(currentInput);
+                        if (isNaN(value)) return;
+                        currentInput = (value / 100).toString();
+                        updateDisplay();
+                        shouldResetDisplay = true;
+                    }
+
+                    function inputDigit(digit) {
+                        if (currentInput === 'Error') currentInput = '0'; // Clear error on new input
+                        if (shouldResetDisplay) {
+                            currentInput = '0';
+                            shouldResetDisplay = false;
+                        }
+
+                        // Update clear button text to C if it's AC and we are starting fresh input
+                        if (clearButton && clearButton.textContent === 'AC' && currentInput === '0' && digit !== '.') {
+                            clearButton.textContent = 'C';
+                        }
+
+                        if (currentInput === '0' && digit !== '.') {
+                            currentInput = digit;
+                        } else {
+                            if (digit === '.' && currentInput.includes('.')) return;
+                            if (currentInput.length >= 18) return; // Limit input length
+                            currentInput += digit;
+                        }
+                        updateDisplay();
+                    }
+
+                    function inputDecimal() {
+                        if (currentInput === 'Error') currentInput = '0';
+                        if (shouldResetDisplay) {
+                            currentInput = '0';
+                            shouldResetDisplay = false;
+                        }
+                        if (!currentInput.includes('.')) {
+                            currentInput += '.';
+                        }
+                        if (clearButton && clearButton.textContent === 'AC') {
+                            clearButton.textContent = 'C';
+                        }
+                        updateDisplay();
+                    }
+
+
+                    function handleOperation(op) {
+                        if (currentInput === 'Error') return;
+
+                        if (operator !== null && !shouldResetDisplay) {
+                            // If there is an existing operator and we haven't just finished a calculation (shouldResetDisplay is false)
+                            // This means user is chaining operations e.g. 5 + 5 + (new op)
+                            performCalculation();
+                            if (currentInput === 'Error') return; // Stop if calculation resulted in error
+                        }
+
+                        if (currentInput !== null) { // currentInput could be the result of a previous calculation
+                            previousInput = currentInput;
+                        }
+                        operator = op;
+                        shouldResetDisplay = true; // Next digit input will start a new number
+                        // After an operator, next clear should be AC, but only if an actual calculation is pending.
+                        // If previousInput is null, it means we are starting a new calculation (e.g. after AC or initial load)
+                        // In this case, the clear button might still be 'C' if the user was typing the first number.
+                        // So, only change to AC if previousInput is set, implying a first operand is locked in.
+                        if (clearButton && previousInput !== null) {
+                            clearButton.textContent = 'AC';
+                        }
+                    }
+
+                    function performCalculation() {
+                        if (previousInput === null || operator === null || currentInput === null || currentInput === 'Error') {
+                            return;
+                        }
+
+                        const prev = parseFloat(previousInput);
+                        const current = parseFloat(currentInput);
+
+                        if (isNaN(prev) || isNaN(current)) {
+                            currentInput = 'Error';
+                            operator = null;
+                            previousInput = null;
+                            shouldResetDisplay = true;
+                            updateDisplay();
+                            return;
+                        }
+
+                        let resultValue;
+                        switch (operator) {
+                            case 'add':
+                                resultValue = prev + current;
+                                break;
+                            case 'subtract':
+                                resultValue = prev - current;
+                                break;
+                            case 'multiply':
+                                resultValue = prev * current;
+                                break;
+                            case 'divide':
+                                if (current === 0) {
+                                    currentInput = 'Error'; // Division by zero
+                                    operator = null;
+                                    previousInput = null;
+                                    shouldResetDisplay = true;
+                                    updateDisplay();
+                                    return;
+                                }
+                                resultValue = prev / current;
+                                break;
+                            default:
+                                return;
+                        }
+
+                        // Format result: Show up to 8 decimal places, remove trailing zeros for integers
+                        if (Number.isInteger(resultValue)) {
+                            currentInput = resultValue.toString();
+                        } else {
+                            // Use toFixed for precision, then parseFloat to remove trailing zeros from the string version
+                            currentInput = parseFloat(resultValue.toFixed(8)).toString();
+                        }
+
+                        // Handle potential overflow from calculation result
+                        if (currentInput.length > 18 && currentInput !== 'Error') {
+                            // Attempt scientific notation for very large/small numbers
+                            const num = parseFloat(currentInput);
+                            if (Math.abs(num) > 1e18 || (Math.abs(num) < 1e-8 && Math.abs(num) > 0) ) {
+                                currentInput = num.toExponential(4); // 4 decimal places in scientific
+                            } else {
+                                 // If not suitable for scientific, but still too long, it's an overflow error
+                                currentInput = 'Error';
+                            }
+                        }
+
+                        operator = null; // Operation complete
+                        // previousInput = currentInput; // Result becomes previousInput for chained operations (this behavior is optional, macOS calc resets previousInput after equals)
+                        previousInput = null; // For macOS like behavior, reset previousInput after equals. Chaining happens if another operator is pressed.
+                        shouldResetDisplay = true; // Next digit starts new input
+                        if (clearButton) clearButton.textContent = 'AC'; // After calculation, next clear should be AC
+                        updateDisplay();
+                    }
+
+                    const clearButton = body.querySelector('button[data-action="clear"]');
+
+                    buttons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            const action = button.dataset.action;
+                            const value = button.dataset.value;
+
+                            switch (action) {
+                                case 'digit':
+                                    inputDigit(value);
+                                    break;
+                                case 'decimal':
+                                    inputDecimal();
+                                    break;
+                                case 'clear':
+                                    if (clearButton && clearButton.textContent === 'C') {
+                                        currentInput = '0';
+                                        shouldResetDisplay = false; // Allow further input
+                                        clearButton.textContent = 'AC';
+                                    } else { // Button shows AC
+                                        clearAll();
+                                    }
+                                    updateDisplay();
+                                    break;
+                                case 'toggle-sign':
+                                    toggleSign();
+                                    break;
+                                case 'percentage':
+                                    percentage();
+                                    break;
+                                case 'divide':
+                                case 'multiply':
+                                case 'subtract':
+                                case 'add':
+                                    handleOperation(action);
+                                    break;
+                                case 'equals':
+                                     if (operator && previousInput !== null) { // Only calculate if there's a pending operation
+                                        performCalculation();
+                                    }
+                                    break;
+                            }
+                        });
+                    });
+
+                    // Initial display update and clear button state
+                    clearAll();
+
+                    // Keyboard Input Handling
+                    windowEl.addEventListener('keydown', (event) => {
+                        // Ensure the calculator window is focused or the event target is within the calculator.
+                        // This check might need refinement depending on how focus is managed globally.
+                        // For now, we assume if the windowEl has the event, it's targeted.
+                        if (!windowEl.classList.contains('focused') && !document.activeElement.closest('#' + uniqueId)) {
+                            // If the window isn't focused and the active element isn't inside this calculator,
+                            // do not process keyboard events for this instance (relevant if multiple calculators could exist).
+                            // However, the current app model doesn't easily allow multiple instances of the same non-'allowMultiple' app.
+                            // A simpler check might be if windowEl.classList.contains('focused')
+                            // For now, let's assume that if the event is on windowEl, it's the active one.
+                        }
+
+                        let handled = true; // Assume event will be handled
+
+                        if (event.key >= '0' && event.key <= '9') {
+                            inputDigit(event.key);
+                        } else {
+                            switch (event.key) {
+                                case '.':
+                                    inputDecimal();
+                                    break;
+                                case '+':
+                                    handleOperation('add');
+                                    break;
+                                case '-':
+                                    handleOperation('subtract');
+                                    break;
+                                case '*':
+                                    handleOperation('multiply');
+                                    break;
+                                case '/':
+                                    handleOperation('divide');
+                                    break;
+                                case '%':
+                                    percentage();
+                                    break;
+                                case 'Enter':
+                                case '=': // Allow both Enter and = for equals
+                                    if (operator && previousInput !== null) {
+                                        performCalculation();
+                                    }
+                                    break;
+                                case 'Backspace':
+                                    if (clearButton && clearButton.textContent === 'C') {
+                                        if (currentInput !== '0') {
+                                            currentInput = '0'; // Clear current entry to 0
+                                            // Operator and previousInput remain for continued calculation
+                                            shouldResetDisplay = false; // Allow further input if needed
+                                        }
+                                        // After 'C' clears the entry to '0', the button should become 'AC'
+                                        clearButton.textContent = 'AC';
+                                    } else if (clearButton && clearButton.textContent === 'AC') {
+                                        clearAll(); // If it's already AC, then do a full clear
+                                    }
+                                    updateDisplay();
+                                    break;
+                                case 'Escape':
+                                    clearAll();
+                                    break;
+                                // No direct universal key for +/-. Will skip direct keyboard mapping for +/- for now.
+                                // User can click the button.
+                                default:
+                                    handled = false; // Event not handled by calculator
+                                    break;
+                            }
+                        }
+
+                        if (handled) {
+                            event.preventDefault(); // Prevent default action if key was handled (e.g., typing in a background input)
+                            event.stopPropagation(); // Stop event from bubbling further
+                        }
+                    });
+
+                    // Ensure the window can receive focus to get keydown events.
+                    // Setting tabIndex makes an element focusable.
+                    windowEl.setAttribute('tabindex', '-1');
+                    // Optionally, focus it when created, though focusWindow should handle this.
+                    // windowEl.focus(); // This might be too aggressive if called directly here.
                     break;
             }
         }
