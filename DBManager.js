@@ -300,9 +300,7 @@ class DBManager {
                 reject(event.target.error);
             };
         });
-    }
-
-    getAllSettings() {
+    }    getAllSettings() {
         return new Promise((resolve, reject) => {
             if (!this.db) {
                 console.error('DBManager: Database not initialized.');
@@ -328,7 +326,63 @@ class DBManager {
             };
         });
     }
+
+    // Factory reset - clears all data from IndexedDB
+    resetToFactory() {
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                console.error('DBManager: Database not initialized.');
+                return reject('Database not initialized.');
+            }
+
+            console.log('DBManager: Starting factory reset - clearing all data...');
+            
+            const transaction = this.db.transaction(['files', 'settings'], 'readwrite');
+            const promises = [];
+
+            // Clear files store
+            const filesStore = transaction.objectStore('files');
+            promises.push(new Promise((res, rej) => {
+                const clearRequest = filesStore.clear();
+                clearRequest.onsuccess = () => {
+                    console.log('DBManager: Files store cleared.');
+                    res();
+                };
+                clearRequest.onerror = (event) => {
+                    console.error('DBManager: Error clearing files store:', event.target.error);
+                    rej(event.target.error);
+                };
+            }));
+
+            // Clear settings store
+            const settingsStore = transaction.objectStore('settings');
+            promises.push(new Promise((res, rej) => {
+                const clearRequest = settingsStore.clear();
+                clearRequest.onsuccess = () => {
+                    console.log('DBManager: Settings store cleared.');
+                    res();
+                };
+                clearRequest.onerror = (event) => {
+                    console.error('DBManager: Error clearing settings store:', event.target.error);
+                    rej(event.target.error);
+                };
+            }));
+
+            Promise.all(promises)
+                .then(() => {
+                    console.log('DBManager: Factory reset completed successfully.');
+                    resolve();
+                })
+                .catch((error) => {
+                    console.error('DBManager: Error during factory reset:', error);
+                    reject(error);
+                });
+        });
+    }
 }
+
+// Create a global instance for immediate use
+const dbManager = new DBManager();
 
 // Export an instance or the class depending on usage preference
 // For now, let's export the class so it can be instantiated.
