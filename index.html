@@ -214,14 +214,197 @@
         .terminal-output .output-error { color: #ff5555; }
         .terminal-output .output-link { color: #50fa7b; text-decoration: underline; }
 
-        /* Notes Pro (Avançado) */
-        #notes-app .window-body { padding: 0; display: flex; flex-direction: column; }
-        #notes-app textarea { flex-grow: 1; width: 100%; background: transparent; border: none; outline: none; color: var(--text-color); font-family: 'Fira Code', monospace; font-size: 1rem; resize: none; padding: 20px; box-sizing: border-box; }
-        .notes-status-bar { flex-shrink: 0; padding: 5px 15px; font-size: 0.8rem; color: var(--subtle-text-color); text-align: right; background: rgba(0,0,0,0.2); }
+        /* Notes App - Two Pane Layout */
+        #notes-app .window-body { padding: 0; display: flex; flex-direction: row; }
+
+        #notes-app .notes-sidebar {
+            width: 200px; /* Initial width, can be made resizable later if needed */
+            flex-shrink: 0;
+            height: 100%;
+            background: var(--glass-background); /* Glassmorphism effect */
+            border-right: 1px solid var(--glass-border);
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #notes-app .notes-list {
+            flex-grow: 1;
+            overflow-y: auto; /* For scrolling if many notes */
+        }
+
+        #notes-app .notes-editor-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* Ensure textarea and status bar are correctly styled within the new structure */
+        #notes-app .notes-editor-area textarea {
+            flex-grow: 1;
+            width: 100%;
+            background: transparent; /* Already there, ensure it's maintained */
+            border: none;
+            outline: none;
+            color: var(--text-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            resize: none;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #notes-app .notes-editor-area .notes-status-bar {
+            flex-shrink: 0;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            color: var(--subtle-text-color);
+            text-align: right;
+            background: rgba(0,0,0,0.2); /* Already there, ensure it's maintained */
+            border-top: 1px solid var(--glass-border); /* Add a separator */
+        }
+
+        #notes-app .note-item {
+            padding: 10px;
+            cursor: pointer;
+            border-radius: var(--ui-corner-radius-small);
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: background-color 0.2s;
+        }
+
+        #notes-app .note-item:hover {
+            background-color: rgba(128, 128, 128, 0.2);
+        }
+
+        #notes-app .note-item {
+            display: flex; /* To align note name and delete button */
+            justify-content: space-between; /* Pushes delete button to the right */
+            align-items: center; /* Vertically align items */
+            padding: 10px;
+            cursor: pointer;
+            border-radius: var(--ui-corner-radius-small);
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            /* white-space: nowrap; // Remove this if note-name handles ellipsis */
+            /* overflow: hidden; // Remove this if note-name handles ellipsis */
+            /* text-overflow: ellipsis; // Remove this if note-name handles ellipsis */
+            transition: background-color 0.2s;
+        }
+
+        #notes-app .note-item .note-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1; /* Allow name to take available space */
+            padding-right: 5px; /* Space before delete button */
+        }
+
+        #notes-app .note-item .delete-note-btn {
+            background: none;
+            border: none;
+            color: var(--subtle-text-color);
+            cursor: pointer;
+            padding: 3px; /* Small padding to make it easier to click */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0; /* Prevent button from shrinking */
+        }
+
+        #notes-app .note-item:hover .delete-note-btn {
+            color: var(--text-color); /* More visible on hover */
+            background-color: rgba(128, 128, 128, 0.3); /* Slight background on hover */
+        }
+
+        #notes-app .note-item.active .delete-note-btn {
+            color: white; /* Ensure visibility on active note background */
+        }
+
+        #notes-app .note-item.active:hover .delete-note-btn {
+            background-color: rgba(255, 255, 255, 0.2); /* Adjust hover for active state */
+        }
+
+        #notes-app .note-item.active {
+            background-color: var(--highlight-primary);
+            color: white;
+            font-weight: 500;
+        }
+
+        #notes-app .no-notes-message {
+            text-align: center;
+            color: var(--subtle-text-color);
+            font-size: 0.9rem;
+            padding-top: 20px;
+        }
+
+        #notes-app .new-note-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: var(--highlight-primary);
+            color: white;
+            border: none;
+            border-radius: var(--ui-corner-radius-small);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #notes-app .new-note-btn:hover {
+            background-color: var(--highlight-secondary); /* Or a slightly different shade of primary */
+        }
+
+        #notes-app .new-note-btn svg { /* Ensure SVG aligns well */
+            margin-top: -2px; /* Minor adjustment if needed */
+        }
 
         /* Aura Music (Novo) */
         #music-player-app .window-body { padding: 0; display: flex; }
         .music-playlist { width: 200px; flex-shrink: 0; border-right: 1px solid var(--glass-border); overflow-y: auto; }
+
+        /* Custom Scrollbar Styling for Notes App */
+        #notes-app .notes-list::-webkit-scrollbar,
+        #notes-app .notes-editor-area textarea::-webkit-scrollbar {
+            width: 8px;
+            height: 8px; /* For horizontal scrollbar if textarea wraps */
+        }
+
+        #notes-app .notes-list::-webkit-scrollbar-track,
+        #notes-app .notes-editor-area textarea::-webkit-scrollbar-track {
+            background: transparent; /* Or a very subtle color from theme */
+        }
+
+        #notes-app .notes-list::-webkit-scrollbar-thumb,
+        #notes-app .notes-editor-area textarea::-webkit-scrollbar-thumb {
+            background-color: var(--subtle-text-color); /* Use a theme variable */
+            border-radius: 4px;
+            border: 2px solid transparent; /* Creates padding around thumb */
+            background-clip: content-box;
+        }
+
+        #notes-app .notes-list::-webkit-scrollbar-thumb:hover,
+        #notes-app .notes-editor-area textarea::-webkit-scrollbar-thumb:hover {
+            background-color: var(--text-color); /* Darken on hover */
+        }
+
+        /* For Firefox (basic styling, true customization is limited) */
+        #notes-app .notes-list,
+        #notes-app .notes-editor-area textarea {
+            scrollbar-width: thin;
+            scrollbar-color: var(--subtle-text-color) transparent; /* thumb and track */
+        }
         .music-player-main { flex-grow: 1; display: flex; flex-direction: column; text-align: center; padding: 20px; }
         #music-search { width: 90%; margin: 0 auto 10px; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color); }
         .playlist-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.9rem; }
@@ -290,7 +473,7 @@
                 <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
                 <div class="active-indicator"></div>
             </div>
-            <div class="dock-item" data-app-id="notes-app" title="Notas Pro">
+            <div class="dock-item" data-app-id="notes-app" title="Notes">
                 <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                 <div class="active-indicator"></div>
             </div>
@@ -319,7 +502,7 @@
         const apps = {
             'control-panel': { title: 'Painel de Controle', width: 600, height: 550 },
             'file-explorer': { title: 'Explorador de Arquivos', width: 700, height: 500 },
-            'notes-app': { title: 'Notas Pro', width: 500, height: 600, allowMultiple: true },
+            'notes-app': { title: 'Notes', width: 500, height: 600, allowMultiple: true },
             'music-player-app': { title: 'Aura Music', width: 650, height: 450 },
             'terminal-app': { title: 'Terminal', width: 650, height: 400 },
             'task-manager': { title: 'Gerenciador de Tarefas', width: 500, height: 400 },
@@ -462,6 +645,162 @@
         }
         
         // --- LÓGICA DOS APLICATIVOS (MELHORADA) ---
+        function renderNoteList(notesAppWindow, currentNotePath) {
+            const sidebar = notesAppWindow.querySelector('.notes-sidebar .notes-list');
+            if (!sidebar) return;
+            sidebar.innerHTML = ''; // Clear existing list
+
+            const notesDir = getFileSystemNode('/Anotações/');
+            if (!notesDir || notesDir.type !== 'folder') {
+                // Create /Anotações if it doesn't exist
+                if (!getFileSystemNode('/')) { // Ensure root exists
+                    fileSystem['/'] = { type: 'folder', children: {} };
+                }
+                if (!getFileSystemNode('/Anotações/')) {
+                     fileSystem['/'].children['Anotações'] = { type: 'folder', children: {} };
+                     saveFileSystem();
+                }
+                // If still no notesDir after creation, display a message or leave empty
+                sidebar.innerHTML = '<p class="no-notes-message">Nenhuma anotação encontrada.</p>';
+                return;
+            }
+
+            const noteFiles = Object.entries(notesDir.children)
+                                .filter(([name, node]) => node.type === 'file' && name.endsWith('.txt'))
+                                .sort((a, b) => a[0].localeCompare(b[0])); // Sort alphabetically
+
+            if (noteFiles.length === 0) {
+                sidebar.innerHTML = '<p class="no-notes-message">Nenhuma anotação encontrada.</p>';
+                return;
+            }
+
+            noteFiles.forEach(([fileName, fileNode]) => {
+                const notePath = '/Anotações/' + fileName;
+                const listItem = document.createElement('div');
+                listItem.className = 'note-item';
+                listItem.dataset.filePath = notePath;
+
+                const noteNameSpan = document.createElement('span');
+                noteNameSpan.className = 'note-name';
+                noteNameSpan.textContent = fileName.replace('.txt', '');
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-note-btn';
+                deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>';
+                deleteBtn.title = 'Excluir anotação';
+
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent note selection when clicking delete
+
+                    const notesDirNode = getFileSystemNode('/Anotações/');
+                    if (notesDirNode && notesDirNode.children[fileName]) {
+                        delete notesDirNode.children[fileName];
+                        saveFileSystem();
+
+                        const currentOpenNotePath = notesAppWindow.dataset.currentNotePath;
+                        if (currentOpenNotePath === notePath) {
+                            // The currently open note is being deleted
+                            const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                            const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                            if (textarea) textarea.value = '';
+                            if (statusBar) statusBar.textContent = 'Anotação excluída.';
+                            delete notesAppWindow.dataset.currentNotePath; // Clear current path
+
+                            // Re-render and attempt to load the first available note
+                            renderNoteList(notesAppWindow, null); // Pass null to select the first or show empty
+
+                            // After renderNoteList, check if a new note was automatically selected
+                            // This is now handled by the refined logic at the end of renderNoteList
+                            // const newCurrentNotePath = notesAppWindow.dataset.currentNotePath;
+                            // if (newCurrentNotePath) {
+                            //     const noteContent = getFileSystemNode(newCurrentNotePath);
+                            //     if (textarea && noteContent) {
+                            //         textarea.value = noteContent.content;
+                            //         statusBar.textContent = 'Pronto';
+                            //     }
+                            // } else {
+                            //     // No other notes to load
+                            //     if (textarea) textarea.placeholder = "Nenhuma anotação. Crie uma nova!";
+                            // }
+
+                        } else {
+                            // Deleting a note that is not currently open
+                            renderNoteList(notesAppWindow, notesAppWindow.dataset.currentNotePath);
+                        }
+                    }
+                });
+
+                listItem.appendChild(noteNameSpan);
+                listItem.appendChild(deleteBtn);
+
+                if (notePath === currentNotePath) { // Check if this item should be active
+                    listItem.classList.add('active');
+                }
+
+                listItem.addEventListener('click', () => {
+                    const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                    const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                    const noteContent = getFileSystemNode(notePath);
+                    if (textarea && noteContent) {
+                        textarea.value = noteContent.content;
+                        statusBar.textContent = 'Pronto';
+                        textarea.placeholder = "Comece a digitar aqui..."; // Reset placeholder
+                    }
+
+                    notesAppWindow.querySelectorAll('.note-item.active').forEach(item => item.classList.remove('active'));
+                    listItem.classList.add('active');
+
+                    notesAppWindow.dataset.currentNotePath = notePath;
+                });
+                sidebar.appendChild(listItem);
+            });
+
+            // Refined logic for auto-selecting first note or handling empty state
+            if (noteFiles.length > 0 && !currentNotePath) {
+                const firstNoteFile = noteFiles[0]; // This is an array [fileName, fileNode]
+                const firstNotePath = '/Anotações/' + firstNoteFile[0];
+                const firstNoteItem = sidebar.querySelector(`.note-item[data-file-path="${firstNotePath.replace(/"/g, '\\"')}"]`);
+                if (firstNoteItem) {
+                    firstNoteItem.classList.add('active');
+                    notesAppWindow.dataset.currentNotePath = firstNotePath;
+                    const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                    const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                    const noteContent = getFileSystemNode(firstNotePath);
+                    if (textarea && noteContent) {
+                        textarea.value = noteContent.content;
+                        textarea.placeholder = "Comece a digitar aqui...";
+                        if (statusBar) statusBar.textContent = 'Pronto';
+                    }
+                }
+            } else if (noteFiles.length === 0) { // If no notes left or initially
+                const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                if(textarea) {
+                    textarea.value = '';
+                    textarea.placeholder = "Nenhuma anotação. Crie uma nova!";
+                }
+                if(statusBar) statusBar.textContent = 'Nenhuma anotação.';
+                delete notesAppWindow.dataset.currentNotePath;
+            } else if (noteFiles.length > 0 && currentNotePath && !getFileSystemNode(currentNotePath)) {
+                // currentNotePath was invalid (e.g. deleted externally), select first note
+                const firstNoteFile = noteFiles[0];
+                const firstNotePath = '/Anotações/' + firstNoteFile[0];
+                 const firstNoteItem = sidebar.querySelector(`.note-item[data-file-path="${firstNotePath.replace(/"/g, '\\"')}"]`);
+                if (firstNoteItem) {
+                    firstNoteItem.classList.add('active');
+                    notesAppWindow.dataset.currentNotePath = firstNotePath;
+                    const textarea = notesAppWindow.querySelector('.notes-editor-area textarea');
+                    const statusBar = notesAppWindow.querySelector('.notes-editor-area .notes-status-bar');
+                    const noteContent = getFileSystemNode(firstNotePath);
+                    if (textarea && noteContent) {
+                        textarea.value = noteContent.content;
+                        textarea.placeholder = "Comece a digitar aqui...";
+                        if (statusBar) statusBar.textContent = 'Pronto';
+                    }
+                }
+            }
+        }
+
         function initializeAppLogic(uniqueId, appId, windowEl, data) {
             const body = windowEl.querySelector('.window-body');
             switch(appId) {
@@ -532,38 +871,142 @@
                     break;
 
                 case 'notes-app':
-                    const filePath = data.filePath || '/Anotações/nova-nota.txt';
-                    const node = getFileSystemNode(filePath);
-                    if (!node) {
-                        // Se o arquivo não existe, cria um
-                        const parts = filePath.substring(1).split('/');
-                        const fileName = parts.pop();
-                        const dirPath = '/' + parts.join('/');
-                        const dirNode = getFileSystemNode(dirPath);
-                        if (dirNode && dirNode.type === 'folder') {
-                            dirNode.children[fileName] = { type: 'file', content: '' };
+                    // const filePath = data.filePath || '/Anotações/nova-nota.txt';
+                    // const node = getFileSystemNode(filePath);
+                    // if (!node) {
+                    //     // Se o arquivo não existe, cria um
+                    //     const parts = filePath.substring(1).split('/');
+                    //     const fileName = parts.pop();
+                    //     const dirPath = '/' + parts.join('/');
+                    //     const dirNode = getFileSystemNode(dirPath);
+                    //     if (dirNode && dirNode.type === 'folder') {
+                    //         dirNode.children[fileName] = { type: 'file', content: '' };
+                    //         saveFileSystem();
+                    //     } else {
+                    //         closeWindow(uniqueId, appId);
+                    //         return;
+                    //     }
+                    // }
+
+                    body.innerHTML = `
+                        <div class="notes-sidebar">
+                            <button class="new-note-btn">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
+                                Nova Anotação
+                            </button>
+                            <div class="notes-list">
+                                {/* Note items will be rendered here by renderNoteList */}
+                            </div>
+                        </div>
+                        <div class="notes-editor-area">
+                            <textarea placeholder="Selecione uma nota para editar ou crie uma nova."></textarea>
+                            <div class="notes-status-bar">Pronto</div>
+                        </div>
+                    `;
+                    const textarea = body.querySelector('.notes-editor-area textarea');
+                    const statusBar = body.querySelector('.notes-editor-area .notes-status-bar');
+                    let currentNotePath = windowEl.dataset.currentNotePath || null;
+
+                    const newNoteBtn = body.querySelector('.new-note-btn');
+                    if (newNoteBtn) {
+                        newNoteBtn.addEventListener('click', () => {
+                            const now = new Date();
+                            const year = now.getFullYear();
+                            const month = String(now.getMonth() + 1).padStart(2, '0');
+                            const day = String(now.getDate()).padStart(2, '0');
+                            const hours = String(now.getHours()).padStart(2, '0');
+                            const minutes = String(now.getMinutes()).padStart(2, '0');
+                            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+                            // Try to find a unique name. If "Nova Anotação.txt" exists, try "Nova Anotação 1.txt", etc.
+                            // For simplicity now, using timestamp ensures high probability of uniqueness.
+                            const defaultFileName = `Nova Anotação ${year}-${month}-${day} ${hours}${minutes}${seconds}.txt`;
+                            let newNoteName = defaultFileName;
+                            let counter = 1;
+                            const notesDirNode = getFileSystemNode('/Anotações/');
+
+                            // Ensure unique filename if one with exact timestamp already exists (highly unlikely but good practice)
+                            while (notesDirNode && notesDirNode.children[newNoteName]) {
+                                newNoteName = `Nova Anotação ${year}-${month}-${day} ${hours}${minutes}${seconds} (${counter}).txt`;
+                                counter++;
+                            }
+
+                            const newNotePath = '/Anotações/' + newNoteName;
+
+                            // Ensure /Anotações directory exists
+                            if (!notesDirNode) {
+                                if (!getFileSystemNode('/')) { // Should not happen if app is running
+                                     fileSystem['/'] = { type: 'folder', children: {} };
+                                }
+                                fileSystem['/'].children['Anotações'] = { type: 'folder', children: {} };
+                            }
+
+                            // Create the new note file
+                            getFileSystemNode('/Anotações/').children[newNoteName] = { type: 'file', content: '' };
                             saveFileSystem();
+
+                            // Update current note path, clear textarea, and refresh list
+                            windowEl.dataset.currentNotePath = newNotePath;
+                            textarea.value = ''; // New note is empty
+                            statusBar.textContent = 'Nova anotação criada.';
+
+                            renderNoteList(windowEl, newNotePath); // This will re-render and highlight the new note
+
+                            textarea.focus(); // Focus on textarea for immediate typing
+                        });
+                    }
+
+                    renderNoteList(windowEl, currentNotePath); // Initial render
+
+                    // Attempt to load the first note if no currentNotePath is set or if it's invalid
+                    if (!currentNotePath || !getFileSystemNode(currentNotePath)) {
+                        const firstNoteItem = windowEl.querySelector('.note-item');
+                        if (firstNoteItem) {
+                            currentNotePath = firstNoteItem.dataset.filePath;
+                            windowEl.dataset.currentNotePath = currentNotePath; // Store it
+                            const noteContent = getFileSystemNode(currentNotePath);
+                            if (textarea && noteContent) {
+                                textarea.value = noteContent.content;
+                                statusBar.textContent = 'Pronto';
+                            }
+                            // Re-render to highlight the first note as active
+                            renderNoteList(windowEl, currentNotePath);
                         } else {
-                            closeWindow(uniqueId, appId);
-                            return;
+                            textarea.value = ''; // No notes, clear textarea
+                            statusBar.textContent = 'Nenhuma nota selecionada.';
+                        }
+                    } else {
+                        // Load existing currentNotePath if valid
+                        const noteContent = getFileSystemNode(currentNotePath);
+                        if (textarea && noteContent) {
+                            textarea.value = noteContent.content;
+                            statusBar.textContent = 'Pronto';
+                        } else {
+                            // If currentNotePath is invalid (e.g. deleted externally)
+                            textarea.value = '';
+                            statusBar.textContent = 'Erro ao carregar a nota.';
+                            delete windowEl.dataset.currentNotePath; // Clear invalid path
+                            renderNoteList(windowEl, null); // Re-render, which might pick the first note or show "no notes"
                         }
                     }
                     
-                    body.innerHTML = `<textarea placeholder="Comece a digitar aqui..."></textarea><div class="notes-status-bar">Salvo</div>`;
-                    const textarea = body.querySelector('textarea');
-                    const statusBar = body.querySelector('.notes-status-bar');
-                    textarea.value = getFileSystemNode(filePath).content;
-                    
+                    // The existing save logic for textarea input can remain, but ensure it saves to the 'currentNotePath'
+                    // This will be refined in the "Note Selection and Loading" step.
                     let saveTimeout;
                     textarea.addEventListener('input', () => {
+                        const activeNotePath = windowEl.dataset.currentNotePath;
+                        if (!activeNotePath) return; // Don't save if no note is selected
+
                         statusBar.textContent = 'Salvando...';
                         clearTimeout(saveTimeout);
                         saveTimeout = setTimeout(() => {
-                            const noteNode = getFileSystemNode(filePath);
+                            const noteNode = getFileSystemNode(activeNotePath);
                             if (noteNode) {
                                 noteNode.content = textarea.value;
                                 saveFileSystem();
                                 statusBar.textContent = `Salvo às ${new Date().toLocaleTimeString()}`;
+                            } else {
+                                statusBar.textContent = 'Erro ao salvar. Nota não encontrada.';
                             }
                         }, 1500);
                     });
@@ -901,7 +1344,16 @@
         }
         
         function saveFileSystem() {
-            localStorage.setItem('auraOS_fileSystem', JSON.stringify(fileSystem));
+            try {
+                localStorage.setItem('auraOS_fileSystem', JSON.stringify(fileSystem));
+            } catch (e) {
+                console.error("Error saving file system to localStorage:", e);
+                // Optionally, notify the user through a status message or alert,
+                // though this might be too intrusive for a background save.
+                // For now, a console error is sufficient for developer awareness.
+                // Consider adding a non-modal user notification if this becomes critical.
+                // For example, update a global status indicator if one existed.
+            }
         }
 
         function loadFileSystem() {
