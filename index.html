@@ -1195,7 +1195,9 @@
             padding: 0; /* Remove default padding */
             display: flex;
             flex-direction: column;
-            background-color: #3c3c3c; /* macOS dark mode calculator background */
+            background: var(--glass-background);
+            backdrop-filter: blur(20px) saturate(1.8);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
             overflow: hidden; /* Prevent scrollbars */
         }
 
@@ -1205,13 +1207,15 @@
         }
 
         .calculator-display {
-            background-color: #3c3c3c; /* Match window body */
+            background: var(--glass-background); /* Match window body */
             color: white;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
             font-size: 48px; /* Large font */
             font-weight: 300;
             text-align: right;
             padding: 20px;
             box-sizing: border-box;
+            border-bottom: 1px solid var(--glass-border);
             flex-grow: 1; /* Allow display to take available space */
             display: flex;
             flex-direction: column;
@@ -1231,19 +1235,19 @@
             grid-template-columns: repeat(4, 1fr);
             grid-gap: 8px; /* Increased gap for round buttons */
             padding: 10px; /* Add some padding around the button grid */
-            background-color: #3c3c3c; /* Match window body, lines are not needed for round buttons */
+            background-color: transparent; /* Match window body, lines are not needed for round buttons */
         }
 
         .calculator-buttons button {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 20px; /* Adjusted font size for round buttons */
             font-weight: 400;
-            border: none;
+            border: 1px solid var(--glass-border);
             /* padding: 18px 0; Remove padding or adjust significantly */
-            background-color: #505050; /* Dark gray for numbers and general buttons */
+            background-color: rgba(80, 80, 80, 0.35); /* Dark gray for numbers and general buttons */
             color: white;
             cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease; /* Added transform transition */
+            transition: background-color 0.2s ease, transform 0.1s ease, filter 0.2s ease; /* Added transform transition */
             border-radius: 50%; /* Make buttons round */
             width: 60px; /* Fixed width for round buttons */
             height: 60px; /* Fixed height for round buttons */
@@ -1255,28 +1259,29 @@
         }
 
         .calculator-buttons button:hover {
-            filter: brightness(1.2);
+            background-color: rgba(100, 100, 100, 0.5);
         }
 
         .calculator-buttons button:active {
-            filter: brightness(0.8);
+            background-color: rgba(60, 60, 60, 0.4);
+            transform: scale(0.95);
         }
 
         /* Specific button styles based on macOS theme */
         .calculator-buttons button.btn-operator {
-            background-color: #FF9500; /* Orange for operators */
+            background-color: rgba(255, 149, 0, 0.45); /* Orange for operators */
             color: white;
         }
-        .calculator-buttons button.btn-operator:hover { filter: brightness(1.1); }
-        .calculator-buttons button.btn-operator:active { filter: brightness(0.9); }
+        .calculator-buttons button.btn-operator:hover { background-color: rgba(255, 149, 0, 0.65); }
+        .calculator-buttons button.btn-operator:active { background-color: rgba(255, 149, 0, 0.35); }
 
 
         .calculator-buttons button.btn-light-gray {
-            background-color: #D4D4D2; /* Light gray for AC, +/-, % */
-            color: black;
+            background-color: rgba(212, 212, 210, 0.3); /* Light gray for AC, +/-, % */
+            color: var(--text-color);
         }
-        .calculator-buttons button.btn-light-gray:hover { filter: brightness(0.95); }
-        .calculator-buttons button.btn-light-gray:active { filter: brightness(0.85); }
+        .calculator-buttons button.btn-light-gray:hover { background-color: rgba(212, 212, 210, 0.5); }
+        .calculator-buttons button.btn-light-gray:active { background-color: rgba(212, 212, 210, 0.2); }
 
 
         /* Zero button spanning two columns */
@@ -1754,16 +1759,11 @@
 
                     <div class="desktop-icon" data-app-id="calculator-app" title="Calculadora">
                         <svg viewBox="0 0 60 60" fill="var(--icon-fill)">
-                            <rect x="10" y="5" width="40" height="50" rx="5" ry="5" fill="#333"/>
-                            <rect x="15" y="10" width="30" height="10" rx="2" ry="2" fill="#555"/>
-                            <circle cx="20" cy="28" r="3" fill="#777"/>
-                            <circle cx="30" cy="28" r="3" fill="#777"/>
-                            <circle cx="40" cy="28" r="3" fill="#777"/>
-                            <circle cx="20" cy="38" r="3" fill="#777"/>
-                            <circle cx="30" cy="38" r="3" fill="#777"/>
-                            <circle cx="40" cy="38" r="3" fill="#777"/>
-                            <circle cx="20" cy="48" r="3" fill="#FF9500"/>
-                            <circle cx="30" cy="48" r="3" fill="#D4D4D2"/>
+                            <path d="M30,5C16.2,5,5,16.2,5,30s11.2,25,25,25s25-11.2,25-25S43.8,5,30,5z M30,52.5C17.6,52.5,7.5,42.4,7.5,30S17.6,7.5,30,7.5 S52.5,17.6,52.5,30S42.4,52.5,30,52.5z"/>
+                            <rect x="17.5" y="27.5" width="25" height="5" rx="2.5"/>
+                            <rect x="27.5" y="17.5" width="5" height="25" rx="2.5"/>
+                            <rect x="17.5" y="17.5" width="10" height="5" rx="2.5" transform="rotate(45 22.5 20)"/>
+                            <rect x="32.5" y="17.5" width="10" height="5" rx="2.5" transform="rotate(-45 37.5 20)"/>
                         </svg>
                         <p>Calculadora</p>
                     </div>
@@ -1813,16 +1813,11 @@
             </div>
             <div class="dock-item" data-app-id="calculator-app" title="Calculadora">
                 <svg viewBox="0 0 60 60" fill="var(--icon-fill)">
-                    <rect x="10" y="5" width="40" height="50" rx="5" ry="5" fill="#333"/>
-                    <rect x="15" y="10" width="30" height="10" rx="2" ry="2" fill="#555"/>
-                    <circle cx="20" cy="28" r="3" fill="#777"/>
-                    <circle cx="30" cy="28" r="3" fill="#777"/>
-                    <circle cx="40" cy="28" r="3" fill="#777"/>
-                    <circle cx="20" cy="38" r="3" fill="#777"/>
-                    <circle cx="30" cy="38" r="3" fill="#777"/>
-                    <circle cx="40" cy="38" r="3" fill="#777"/>
-                    <circle cx="20" cy="48" r="3" fill="#FF9500"/>
-                    <circle cx="30" cy="48" r="3" fill="#D4D4D2"/>
+                    <path d="M30,5C16.2,5,5,16.2,5,30s11.2,25,25,25s25-11.2,25-25S43.8,5,30,5z M30,52.5C17.6,52.5,7.5,42.4,7.5,30S17.6,7.5,30,7.5 S52.5,17.6,52.5,30S42.4,52.5,30,52.5z"/>
+                    <rect x="17.5" y="27.5" width="25" height="5" rx="2.5"/>
+                    <rect x="27.5" y="17.5" width="5" height="25" rx="2.5"/>
+                    <rect x="17.5" y="17.5" width="10" height="5" rx="2.5" transform="rotate(45 22.5 20)"/>
+                    <rect x="32.5" y="17.5" width="10" height="5" rx="2.5" transform="rotate(-45 37.5 20)"/>
                 </svg>
                 <div class="active-indicator"></div>
             </div>
