@@ -1696,6 +1696,141 @@
             background-color: rgba(255, 95, 86, 0.05); /* Subtle red background */
             /* Standard not-allowed cursor is usually sufficient from dropEffect='none' */
         }
+
+        /* Task Manager Row Selection */
+        .task-manager-table-container table tbody tr.selected td {
+            background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.4) !important;
+            color: var(--text-color); /* Ensure text remains readable */
+        }
+        .light-theme .task-manager-table-container table tbody tr.selected td {
+            background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.3) !important;
+        }
+
+        /* --- Task Manager Specific Styles --- */
+        #task-manager-app .window-body { /* Target specific app window */
+            display: flex;
+            flex-direction: column;
+            padding: 0; /* Remove default padding if sections handle their own */
+            font-size: 0.9rem; /* Consistent font size for TM */
+        }
+
+        .task-manager-controls {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: rgba(0,0,0,0.05); /* Subtle bg for controls area */
+        }
+        .light-theme .task-manager-controls {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .task-manager-controls label {
+            font-size: 0.85rem;
+        }
+
+        .task-manager-controls select,
+        .task-manager-controls button {
+            background-color: rgba(128, 128, 128, 0.2);
+            color: var(--text-color);
+            border: 1px solid var(--glass-border);
+            padding: 5px 10px;
+            border-radius: var(--ui-corner-radius-small, 8px);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .task-manager-controls select:focus,
+        .task-manager-controls button:focus {
+            outline: none;
+            border-color: var(--glass-border-focus);
+        }
+        .task-manager-controls button:hover {
+            background-color: rgba(128, 128, 128, 0.3);
+            border-color: var(--glass-border-focus);
+        }
+        .task-manager-controls button:active {
+            background-color: rgba(128, 128, 128, 0.4);
+            transform: translateY(1px);
+        }
+        #tm-end-task-btn { /* Specific styling for end task button if needed */
+            background-color: rgba(var(--red-accent-rgb, 255, 95, 86), 0.2); /* Using a hypothetical --red-accent-rgb */
+        }
+         #tm-end-task-btn:hover {
+            background-color: rgba(var(--red-accent-rgb, 255, 95, 86), 0.3);
+            border-color: var(--red-accent, #ff5f56);
+        }
+
+
+        .task-manager-table-container {
+            flex-grow: 1; /* Allow table container to take available space */
+            overflow-y: auto; /* Enable vertical scrolling for the table */
+            padding: 0 1px; /* Small padding to prevent scrollbar overlap issue on borders */
+        }
+
+        .task-manager-table-container table {
+            width: 100%;
+            border-collapse: collapse; /* Clean borders */
+            font-size: 0.85rem;
+        }
+
+        .task-manager-table-container th,
+        .task-manager-table-container td {
+            padding: 8px 12px; /* Consistent padding */
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border); /* Subtle row separation */
+            white-space: nowrap; /* Prevent text wrapping in cells */
+            overflow: hidden;
+            text-overflow: ellipsis; /* Show ellipsis for overflowed text */
+        }
+        .task-manager-table-container td:last-child,
+        .task-manager-table-container th:last-child {
+             /* No specific style for last child currently needed, but good selector */
+        }
+
+
+        .task-manager-table-container th {
+            background-color: rgba(0,0,0,0.1); /* Subtle header background */
+            font-weight: 600; /* Bolder headers */
+            cursor: pointer; /* Suggests sortability */
+            position: sticky; /* Make headers sticky */
+            top: 0; /* Stick to the top of the scrollable container */
+            z-index: 10; /* Ensure header is above table content during scroll */
+        }
+        .light-theme .task-manager-table-container th {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+
+        .task-manager-table-container tr:hover td {
+            background-color: rgba(128, 128, 128, 0.1); /* Hover effect for rows */
+        }
+        .light-theme .task-manager-table-container tr:hover td {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        /* Ensure selected row hover doesn't conflict or looks good */
+        .task-manager-table-container tr.selected:hover td {
+             background-color: rgba(var(--highlight-primary-rgb), 0.45) !important; /* Slightly darker on hover if selected */
+        }
+        .light-theme .task-manager-table-container tr.selected:hover td {
+            background-color: rgba(var(--highlight-primary-rgb-light), 0.35) !important;
+        }
+
+
+        .task-manager-status-bar {
+            padding: 8px 12px;
+            border-top: 1px solid var(--glass-border);
+            font-size: 0.8rem;
+            color: var(--subtle-text-color);
+            background-color: rgba(0,0,0,0.05); /* Subtle bg for status bar */
+            text-align: right; /* Align text to the right */
+        }
+        .light-theme .task-manager-status-bar {
+            background-color: rgba(255,255,255,0.05);
+        }
+
+
     </style>
 </head>
 <body>    <div id="notification-container"></div>
@@ -1841,6 +1976,103 @@
         </div>    </div>
     
     <script>
+    // --- Event Listener Instrumentation ---
+    if (typeof window.AuraOS === 'undefined') {
+        window.AuraOS = {};
+    }
+    window.AuraOS.trackedEventListeners = {
+        listeners: new WeakMap(),
+        // Utility to add a listener to tracking
+        add: function(target, type, listener, options) {
+            if (!this.listeners.has(target)) {
+                this.listeners.set(target, new Map());
+            }
+            const targetListeners = this.listeners.get(target);
+            if (!targetListeners.has(type)) {
+                targetListeners.set(type, new Set());
+            }
+            // Store listener details. For precise removal, options (capture/once/passive) might be needed.
+            // For this implementation, we'll store the function and the capture flag.
+            const capture = typeof options === 'boolean' ? options : (options && options.capture);
+            targetListeners.get(type).add({ listener, capture });
+        },
+        // Utility to remove a listener from tracking
+        remove: function(target, type, listener, options) {
+            if (!this.listeners.has(target)) {
+                return;
+            }
+            const targetListeners = this.listeners.get(target);
+            if (!targetListeners.has(type)) {
+                return;
+            }
+            const typeListeners = targetListeners.get(type);
+            const capture = typeof options === 'boolean' ? options : (options && options.capture);
+            let listenerToRemove = null;
+            for (const l of typeListeners) {
+                if (l.listener === listener && l.capture === capture) {
+                    listenerToRemove = l;
+                    break;
+                }
+            }
+            if (listenerToRemove) {
+                typeListeners.delete(listenerToRemove);
+            }
+        },
+        // Utility to get all listeners for a target (optional: filter by type)
+        get: function(target, type) {
+            if (!this.listeners.has(target)) {
+                return [];
+            }
+            const targetListeners = this.listeners.get(target);
+            if (type) {
+                return Array.from(targetListeners.get(type) || []);
+            }
+            // If no type specified, collect all listeners for the target
+            let allForTarget = [];
+            for (const listenersSet of targetListeners.values()) {
+                allForTarget = allForTarget.concat(Array.from(listenersSet));
+            }
+            return allForTarget;
+        }
+    };
+
+    (function() {
+        const originalAddEventListener = EventTarget.prototype.addEventListener;
+        const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
+
+        EventTarget.prototype.addEventListener = function(type, listener, options) {
+            // Call the original method first
+            originalAddEventListener.call(this, type, listener, options);
+            // Then, track it
+            try {
+                if (window.AuraOS && window.AuraOS.trackedEventListeners) {
+                     window.AuraOS.trackedEventListeners.add(this, type, listener, options);
+                }
+            } catch (e) {
+                console.warn('AuraOS: Error tracking addEventListener:', e);
+            }
+        };
+
+        EventTarget.prototype.removeEventListener = function(type, listener, options) {
+            // Call the original method first
+            originalRemoveEventListener.call(this, type, listener, options);
+            // Then, untrack it
+            try {
+                if (window.AuraOS && window.AuraOS.trackedEventListeners) {
+                    window.AuraOS.trackedEventListeners.remove(this, type, listener, options);
+                }
+            } catch (e) {
+                console.warn('AuraOS: Error tracking removeEventListener:', e);
+            }
+        };
+
+        // Expose the original removeEventListener for cleanup purposes
+        if (typeof window.AuraOS !== 'undefined') {
+            window.AuraOS.originalRemoveEventListener = originalRemoveEventListener;
+        }
+    })();
+    // --- End of Event Listener Instrumentation ---
+
     // DBManager instance is created globally in DBManager.js
 
     // --- AURA OS Global Object and Notification System ---
@@ -2199,6 +2431,12 @@
             
             const uniqueId = appId + (apps[appId].allowMultiple ? `-${Date.now()}` : '');
             windowEl.id = uniqueId;
+            windowEl.dataset.creationTime = Date.now(); // Store creation timestamp
+
+            // Ensure the window element itself is known to the tracker, even if no listeners yet
+            if (window.AuraOS && window.AuraOS.trackedEventListeners && !window.AuraOS.trackedEventListeners.listeners.has(windowEl)) {
+                window.AuraOS.trackedEventListeners.listeners.set(windowEl, new Map());
+            }
             
             windowEl.style.width = data.width || `${app.width}px`;
             windowEl.style.height = data.height || `${app.height}px`;
@@ -2242,13 +2480,36 @@
         function closeWindow(windowId, appId) {
             const windowEl = document.getElementById(windowId);
             if (!windowEl) return;
+
             // Disparar evento customizado para limpeza interna do app
             windowEl.dispatchEvent(new CustomEvent('aura:close'));
+
+            // --- Event Listener Cleanup ---
+            if (window.AuraOS && window.AuraOS.trackedEventListeners && window.AuraOS.originalRemoveEventListener) {
+                const elementsToScan = [windowEl, ...windowEl.querySelectorAll('*')];
+                elementsToScan.forEach(el => {
+                    if (AuraOS.trackedEventListeners.listeners.has(el)) {
+                        const eventTypesMap = AuraOS.trackedEventListeners.listeners.get(el);
+                        eventTypesMap.forEach((listenersSet, type) => {
+                            listenersSet.forEach(listenerDetail => {
+                                // Call original removeEventListener
+                                AuraOS.originalRemoveEventListener.call(el, type, listenerDetail.listener, listenerDetail.capture);
+                                console.log(`AuraOS: Cleaned up listener type '${type}' on element:`, el);
+                            });
+                        });
+                        // Remove the element from the main WeakMap or clear its Map of listeners
+                        AuraOS.trackedEventListeners.listeners.delete(el); // Or eventTypesMap.clear(); then check if map is empty to delete el from WeakMap
+                    }
+                });
+            }
+            // --- End of Event Listener Cleanup ---
+
             windowEl.style.opacity = '0';
             windowEl.style.transform = 'scale(0.9)';
             setTimeout(() => {
-                // CORREÇÃO: Remover do body ao invés do desktop
-                document.body.removeChild(windowEl);
+                if (windowEl.parentNode === document.body) { // Check if still a child before removing
+                    document.body.removeChild(windowEl);
+                }
                 if (!document.querySelector(`.window[id^="${appId}"]`)) {
                     const dockItem = document.querySelector(`.dock-item[data-app-id="${appId}"]`);
                     if(dockItem) dockItem.classList.remove('active');
@@ -4114,6 +4375,291 @@
                     // Optionally, focus it when created, though focusWindow should handle this.
                     // windowEl.focus(); // This might be too aggressive if called directly here.
                     break;
+                case 'task-manager':
+                    body.innerHTML = `
+                        <div class="task-manager-controls" style="padding: 5px; border-bottom: 1px solid var(--glass-border);">
+                            <label for="tm-refresh-rate">Refresh Rate: </label>
+                            <select id="tm-refresh-rate">
+                                <option value="1000">1s</option>
+                                <option value="2000" selected>2s</option>
+                                <option value="3000">3s</option>
+                                <option value="5000">5s</option>
+                                <option value="0">Paused</option>
+                            </select>
+                            <button id="tm-end-task-btn" style="margin-left: 10px; padding: 3px 8px;">End Task</button>
+                        </div>
+                        <div class="task-manager-table-container" style="overflow-y: auto; height: calc(100% - 70px);">
+                            </div>
+                        <div class="task-manager-status-bar" style="padding: 5px; border-top: 1px solid var(--glass-border); font-size: 0.8rem; height: 20px;">
+                            Status: Initializing...
+                        </div>
+                    `;
+
+                    const tableContainer = body.querySelector('.task-manager-table-container');
+                    const statusBarContainer = body.querySelector('.task-manager-status-bar');
+                    const refreshRateSelect = body.querySelector('#tm-refresh-rate');
+                    const endTaskButton = body.querySelector('#tm-end-task-btn');
+                    let taskManagerIntervalId = null;
+                    // let selectedRowWindowId = null; // Replaced by selectedProcessInfo
+                    let selectedProcessInfo = null; // { windowId: '...', appId: '...' }
+
+
+                    function formatUptime(milliseconds) {
+                        if (isNaN(milliseconds) || milliseconds < 0) return 'N/A';
+                        let seconds = Math.floor(milliseconds / 1000);
+                        let minutes = Math.floor(seconds / 60);
+                        let hours = Math.floor(minutes / 60);
+
+                        seconds = seconds % 60;
+                        minutes = minutes % 60;
+
+                        const pad = (num) => String(num).padStart(2, '0');
+
+                        if (hours > 0) {
+                            return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+                        } else if (minutes > 0) {
+                            return `${pad(minutes)}:${pad(seconds)}`;
+                        } else {
+                            return `${pad(seconds)}s`;
+                        }
+                    }
+
+                    function collectProcessData() {
+                        let totalProcesses = 0;
+                        let totalDomNodes = 0;
+                        let totalEventListeners = 0;
+                        const processesArray = [];
+                        const openWindows = document.querySelectorAll('.window');
+
+                        openWindows.forEach(winEl => {
+                            totalProcesses++;
+                            let appId = winEl.id;
+                            // If window ID has a timestamp (e.g., "notes-app-123456"), extract base app ID
+                            if (apps[appId] && apps[appId].allowMultiple) {
+                                const parts = winEl.id.split('-');
+                                if (!isNaN(parseInt(parts[parts.length -1 ]))) { // Check if last part is a number (timestamp)
+                                    appId = parts.slice(0, -1).join('-');
+                                }
+                            } else if (!apps[appId]) { // If not a direct match, it might be a unique ID
+                                const baseAppId = Object.keys(apps).find(key => winEl.id.startsWith(key));
+                                if (baseAppId) appId = baseAppId;
+                            }
+
+
+                            const processName = winEl.querySelector('.window-title')?.textContent || 'N/A';
+                            const domNodes = winEl.querySelectorAll('.window-body *').length;
+                            totalDomNodes += domNodes;
+
+                            let windowListenerCount = 0;
+                            const elementsToScan = [winEl, ...winEl.querySelectorAll('*')];
+                            if (window.AuraOS && window.AuraOS.trackedEventListeners) {
+                                elementsToScan.forEach(el => {
+                                    const trackedElementListeners = AuraOS.trackedEventListeners.listeners.get(el);
+                                    if (trackedElementListeners) {
+                                        for (const typeListeners of trackedElementListeners.values()) {
+                                            windowListenerCount += typeListeners.size;
+                                        }
+                                    }
+                                });
+                            }
+                            totalEventListeners += windowListenerCount;
+
+                            const zIndex = parseInt(winEl.style.zIndex) || 0;
+                            let status = "Running";
+                            if (winEl.classList.contains('focused')) status = "Focused";
+                            else if (winEl.classList.contains('minimized')) status = "Minimized";
+
+                            const creationTime = parseInt(winEl.dataset.creationTime) || Date.now();
+                            const uptime = formatUptime(Date.now() - creationTime);
+
+                            processesArray.push({
+                                id: winEl.id, // Use the unique window ID
+                                name: processName,
+                                appId: appId,
+                                domNodes: domNodes,
+                                eventListeners: windowListenerCount,
+                                zIndex: zIndex,
+                                status: status,
+                                uptime: uptime
+                            });
+                        });
+
+                        return {
+                            processesArray: processesArray.sort((a,b) => b.zIndex - a.zIndex), // Sort by zIndex desc by default
+                            totals: { totalProcesses, totalDomNodes, totalEventListeners }
+                        };
+                    }
+
+                    function renderTaskManagerData(processData, tableContainer, statusBarContainer) {
+                        tableContainer.innerHTML = ''; // Clear previous table
+                        const table = document.createElement('table');
+                        table.style.width = '100%';
+                        table.style.borderCollapse = 'collapse';
+
+                        const thead = table.createTHead();
+                        const headerRow = thead.insertRow();
+                        const headers = ['Name', 'App ID', 'DOM Nodes', 'Listeners', 'z-index', 'Status', 'Uptime'];
+                        headers.forEach(text => {
+                            const th = document.createElement('th');
+                            th.textContent = text;
+                            th.style.textAlign = 'left';
+                            th.style.padding = '4px';
+                            th.style.borderBottom = '1px solid var(--glass-border)';
+                            th.style.cursor = 'pointer';
+                            // Add sorting later: th.addEventListener('click', () => sortTableByColumn(table, headers.indexOf(text)));
+                            headerRow.appendChild(th);
+                        });
+
+                        const tbody = table.createTBody();
+                        processData.processesArray.forEach(proc => {
+                            const tr = tbody.insertRow();
+                            tr.dataset.windowId = proc.id;
+                            tr.dataset.appId = proc.appId; // Store appId on the row
+                            tr.style.cursor = 'pointer';
+
+                            if (selectedProcessInfo && proc.id === selectedProcessInfo.windowId) {
+                                tr.classList.add('selected'); // Apply selected class
+                            }
+
+                            tr.insertCell().textContent = proc.name;
+                            tr.insertCell().textContent = proc.appId; // Verified: proc.appId is correct
+                            tr.insertCell().textContent = proc.domNodes; // Verified
+                            tr.insertCell().textContent = proc.eventListeners; // Verified
+                            tr.insertCell().textContent = proc.zIndex; // Verified
+                            tr.insertCell().textContent = proc.status; // Verified
+                            tr.insertCell().textContent = proc.uptime; // Verified (formatUptime called in collectProcessData)
+
+                            // Single click for selection
+                            tr.addEventListener('click', () => {
+                                const previouslySelectedRow = tbody.querySelector('tr.selected');
+                                if (previouslySelectedRow) {
+                                    previouslySelectedRow.classList.remove('selected');
+                                }
+
+                                if (selectedProcessInfo && selectedProcessInfo.windowId === tr.dataset.windowId) {
+                                    selectedProcessInfo = null; // Deselect if clicking the same selected row
+                                } else {
+                                    tr.classList.add('selected');
+                                    // Store name along with id and appId
+                                    selectedProcessInfo = {
+                                        windowId: tr.dataset.windowId,
+                                        appId: tr.dataset.appId,
+                                        name: proc.name // proc is from the forEach loop scope
+                                    };
+                                }
+                            });
+
+                            // Double click to focus window
+                            tr.addEventListener('dblclick', () => {
+                                const windowId = tr.dataset.windowId;
+                                const windowElement = document.getElementById(windowId);
+                                if (windowElement) {
+                                    focusWindow(windowElement);
+                                }
+                            });
+
+                            // Context menu for more actions
+                            tr.addEventListener('contextmenu', (e) => {
+                                e.preventDefault();
+                                const windowId = tr.dataset.windowId;
+                                const windowElement = document.getElementById(windowId);
+                                if (!windowElement) return;
+
+                                const menuItems = [
+                                    {
+                                        label: "Bring to Front",
+                                        action: () => {
+                                            focusWindow(windowElement); // focusWindow handles zIndex and 'focused' class
+                                        }
+                                    },
+                                    {
+                                        label: "Send to Back",
+                                        action: () => {
+                                            windowElement.style.zIndex = 1000; // Base z-index for non-focused windows
+                                            windowElement.classList.remove('focused');
+                                            // Potentially focus another window here, or let user click.
+                                            // For simplicity, just lowering z-index.
+                                            // Refresh Task Manager to show updated z-index
+                                            refreshTaskManager();
+                                        }
+                                    },
+                                    {
+                                        label: "End Task",
+                                        action: () => {
+                                            const processToConfirm = { // Gather info for confirmation dialog
+                                                windowId: tr.dataset.windowId,
+                                                appId: tr.dataset.appId,
+                                                name: tr.cells[0].textContent // Get name from table cell
+                                            };
+                                            AuraOS.dialog.confirm(
+                                                `Are you sure you want to end the task "${processToConfirm.name}" (ID: ${processToConfirm.appId})?`,
+                                                () => { // onConfirm
+                                                    // Ensure this specific task is targeted if it's different from a previously single-clicked one
+                                                    selectedProcessInfo = processToConfirm;
+                                                    endTaskButton.click(); // Simulate click on end task button
+                                                },
+                                                () => { console.log("Task termination via context menu cancelled."); }
+                                            );
+                                        }
+                                    }
+                                ];
+                                createContextMenu(e, menuItems);
+                            });
+                        });
+                        tableContainer.appendChild(table);
+
+                        statusBarContainer.textContent = `Processes: ${processData.totals.totalProcesses} | DOM Nodes: ${processData.totals.totalDomNodes} | Event Listeners: ${processData.totals.totalEventListeners}`; // Verified
+                    }
+
+                    function refreshTaskManager() {
+                        const data = collectProcessData();
+                        renderTaskManagerData(data, tableContainer, statusBarContainer);
+                    }
+
+                    refreshRateSelect.addEventListener('change', (e) => {
+                        clearInterval(taskManagerIntervalId);
+                        const rate = parseInt(e.target.value);
+                        if (rate > 0) {
+                            taskManagerIntervalId = setInterval(refreshTaskManager, rate);
+                        }
+                    });
+
+                    endTaskButton.addEventListener('click', () => {
+                        if (selectedProcessInfo && selectedProcessInfo.windowId && selectedProcessInfo.appId && selectedProcessInfo.name) {
+                            AuraOS.dialog.confirm(
+                                `Are you sure you want to end the task "${selectedProcessInfo.name}" (ID: ${selectedProcessInfo.appId})?`,
+                                () => { // onConfirm
+                                    const windowToClose = document.getElementById(selectedProcessInfo.windowId);
+                                    if (windowToClose) {
+                                        closeWindow(selectedProcessInfo.windowId, selectedProcessInfo.appId);
+                                        selectedProcessInfo = null; // Deselect
+                                        refreshTaskManager(); // Refresh immediately
+                                    } else {
+                                        AuraOS.showNotification({title: "Task Manager", message: "Window not found to end task.", type: "error"});
+                                        selectedProcessInfo = null;
+                                        refreshTaskManager();
+                                    }
+                                },
+                                () => { // onCancel
+                                    console.log("Task termination cancelled by user.");
+                                }
+                            );
+                        } else {
+                            AuraOS.showNotification({title: "Task Manager", message: "No process selected to end, or process information incomplete.", type: "info"});
+                        }
+                    });
+
+                    // Initial call and start interval
+                    refreshTaskManager();
+                    const initialRate = parseInt(refreshRateSelect.value);
+                    if (initialRate > 0) {
+                        taskManagerIntervalId = setInterval(refreshTaskManager, initialRate);
+                    }
+
+                    windowEl.addEventListener('aura:close', () => {
+                        clearInterval(taskManagerIntervalId);
+                    });
+                    break;
             }
         }
         
@@ -4169,7 +4715,12 @@
                 wallpaper: (args) => {
                     if (['default', 'aurora', 'sunset', 'forest', 'ocean', 'space', 'minimalist'].includes(args[0])) setWallpaper(args[0]);
                     else termLog('Uso: wallpaper [default|aurora|sunset|forest|ocean|space|minimalist]', 'output-error');
-                },                ls: (args) => {
+                },
+                taskmgr: () => { // Added taskmgr command
+                    createWindow('task-manager');
+                    termLog('Opening Task Manager...', 'output-text');
+                },
+                ls: (args) => {
                     const node = getFileSystemNode(currentPath);
                     if (!node || node.type !== 'folder') return termLog('Diretório inválido', 'output-error');
                     const showAll = args.includes('-a');
