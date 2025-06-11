@@ -111,7 +111,7 @@
             width: 100%; height: 100%;
             z-index: -1;
             filter: brightness(var(--background-brightness));
-            transition: filter 0.5s ease, background 0.8s ease;
+            transition: backdrop-filter 0.5s ease-in-out, filter 0.5s ease, background 0.8s ease; /* Added backdrop-filter */
         }
         
         .background-effect.wallpaper-default { background: var(--background-color); }
@@ -253,7 +253,7 @@
         }
         .light-theme #top-bar { background: rgba(242, 242, 247, 0.4); }
         #top-bar-logo { font-weight: 700; font-size: 1rem; color: var(--highlight-primary); }
-        #clock { font-weight: 500; }
+        #clock { font-weight: 300; } /* Changed from 500 to 300 */
         
         #dock {
             position: absolute;
@@ -828,8 +828,10 @@
             box-shadow: var(--window-shadow);
         }
         #lock-screen-clock {
-            /* Style already applied inline, but can be centralized here */
-            color: var(--text-color); /* Ensure it uses theme text color */
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 300; /* Added font-weight */
+            color: var(--text-color); /* Ensure it respects theme color */
         }
         /* #lock-password-input uses inline styles, matching login-input */
         #unlock-button {
@@ -1001,6 +1003,22 @@
             background-color: rgba(128, 128, 128, 0.2);
             color: var(--highlight-primary);
         }
+
+        .slide-up-fade-out {
+          transform: translateY(-100px);
+          opacity: 0 !important; /* Use !important to ensure override if needed */
+          transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .shake-animation {
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
     </style>
 </head>
 <body>
@@ -1009,8 +1027,12 @@
         <div class="login-box">
             <h1>AuraOS</h1>
             <p>Complete Desktop Experience</p>
-            <input type="password" id="password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
-            <button id="login-button">Iniciar Sessão</button>
+            <img src="https://via.placeholder.com/100" alt="User Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;" id="login-profile-pic">
+            <div id="login-controls-container">
+                <input type="password" id="password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
+                <div id="login-error-message" style="color: var(--red-accent); margin-top: -10px; margin-bottom: 10px; height: 20px;"></div>
+                <button id="login-button">Iniciar Sessão</button>
+            </div>
         </div>
     </div>
     
@@ -1100,9 +1122,13 @@
 
     <div id="lock-screen">
         <div class="lock-box">
-            <div id="lock-screen-clock" style="font-size: 3rem; margin-bottom: 20px;">12:00:00</div>
-            <input type="password" id="lock-password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
-            <button id="unlock-button">Desbloquear</button>
+            <div id="lock-screen-clock">12:00:00</div> <!-- Removed inline styles -->
+            <img src="https://via.placeholder.com/100" alt="User Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; margin-bottom: 20px;" id="lock-profile-pic">
+            <div id="lock-controls-container">
+                <input type="password" id="lock-password-input" placeholder="Senha" style="margin-bottom: 20px; padding: 10px; border-radius: var(--ui-corner-radius-small); border: 1px solid var(--glass-border); background-color: rgba(255,255,255,0.1); color: var(--text-color); width: calc(100% - 22px);">
+                <div id="lock-error-message" style="color: var(--red-accent); margin-top: -10px; margin-bottom: 10px; height: 20px;"></div>
+                <button id="unlock-button">Desbloquear</button>
+            </div>
         </div>
     </div>
     
@@ -3153,6 +3179,10 @@
         function showLockScreen() {
             if (!lockScreen) return; // Safety check
             isLocked = true; // Update state
+            const desktopBackground = document.querySelector('#desktop > .background-effect');
+            if (desktopBackground) {
+                desktopBackground.style.backdropFilter = 'blur(40px)';
+            }
             lockScreen.style.display = 'flex';
             lockScreenClock.textContent = new Date().toLocaleTimeString('pt-BR'); // Initial time update
             setTimeout(() => {
@@ -3165,10 +3195,28 @@
 
         function hideLockScreen() {
             if (!lockScreen) return; // Safety check
-            lockScreen.style.opacity = '0';
+            const desktopBackground = document.querySelector('#desktop > .background-effect');
+            if (desktopBackground) {
+                desktopBackground.style.backdropFilter = 'blur(0px)';
+            }
+            // Opacity handled by children animation, direct manipulation removed for lockScreen itself
+            // lockScreen.style.opacity = '0';
             setTimeout(() => {
                 lockScreen.style.display = 'none';
-            }, 500); // Match CSS transition duration
+                // Reset lock screen elements for next time
+                const lockProfilePic = document.getElementById('lock-profile-pic');
+                const lockControlsContainer = document.getElementById('lock-controls-container');
+                if (lockProfilePic) {
+                    lockProfilePic.classList.remove('slide-up-fade-out');
+                    lockProfilePic.style.transform = '';
+                    lockProfilePic.style.opacity = '';
+                }
+                if (lockControlsContainer) {
+                    lockControlsContainer.classList.remove('slide-up-fade-out');
+                    lockControlsContainer.style.transform = '';
+                    lockControlsContainer.style.opacity = '';
+                }
+            }, 500); // Match CSS transition duration (or animation duration of children)
         }
 
         // --- INICIALIZAÇÃO ---
@@ -3185,9 +3233,36 @@
             unlockButton.addEventListener('click', () => {
                 if (lockPasswordInput.value === "admin") {
                     isLocked = false; // Update state
+                    const lockProfilePic = document.getElementById('lock-profile-pic');
+                    const lockControlsContainer = document.getElementById('lock-controls-container');
+
+                    if (lockProfilePic) lockProfilePic.classList.add('slide-up-fade-out');
+                    if (lockControlsContainer) lockControlsContainer.classList.add('slide-up-fade-out');
+
                     hideLockScreen();
                 } else {
-                    alert("Senha incorreta!");
+                    const lockPasswordInputEl = document.getElementById('lock-password-input');
+                    const lockErrorMessage = document.getElementById('lock-error-message');
+
+                    if (lockPasswordInputEl) {
+                        lockPasswordInputEl.classList.add('shake-animation');
+                        setTimeout(() => {
+                            lockPasswordInputEl.classList.remove('shake-animation');
+                        }, 500);
+                    }
+                    if (lockErrorMessage) {
+                        lockErrorMessage.textContent = "Senha incorreta!";
+                        const clearErrorTimeout = setTimeout(() => {
+                            lockErrorMessage.textContent = "";
+                        }, 3000);
+                        if (lockPasswordInputEl) {
+                            lockPasswordInputEl.addEventListener('focus', function clearLockError() {
+                                lockErrorMessage.textContent = "";
+                                clearTimeout(clearErrorTimeout);
+                                lockPasswordInputEl.removeEventListener('focus', clearLockError);
+                            });
+                        }
+                    }
                     lockPasswordInput.value = '';
                     lockPasswordInput.focus();
                 }
@@ -3202,10 +3277,35 @@
                 isLoggedIn = true; // Update state
                 isLocked = false;   // Update state
                 const loginScreen = document.getElementById('login-screen');
-                loginScreen.style.opacity = '0';
+                const loginProfilePic = document.getElementById('login-profile-pic');
+                const loginControlsContainer = document.getElementById('login-controls-container');
+
+                if (loginProfilePic) loginProfilePic.classList.add('slide-up-fade-out');
+                if (loginControlsContainer) loginControlsContainer.classList.add('slide-up-fade-out');
+
+                // loginScreen.style.opacity = '0'; // Opacity is handled by the animation on children now
                 setTimeout(() => {
                     loginScreen.style.display = 'none';
                     document.getElementById('aura-os-container').style.display = 'block';
+
+                    // Reset login screen elements for next time
+                    if (loginProfilePic) {
+                        loginProfilePic.classList.remove('slide-up-fade-out');
+                        loginProfilePic.style.transform = '';
+                        loginProfilePic.style.opacity = '';
+                    }
+                    if (loginControlsContainer) {
+                        loginControlsContainer.classList.remove('slide-up-fade-out');
+                        loginControlsContainer.style.transform = '';
+                        loginControlsContainer.style.opacity = '';
+                    }
+                    // Restore login screen opacity if it was globally set (optional, depends on desired effect)
+                    // loginScreen.style.opacity = '1';
+
+                    const desktopBackground = document.querySelector('#desktop > .background-effect');
+                    if (desktopBackground) {
+                        desktopBackground.style.backdropFilter = 'blur(0px)';
+                    }
 
                     // Carregar configurações e sistema de arquivos
                     loadFileSystem();
@@ -3251,7 +3351,28 @@
 
                 }, 500);
             } else {
-                alert("Senha incorreta!");
+                const passwordInputEl = document.getElementById('password-input');
+                const loginErrorMessage = document.getElementById('login-error-message');
+
+                if (passwordInputEl) {
+                    passwordInputEl.classList.add('shake-animation');
+                    setTimeout(() => {
+                        passwordInputEl.classList.remove('shake-animation');
+                    }, 500);
+                }
+                if (loginErrorMessage) {
+                    loginErrorMessage.textContent = "Senha incorreta!";
+                    const clearErrorTimeout = setTimeout(() => {
+                        loginErrorMessage.textContent = "";
+                    }, 3000);
+                    if (passwordInputEl) {
+                        passwordInputEl.addEventListener('focus', function clearError() {
+                            loginErrorMessage.textContent = "";
+                            clearTimeout(clearErrorTimeout);
+                            passwordInputEl.removeEventListener('focus', clearError);
+                        });
+                    }
+                }
                 passwordInput.value = ''; // Limpar o campo da senha
                 passwordInput.focus(); // Focar no campo da senha novamente
             }
