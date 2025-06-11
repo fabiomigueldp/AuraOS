@@ -15,6 +15,7 @@
     <script src="DBManager.js"></script> <!-- DBManager.js linked -->
     <script src="AuraGameSDK.js"></script>
     <script src="AuraBreaker.js"></script> <!-- Add this line -->
+    <script src="AuraInvaders.js"></script>
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
         :root {
@@ -4969,7 +4970,22 @@
                     gameListDiv.innerHTML = '';
 
                     const games = [
-                        { id: 'aura-breaker', title: 'Aura Breaker', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM6 16H4v-2h2v2zm0-3H4v-2h2v2zm0-3H4V8h2v2zm10 6h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm4 6h-2v-2h2v2zm0-3h-2v-2h2v2zM8 9H6V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"/></svg>' }
+                        {
+                            id: 'aura-breaker',
+                            title: 'Aura Breaker',
+                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM6 16H4v-2h2v2zm0-3H4v-2h2v2zm0-3H4V8h2v2zm10 6h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm4 6h-2v-2h2v2zm0-3h-2v-2h2v2zM8 9H6V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"/></svg>',
+                            description: "An intense brick-breaking game with an AuraOS twist. Use the paddle to bounce the ball and destroy all bricks. Features power-ups, multiple levels, and tracks your high score.",
+                            longDescription: "Dive into Aura Breaker, a modern take on the classic arcade game. Control the paddle with your mouse or keyboard, break through waves of bricks, and collect power-ups to enhance your gameplay. Compete for the highest score and unlock achievements. This game is integrated with AuraOS Game Center for leaderboard tracking and a seamless gaming experience.",
+                            controls: "Mouse to move paddle, Click or Space to launch ball. Keyboard left/right arrows to move paddle."
+                        },
+                        {
+                            id: 'aura-invaders',
+                            title: 'Aura Invaders',
+                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M18 4H6v2h12V4zm-3 14H9v-2h6v2zm5-10L13.5 2h-3L4 8v6h16V8h-2zM6 12v-2h2v2H6zm10 0h-2v-2h2v2z"/></svg>',
+                            description: "Defend AuraOS from waves of alien invaders in this classic arcade shooter. Control your ship, dodge enemy fire, and clear the screen of invaders.",
+                            longDescription: "Aura Invaders brings the timeless space shooter experience to AuraOS. Pilot your advanced fighter ship, strategically eliminate descending alien formations, and watch out for their retaliatory fire. Features include scoring, lives, and increasing difficulty. Integrated with AuraOS Game Center for score tracking.",
+                            controls: "Left/Right arrow keys to move. Spacebar or Up arrow key to shoot."
+                        }
                         // { id: 'space-shooter', title: 'Space Shooter', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M12 2L2.5 6.5V17.5L12 22L21.5 17.5V6.5L12 2ZM4.5 7.65L12 11.54V19.5L4.5 15.35V7.65ZM13.5 11.54L20.5 7.65V15.35L13.5 19.5V11.54Z"/></svg>' }
                     ];
 
@@ -5018,12 +5034,17 @@
                                 canvas.width = Math.floor(canvasWidth);
                                 canvas.height = Math.floor(canvasHeight);
 
-                                if (typeof AuraBreakerGame === 'function') {
+                                if (typeof AuraBreakerGame === 'function' && gameData.id === 'aura-breaker') {
                                     currentGameInstance = new AuraBreakerGame(canvas);
                                     currentGameInstance.start();
+                                } else if (typeof AuraInvadersGame === 'function' && gameData.id === 'aura-invaders') {
+                                    currentGameInstance = new AuraInvadersGame(canvas);
+                                    currentGameInstance.start();
                                 } else {
-                                    console.error("AuraBreakerGame function not found!");
-                                    gameContentArea.innerHTML = "<p>Error: Game module not loaded.</p>";
+                                    console.error('Game constructor not found for ' + gameData.id);
+                                    AuraGameSDK.ui.showNotification('Error', 'Could not load game: ' + gameData.title, 'error');
+                                    // Optionally, revert to game details or show error in canvas area
+                                    // For now, it will show a blank canvas area if constructor is missing.
                                 }
 
                                 const exitButton = gameContentArea.querySelector('.exit-game-button');
