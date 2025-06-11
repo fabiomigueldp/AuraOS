@@ -253,7 +253,7 @@
             font-family: 'Fira Code', monospace;
             font-size: 1rem;
             resize: none;
-            padding: 20px;
+            padding: 15px; /* Reduced from 20px */
             box-sizing: border-box;
         }
 
@@ -263,8 +263,8 @@
             font-size: 0.8rem;
             color: var(--subtle-text-color);
             text-align: right;
-            background: rgba(0,0,0,0.2); /* Already there, ensure it's maintained */
-            border-top: 1px solid var(--glass-border); /* Add a separator */
+            background: transparent; /* Make status bar background transparent */
+            border-top: 1px solid var(--glass-border); /* Keep this subtle separator */
         }
 
         #notes-app .note-item {
@@ -325,17 +325,28 @@
         }
 
         #notes-app .note-item.active .delete-note-btn {
-            color: white; /* Ensure visibility on active note background */
+            color: var(--text-color); /* Ensure delete icon is visible on new active background */
         }
 
         #notes-app .note-item.active:hover .delete-note-btn {
-            background-color: rgba(255, 255, 255, 0.2); /* Adjust hover for active state */
+            background-color: rgba(128, 128, 128, 0.3); /* Consistent with non-active delete hover */
+            color: var(--text-color); /* Consistent with non-active delete hover */
         }
 
         #notes-app .note-item.active {
-            background-color: var(--highlight-primary);
-            color: white;
-            font-weight: 500;
+            /* background-color: rgba(138, 99, 210, 0.25); /* REMOVED - Will be theme-specific */
+            color: var(--text-color); /* This is already theme-adaptive */
+            font-weight: 600;     /* This is already set */
+        }
+
+        /* Dark Theme specific active note item background */
+        .dark-theme #notes-app .note-item.active {
+            background-color: rgba(138, 99, 210, 0.25); /* Translucent purple for dark theme (from #8a63d2) */
+        }
+
+        /* Light Theme specific active note item background */
+        .light-theme #notes-app .note-item.active {
+            background-color: rgba(0, 122, 255, 0.15); /* Translucent blue for light theme (from #007aff), with slightly lower alpha for subtlety on light backgrounds */
         }
 
         #notes-app .no-notes-message {
