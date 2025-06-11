@@ -853,6 +853,33 @@
 .light-theme .file-explorer-item.selected p {
     color: var(--text-color); /* Ensure good contrast in light theme */
 }
+
+        /* Context Menu Styling */
+        .context-menu {
+            position: absolute;
+            background-color: var(--glass-background);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            box-shadow: var(--window-shadow);
+            padding: 5px;
+            z-index: 100000; /* Ensure it's above other elements */
+            backdrop-filter: blur(10px) saturate(1.5);
+            -webkit-backdrop-filter: blur(10px) saturate(1.5);
+        }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            border-radius: calc(var(--ui-corner-radius-small) - 4px); /* Inner radius */
+            transition: background-color 0.15s ease;
+        }
+
+        .context-menu-item:hover {
+            background-color: rgba(128, 128, 128, 0.2);
+            color: var(--highlight-primary);
+        }
     </style>
 </head>
 <body>
@@ -908,6 +935,66 @@
 
         // --- ELEMENTOS GLOBAIS E ESTADO ---
         const desktop = document.getElementById('desktop');
+
+        // --- DESKTOP CONTEXT MENU ---
+        if (desktop) {
+            desktop.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+
+                const menuItems = [
+                    {
+                        label: "New Folder",
+                        action: () => {
+                            const folderName = prompt("Enter folder name:", "New Folder");
+                            if (folderName) {
+                                let desktopNode = getFileSystemNode('/Desktop');
+                                if (desktopNode && desktopNode.type === 'folder') {
+                                    if (desktopNode.children[folderName]) {
+                                        alert("A folder with this name already exists on the Desktop.");
+                                        return;
+                                    }
+                                    desktopNode.children[folderName] = { type: 'folder', children: {} };
+                                    saveFileSystem();
+                                    updateDesktopAndFileExplorer('/Desktop');
+                                } else {
+                                    console.error("Desktop node not found or is not a folder.");
+                                    alert("Error: Could not create folder. Desktop not found.");
+                                }
+                            }
+                        }
+                    },
+                    {
+                        label: "New Text File",
+                        action: () => {
+                            const fileName = prompt("Enter file name:", "New Text File.txt");
+                            if (fileName) {
+                                let desktopNode = getFileSystemNode('/Desktop');
+                                if (desktopNode && desktopNode.type === 'folder') {
+                                    if (desktopNode.children[fileName]) {
+                                        alert("A file with this name already exists on the Desktop.");
+                                        return;
+                                    }
+                                    desktopNode.children[fileName] = { type: 'file', content: "" };
+                                    saveFileSystem();
+                                    updateDesktopAndFileExplorer('/Desktop');
+                                } else {
+                                    console.error("Desktop node not found or is not a folder.");
+                                    alert("Error: Could not create file. Desktop not found.");
+                                }
+                            }
+                        }
+                    },
+                    {
+                        label: "Change Wallpaper",
+                        action: () => {
+                            createWindow('control-panel');
+                        }
+                    }
+                ];
+                createContextMenu(event, menuItems);
+            });
+        }
+
         const dock = document.getElementById('dock');
         const root = document.documentElement;
         let zIndexCounter = 100;
@@ -2386,6 +2473,90 @@
         }
 
         // --- SISTEMA DE ARQUIVOS E PERSISTÊNCIA ---
+        function deleteItem(itemPath) {
+            if (!itemPath || itemPath === '/') {
+                alert("Error: Cannot delete the root directory or an invalid path.");
+                return false;
+            }
+
+            const pathParts = itemPath.split('/');
+            const itemName = pathParts.pop();
+            const parentPath = pathParts.join('/') || '/';
+
+            const parentNode = getFileSystemNode(parentPath);
+            if (!parentNode || parentNode.type !== 'folder') {
+                alert("Error: Parent directory not found.");
+                console.error(`[deleteItem] Parent node not found for path: ${parentPath}`);
+                return false;
+            }
+
+            if (!parentNode.children[itemName]) {
+                alert(`Error: Item to delete ('${itemName}') not found in '${parentPath}'.`);
+                console.error(`[deleteItem] Item to delete not found: ${itemName} in ${parentPath}`);
+                return false;
+            }
+
+            delete parentNode.children[itemName];
+            saveFileSystem();
+            updateDesktopAndFileExplorer(parentPath);
+            console.log(`Item deleted: ${itemPath}`);
+            return true;
+        }
+
+        function renameItem(itemPath, newName) {
+            if (!itemPath || !newName || newName.trim() === "") {
+                alert("Error: Invalid new name provided.");
+                return false;
+            }
+
+            let sanitizedNewName = newName.trim().replace(/[\/\\:*?"<>|]/g, '_');
+            if (sanitizedNewName !== newName.trim()) {
+                alert(`Name contained invalid characters and was sanitized to: ${sanitizedNewName}`);
+            }
+            if (!sanitizedNewName) {
+                alert("Error: Sanitized name is empty. Please provide a valid name.");
+                return false;
+            }
+            newName = sanitizedNewName; // Use the sanitized name
+
+            if (itemPath === '/') {
+                alert("Error: Cannot rename the root directory.");
+                return false;
+            }
+
+            const pathParts = itemPath.split('/');
+            const oldName = pathParts.pop();
+            const parentPath = pathParts.join('/') || '/'; // Handle case where parent is root
+
+            const parentNode = getFileSystemNode(parentPath);
+            if (!parentNode || parentNode.type !== 'folder') {
+                alert("Error: Parent directory not found or is not a folder.");
+                console.error(`[renameItem] Parent node not found for path: ${parentPath}`);
+                return false;
+            }
+
+            if (!parentNode.children[oldName]) {
+                alert(`Error: Item to rename ('${oldName}') not found in '${parentPath}'.`);
+                console.error(`[renameItem] Item to rename not found: ${oldName} in ${parentPath}`);
+                return false;
+            }
+
+            if (oldName !== newName && parentNode.children[newName]) {
+                alert(`Error: An item with the name '${newName}' already exists in '${parentPath}'.`);
+                return false;
+            }
+
+            if (oldName !== newName) {
+                parentNode.children[newName] = parentNode.children[oldName];
+                delete parentNode.children[oldName];
+            }
+
+            saveFileSystem();
+            updateDesktopAndFileExplorer(parentPath);
+            console.log(`Item renamed: ${itemPath} to ${parentPath === '/' ? '/' : parentPath + '/'}${newName}`);
+            return true;
+        }
+
         function getFileSystemNode(path) {
             const parts = path.split('/').filter(p => p);
             let currentNode = fileSystem['/'];
@@ -2613,13 +2784,51 @@
                     iconEl.addEventListener('dblclick', () => {
                         if (item.type === 'folder') {
                             const folderPath = `${desktopPath}/${name}`;
-                            // Check if a file explorer is already open for this path (optional, for focusing)
-                            // For simplicity, always create a new one or focus if one exists for 'file-explorer' app ID
                             createWindow('file-explorer', { path: folderPath, title: `Explorador - ${name}` });
                         } else { // File
                             const filePath = `${desktopPath}/${name}`;
                             openFile(filePath);
                         }
+                    });
+
+                    // Context menu for desktop icons
+                    const itemPath = `${desktopPath}/${name}`;
+                    const itemType = item.type;
+                    iconEl.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent desktop's context menu
+
+                        const menuItems = [];
+                        menuItems.push({
+                            label: "Open",
+                            action: () => {
+                                if (itemType === 'folder') {
+                                    createWindow('file-explorer', { path: itemPath, title: `Explorador - ${name}` });
+                                } else {
+                                    openFile(itemPath);
+                                }
+                            }
+                        });
+                        menuItems.push({
+                            label: "Rename",
+                            action: () => {
+                                const currentName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
+                                const newNamePrompt = prompt("Enter new name:", currentName);
+                                if (newNamePrompt) {
+                                    renameItem(itemPath, newNamePrompt);
+                                }
+                            }
+                        });
+                        menuItems.push({
+                            label: "Delete",
+                            action: () => {
+                                const currentName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
+                                if (confirm(`Are you sure you want to delete ${currentName}?`)) {
+                                    deleteItem(itemPath);
+                                }
+                            }
+                        });
+                        createContextMenu(e, menuItems);
                     });
                 });
             }
@@ -2662,6 +2871,58 @@
 
             }, 500);
         });
+
+        // --- CONTEXT MENU FUNCTION ---
+        function createContextMenu(event, menuItems) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Remove any existing context menu
+            const existingMenu = document.querySelector('.context-menu');
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            menu.style.top = `${event.clientY}px`;
+            menu.style.left = `${event.clientX}px`;
+
+            // Use CSS variables for styling
+            menu.style.backgroundColor = 'var(--glass-background)';
+            menu.style.border = '1px solid var(--glass-border)';
+            menu.style.borderRadius = 'var(--ui-corner-radius-small)';
+            menu.style.boxShadow = 'var(--window-shadow)';
+            menu.style.padding = '5px';
+            menu.style.zIndex = '100000'; // Ensure it's on top
+
+            menuItems.forEach(item => {
+                const menuItemEl = document.createElement('div');
+                menuItemEl.className = 'context-menu-item';
+                menuItemEl.textContent = item.label;
+                menuItemEl.addEventListener('click', () => {
+                    item.action();
+                    menu.remove();
+                    window.removeEventListener('click', handleWindowClick); // Clean up window listener
+                });
+                menu.appendChild(menuItemEl);
+            });
+
+            document.body.appendChild(menu);
+
+            // Click outside to close
+            const handleWindowClick = (e) => {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    window.removeEventListener('click', handleWindowClick);
+                }
+            };
+
+            // Add listener with a slight delay to prevent immediate closing due to the same click event
+            setTimeout(() => {
+                window.addEventListener('click', handleWindowClick);
+            }, 0);
+        }
 
     });
     </script>
