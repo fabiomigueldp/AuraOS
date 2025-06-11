@@ -853,6 +853,109 @@
 .light-theme .file-explorer-item.selected p {
     color: var(--text-color); /* Ensure good contrast in light theme */
 }
+
+/* Styles for List View */
+.file-explorer-main-view.list-view-active {
+    /* Styles already applied in JS:
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-content: flex-start;
+    gap: 2px;
+    */
+}
+
+.file-explorer-item.list-item {
+    width: 100% !important; /* List items should take full width */
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 5px 10px !important; /* Adjust padding for list items */
+    border-radius: 4px !important; /* Smaller radius for list items */
+    border: 1px solid transparent; /* For hover/selection border */
+    box-sizing: border-box;
+    text-align: left; /* Override centered text from grid view */
+}
+
+.file-explorer-item.list-item:hover {
+    background-color: rgba(128, 128, 128, 0.1) !important; /* Subtle hover for list items */
+}
+
+.file-explorer-item.list-item.selected {
+    background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.3) !important; /* Selection color from existing variables */
+    border-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.5) !important;
+}
+
+.light-theme .file-explorer-item.list-item.selected {
+    background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.25) !important;
+    border-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.4) !important;
+}
+
+.file-explorer-item.list-item .item-icon {
+    width: 24px; /* Fixed width for icon column */
+    height: 24px;
+    margin-right: 10px;
+    flex-shrink: 0; /* Prevent icon from shrinking */
+    display: flex; /* Center SVG in icon div */
+    align-items: center;
+    justify-content: center;
+}
+
+.file-explorer-item.list-item .item-icon svg {
+    width: 20px !important; /* Ensure SVG is slightly smaller than container */
+    height: 20px !important;
+    /* fill is inherited or set by SVG content */
+}
+
+.file-explorer-item.list-item .item-name {
+    flex-grow: 1; /* Name takes up available space */
+    padding: 0 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.85rem; /* Consistent font size */
+    color: var(--text-color); /* Ensure text color */
+}
+
+.file-explorer-item.list-item .item-date,
+.file-explorer-item.list-item .item-type {
+    flex-shrink: 0; /* Prevent these columns from shrinking */
+    font-size: 0.8rem;
+    color: var(--subtle-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-explorer-item.list-item .item-date {
+    width: 150px; /* Fixed width for date column */
+    padding: 0 10px;
+    text-align: right;
+}
+
+.file-explorer-item.list-item .item-type {
+    width: 100px; /* Fixed width for type column */
+    padding: 0 10px;
+    text-align: left;
+}
+
+/* Remove paragraph margin if it was used in list items (it's not in the current HTML structure) */
+.file-explorer-item.list-item p {
+    margin: 0 !important;
+}
+
+/* Ensure selection text color is maintained or adjusted if needed */
+.file-explorer-item.list-item.selected .item-name,
+.file-explorer-item.list-item.selected .item-date,
+.file-explorer-item.list-item.selected .item-type {
+    color: var(--text-color); /* Or a brighter color if selection background is dark */
+}
+
+.light-theme .file-explorer-item.list-item.selected .item-name,
+.light-theme .file-explorer-item.list-item.selected .item-date,
+.light-theme .file-explorer-item.list-item.selected .item-type {
+    color: var(--text-color); /* Ensure good contrast in light theme selection */
+}
     </style>
 </head>
 <body>
@@ -1427,6 +1530,11 @@
                                     <button class="file-explorer-action-btn" data-action="delete" title="Excluir Selecionado" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
                                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                     </button>
+                                    <button class="file-explorer-action-btn" id="toggle-view-btn" title="Alternar Visualização" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                                        </svg>
+                                    </button>
                                 </div>
                                 <div class="file-explorer-main-view" style="padding: 10px; overflow-y: auto; flex-grow: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px;">
                                     <!-- File and folder icons will be rendered here -->
@@ -1441,31 +1549,80 @@
                     const sidebarDiv = body.querySelector('.file-explorer-sidebar'); // New selector for the sidebar
                     const createFolderButton = body.querySelector('.file-explorer-action-btn[data-action="create-folder"]');
                     const deleteButton = body.querySelector('.file-explorer-action-btn[data-action="delete"]');
+                    const toggleViewBtn = body.querySelector('#toggle-view-btn');
                     let selectedItemPath = null;
+                    let selectedItemsPaths = [];
+                    let lastSelectedItemIndex = -1;
+                    let currentViewMode = 'grid'; // Default to grid view
 
-                    function selectItem(itemEl, itemFullPath) {
-                        mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => {
-                            el.classList.remove('selected');
-                            // el.style.backgroundColor = 'transparent'; // Handled by CSS not having .selected
-                        });
+                    // function selectItem(itemEl, itemFullPath) { // OLD FUNCTION - REMOVED
+                    //     mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => {
+                    //         el.classList.remove('selected');
+                    //         // el.style.backgroundColor = 'transparent'; // Handled by CSS not having .selected
+                    //     });
 
-                        if (itemEl && itemFullPath) {
-                            itemEl.classList.add('selected');
-                            // The background color is now handled by .file-explorer-item.selected CSS rule
-                            selectedItemPath = itemFullPath;
-                        } else {
-                            selectedItemPath = null;
-                        }
-                    }
+                    //     if (itemEl && itemFullPath) {
+                    //         itemEl.classList.add('selected');
+                    //         // The background color is now handled by .file-explorer-item.selected CSS rule
+                    //         selectedItemPath = itemFullPath;
+                    //     } else {
+                    //         selectedItemPath = null;
+                    //     }
+                    // }
 
                     mainView.addEventListener('click', (event) => {
                         if (event.target === mainView) { // Clicked on the background
-                            selectItem(null, null); // Deselect all
+                            mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            selectedItemsPaths = [];
+                            selectedItemPath = null; // Clear the single selected path too
+                            lastSelectedItemIndex = -1;
                         }
                     });
 
                     // Store current path within the window element for persistence if needed, or manage locally
                     windowEl.dataset.currentPath = currentExplorerPath;
+
+                    // Helper function for item click handling (multi-select logic)
+                    function handleFileExplorerItemClick(event, itemElement, itemFullPath, viewElement) {
+                        event.stopPropagation();
+                        const itemsInView = Array.from(viewElement.querySelectorAll('.file-explorer-item'));
+                        const clickedItemIndex = itemsInView.indexOf(itemElement);
+
+                        if (event.shiftKey && selectedItemsPaths.length > 0 && lastSelectedItemIndex !== -1) {
+                            const start = Math.min(lastSelectedItemIndex, clickedItemIndex);
+                            const end = Math.max(lastSelectedItemIndex, clickedItemIndex);
+
+                            selectedItemsPaths = []; // Deselect all for shift range
+                            itemsInView.forEach(el => el.classList.remove('selected'));
+
+                            for (let i = start; i <= end; i++) {
+                                const itemToSelect = itemsInView[i];
+                                const pathToSelect = itemToSelect.dataset.fullPath;
+                                if (pathToSelect && !selectedItemsPaths.includes(pathToSelect)) {
+                                    selectedItemsPaths.push(pathToSelect);
+                                    itemToSelect.classList.add('selected');
+                                }
+                            }
+                        } else if (event.ctrlKey || event.metaKey) {
+                            if (selectedItemsPaths.includes(itemFullPath)) {
+                                selectedItemsPaths = selectedItemsPaths.filter(p => p !== itemFullPath);
+                                itemElement.classList.remove('selected');
+                            } else {
+                                selectedItemsPaths.push(itemFullPath);
+                                itemElement.classList.add('selected');
+                                lastSelectedItemIndex = clickedItemIndex;
+                            }
+                        } else {
+                            itemsInView.forEach(el => el.classList.remove('selected'));
+                            selectedItemsPaths = [itemFullPath];
+                            itemElement.classList.add('selected');
+                            lastSelectedItemIndex = clickedItemIndex;
+                        }
+
+                        selectedItemPath = selectedItemsPaths.length === 1 ? selectedItemsPaths[0] : null;
+                    }
 
                     function renderSidebar(currentPathForHighlighting) {
                         sidebarDiv.innerHTML = ''; // Clear existing items
@@ -1558,62 +1715,87 @@
                     });
 
                     deleteButton.addEventListener('click', () => {
-                        if (!selectedItemPath) {
+                        if (selectedItemsPaths.length === 0) {
                             alert("Nenhum item selecionado para excluir.");
                             return;
                         }
 
-                        // Prevent deleting the root directory or ".." representation if it was somehow selected with a root-like path
-                        if (selectedItemPath === '/') {
-                            alert("Não é possível excluir o diretório raiz.");
-                            selectItem(null, null); // Clear selection
+                        const currentExplorerPath = windowEl.dataset.currentPath;
+                        const itemsToDelete = [...selectedItemsPaths]; // Create a copy to avoid issues if array is modified elsewhere
+
+                        if (!confirm(`Tem certeza que deseja excluir ${itemsToDelete.length} item(ns)? Esta ação não pode ser desfeita.`)) {
                             return;
                         }
 
-                        const itemName = selectedItemPath.substring(selectedItemPath.lastIndexOf('/') + 1);
-                        // If selectedItemPath actually points to a directory that is represented as ".."
-                        // This check is a bit indirect. A truly selected ".." item has its selectedItemPath as the parent dir.
-                        // So, if itemName is empty, it means selectedItemPath was like "/" or "/Desktop/" instead of "/Desktop/MyFile.txt"
-                        if (itemName === "" && getFileSystemNode(selectedItemPath)?.type === 'folder') {
-                             alert("Não é possível excluir o diretório atual ou pai desta forma. Selecione um arquivo ou subpasta específica.");
-                             selectItem(null, null);
-                             return;
-                        }
-                        // A more direct check if the selected item is the one visually represented as ".."
-                        // This requires knowing the *displayed name* of the selected element.
-                        // For simplicity, we rely on `selectedItemPath` not being the *current* path for deletion.
-                        if (selectedItemPath === windowEl.dataset.currentPath && itemName === windowEl.dataset.currentPath.substring(windowEl.dataset.currentPath.lastIndexOf('/') + 1)) {
-                             // This means selectedItemPath is the current directory itself.
-                             // This case should ideally not happen if ".." is handled correctly in selectItem.
-                        }
+                        // let refreshNeededPath = currentExplorerPath; // Default to current path for refresh
 
+                        itemsToDelete.forEach(itemPathToDelete => {
+                            // Prevent deleting the root directory or ".." representation if it was somehow selected with a root-like path
+                            if (itemPathToDelete === '/') {
+                                alert("Não é possível excluir o diretório raiz.");
+                                // Remove from selection if it was there
+                                selectedItemsPaths = selectedItemsPaths.filter(p => p !== itemPathToDelete);
+                                return; // Skip to next item
+                            }
 
-                        if (!confirm(`Tem certeza que deseja excluir '${itemName}'? Esta ação não pode ser desfeita.`)) {
-                            return;
-                        }
+                            const itemName = itemPathToDelete.substring(itemPathToDelete.lastIndexOf('/') + 1);
+                            const parentOfItemPath = itemPathToDelete.substring(0, itemPathToDelete.lastIndexOf('/')) || '/';
 
-                        const parts = selectedItemPath.split('/').filter(p => p); // Get path components
-                        if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
-                            alert("Não é possível excluir o diretório raiz.");
-                            return;
-                        }
-                        parts.pop(); // Remove item name to get parent's components
-                        const parentOfSelectedItemPath = '/' + parts.join('/');
+                            // For the very first item being deleted, set the refreshNeededPath to its parent.
+                            // This helps if items from different directories were somehow selected (though current UI doesn't support that easily).
+                            // Or more simply, always refresh the currentExplorerPath, assuming selections are within the current view.
+                            // For simplicity and current design, refreshing currentExplorerPath is generally fine.
+                            // If an item's parent is different than currentExplorerPath, the refresh might not show that specific change
+                            // unless the user navigates there. The current design primarily supports selection within one directory view.
+                            // Let's ensure refreshNeededPath is set to the parent of the *first successfully processed* item if it's different from current path.
+                            // However, a simpler approach is to just refresh currentExplorerPath, and desktop icons.
 
-                        const parentNode = getFileSystemNode(parentOfSelectedItemPath);
+                            const parentNode = getFileSystemNode(parentOfItemPath);
 
-                        if (parentNode && parentNode.type === 'folder' && parentNode.children[itemName]) {
-                            delete parentNode.children[itemName];
-                            saveFileSystem();
-                            const pathToUpdate = parentOfSelectedItemPath;
-                            selectItem(null, null); // Clear selection
-                            updateDesktopAndFileExplorer(pathToUpdate);
+                            if (parentNode && parentNode.type === 'folder' && parentNode.children[itemName]) {
+                                delete parentNode.children[itemName];
+                                console.log(`Deleted: ${itemPathToDelete}`);
+                            } else {
+                                alert(`Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfItemPath}'.`);
+                                // Optionally remove from selectedItemsPaths if it failed, though it should be there if selected
+                                selectedItemsPaths = selectedItemsPaths.filter(p => p !== itemPathToDelete);
+                            }
+                        });
+
+                        saveFileSystem();
+
+                        // Clear all selections after deletion
+                        selectedItemsPaths = [];
+                        selectedItemPath = null;
+                        lastSelectedItemIndex = -1;
+                        mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => el.classList.remove('selected'));
+
+                        // Refresh the current view and desktop
+                        // updateDesktopAndFileExplorer(currentExplorerPath); // This should be the most reliable path to refresh
+                        // To be absolutely sure, we can call renderFileExplorerView for the current path
+                        renderFileExplorerView(currentExplorerPath); // Re-render the current directory
+                        renderDesktopIcons(); // Re-render desktop icons as deleted items might have been on Desktop
+
+                    });
+
+                    toggleViewBtn.addEventListener('click', () => {
+                        currentViewMode = currentViewMode === 'grid' ? 'list' : 'grid';
+                        // Update button icon/tooltip if desired
+                        if (currentViewMode === 'list') {
+                            toggleViewBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 13h8v-8h-8v8z"/></svg>'; // Grid icon
+                            toggleViewBtn.title = "Visualização em Grade";
                         } else {
-                            alert(`Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfSelectedItemPath}'. (Caminho completo: ${selectedItemPath})`);
-                            // It's possible the item was deleted by another process/tab, refresh view
-                            selectItem(null, null);
-                            updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
+                            toggleViewBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>'; // List icon
+                            toggleViewBtn.title = "Visualização em Lista";
                         }
+
+                        // Re-render the view with the new mode
+                        selectedItemsPaths = [];
+                        selectedItemPath = null;
+                        lastSelectedItemIndex = -1;
+                        mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => el.classList.remove('selected'));
+
+                        renderFileExplorerView(windowEl.dataset.currentPath);
                     });
 
                     function renderFileExplorerView(path) {
@@ -1621,6 +1803,30 @@
                         addressBar.value = path;
                         renderSidebar(path); // Call to update sidebar highlighting using the new path
                         mainView.innerHTML = ''; // Clear previous view
+
+                        // Clear selections when navigating
+                        selectedItemsPaths = [];
+                        lastSelectedItemIndex = -1;
+                        selectedItemPath = null;
+                        mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => el.classList.remove('selected'));
+
+                        if (currentViewMode === 'list') {
+                            mainView.classList.add('list-view-active');
+                            mainView.classList.remove('grid-view-active');
+                            mainView.style.display = 'flex';
+                            mainView.style.flexDirection = 'column';
+                            mainView.style.flexWrap = 'nowrap';
+                            mainView.style.alignContent = 'flex-start';
+                            mainView.style.gap = '2px';
+                        } else { // Grid view
+                            mainView.classList.add('grid-view-active');
+                            mainView.classList.remove('list-view-active');
+                            mainView.style.display = 'flex';
+                            mainView.style.flexDirection = 'row';
+                            mainView.style.flexWrap = 'wrap';
+                            mainView.style.alignContent = 'flex-start';
+                            mainView.style.gap = '10px';
+                        }
 
                         const node = getFileSystemNode(path);
                         if (!node || node.type !== 'folder') {
@@ -1642,83 +1848,130 @@
                                 <p style="margin: 0; font-size: 0.8rem; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${parentName}</p>
                             `;
                             // Single click to select ".." (path is parent's path)
-                            parentEl.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                const parentPathValue = path === '/' ? '/' : path.substring(0, path.lastIndexOf('/')) || '/';
-                                selectItem(parentEl, parentPathValue);
-                            });
+                            const parentName = '..';
+                            const parentEl = document.createElement('div');
+                            parentEl.className = 'file-explorer-item';
+                            const parentFullPath = path.substring(0, path.lastIndexOf('/')) || '/';
+                            parentEl.dataset.fullPath = parentFullPath;
 
-                            // Double click to navigate up
+                            if (currentViewMode === 'grid') {
+                                parentEl.style.textAlign = 'center';
+                                parentEl.style.width = '80px';
+                                parentEl.style.padding = '5px';
+                                parentEl.style.cursor = 'pointer';
+                                parentEl.innerHTML = `
+                                    <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2" opacity="0.7"/></svg>
+                                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${parentName}</p>
+                                `;
+                                // Hover for ".." in grid view
+                                parentEl.addEventListener('mouseenter', () => {
+                                    if (!parentEl.classList.contains('selected')) {
+                                        parentEl.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
+                                    }
+                                });
+                                parentEl.addEventListener('mouseleave', () => {
+                                    if (!parentEl.classList.contains('selected')) {
+                                        parentEl.style.backgroundColor = 'transparent';
+                                    }
+                                });
+                            } else { // List view for ".."
+                                parentEl.classList.add('list-item');
+                                parentEl.innerHTML = `
+                                    <div class="item-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2" opacity="0.7"/></svg></div>
+                                    <div class="item-name">${parentName}</div>
+                                    <div class="item-date"></div>
+                                    <div class="item-type">Pasta</div>
+                                `;
+                            }
+
+                            parentEl.addEventListener('click', (e) => handleFileExplorerItemClick(e, parentEl, parentFullPath, mainView));
                             parentEl.addEventListener('dblclick', () => {
-                                selectItem(null, null); // Deselect before navigating
-                                const currentParts = path.split('/').filter(p => p);
-                                currentParts.pop();
-                                renderFileExplorerView('/' + currentParts.join('/'));
-                            });
-
-                            // Hover for ".."
-                            parentEl.addEventListener('mouseenter', () => {
-                                if (!parentEl.classList.contains('selected')) {
-                                    parentEl.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
-                                }
-                            });
-                            parentEl.addEventListener('mouseleave', () => {
-                                if (!parentEl.classList.contains('selected')) {
-                                    parentEl.style.backgroundColor = 'transparent';
-                                }
+                                selectedItemsPaths = [];
+                                selectedItemPath = null;
+                                lastSelectedItemIndex = -1;
+                                mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => el.classList.remove('selected'));
+                                renderFileExplorerView(parentFullPath);
                             });
                             mainView.appendChild(parentEl);
                         }
 
                         Object.entries(node.children).forEach(([name, item]) => {
                             const itemEl = document.createElement('div');
-                            itemEl.className = 'file-explorer-item'; // For styling
-                            itemEl.style.textAlign = 'center';
-                            itemEl.style.width = '80px'; // Example size
-                            itemEl.style.padding = '5px';
-                            itemEl.style.cursor = 'pointer';
-                            itemEl.style.borderRadius = 'var(--ui-corner-radius-small)';
+                            itemEl.className = 'file-explorer-item';
+                            const itemFullPath = resolvePath(path, name);
+                            itemEl.dataset.fullPath = itemFullPath;
 
-                            let iconSvg = '';
-                            // Single click to select
-                            itemEl.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                const fullItemPath = resolvePath(path, name);
-                                selectItem(itemEl, fullItemPath);
-                            });
+                            if (currentViewMode === 'grid') {
+                                itemEl.style.textAlign = 'center';
+                                itemEl.style.width = '80px';
+                                itemEl.style.padding = '5px';
+                                itemEl.style.cursor = 'pointer';
+                                itemEl.style.borderRadius = 'var(--ui-corner-radius-small)';
+                                let iconSvgGrid = '';
+                                if (item.type === 'folder') {
+                                    iconSvgGrid = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
+                                } else {
+                                    iconSvgGrid = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF"/></svg>';
+                                }
+                                itemEl.innerHTML = `${iconSvgGrid}<p style="margin: 0; font-size: 0.8rem; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${name}</p>`;
 
-                            // Double click to open
-                            if (item.type === 'folder') {
-                                iconSvg = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
-                                itemEl.addEventListener('dblclick', () => {
-                                    selectItem(null, null); // Deselect before navigating
-                                    renderFileExplorerView(resolvePath(path, name));
+                                itemEl.addEventListener('mouseenter', () => {
+                                    if (!itemEl.classList.contains('selected')) {
+                                        itemEl.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
+                                    }
                                 });
-                            } else { // File
-                                iconSvg = '<svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF"/></svg>';
-                                itemEl.addEventListener('dblclick', () => {
-                                    openFile(resolvePath(path, name));
+                                itemEl.addEventListener('mouseleave', () => {
+                                    if (!itemEl.classList.contains('selected')) {
+                                        itemEl.style.backgroundColor = 'transparent';
+                                    }
                                 });
+                            } else { // List view for item
+                                itemEl.classList.add('list-item');
+                                let iconSvgList = '';
+                                let itemType = '';
+                                // Mock date for list view - replace with actual file metadata if available
+                                const date = new Date();
+                                date.setDate(date.getDate() - Math.floor(Math.random() * 30));
+                                const mockDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                                if (item.type === 'folder') {
+                                    iconSvgList = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10 4H4c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#8a63d2"/></svg>';
+                                    itemType = 'Pasta';
+                                } else { // File
+                                    iconSvgList = '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z" fill="#FFFFFF"/></svg>';
+                                    const extension = name.includes('.') ? name.substring(name.lastIndexOf('.') + 1).toUpperCase() + ' Arquivo' : 'Arquivo';
+                                    itemType = extension;
+                                }
+                                itemEl.innerHTML = `
+                                    <div class="item-icon">${iconSvgList}</div>
+                                    <div class="item-name">${name}</div>
+                                    <div class="item-date">${mockDate}</div>
+                                    <div class="item-type">${itemType}</div>
+                                `;
                             }
 
-                            itemEl.innerHTML = `${iconSvg}<p style="margin: 0; font-size: 0.8rem; color: var(--text-color); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${name}</p>`;
-                            // Visual hover effects (if not selected)
-                            itemEl.addEventListener('mouseenter', () => {
-                                if (!itemEl.classList.contains('selected')) {
-                                    itemEl.style.backgroundColor = 'rgba(128, 128, 128, 0.2)';
-                                }
-                            });
-                            itemEl.addEventListener('mouseleave', () => {
-                                if (!itemEl.classList.contains('selected')) {
-                                    itemEl.style.backgroundColor = 'transparent';
-                                }
-                            });
+                            itemEl.addEventListener('click', (e) => handleFileExplorerItemClick(e, itemEl, itemFullPath, mainView));
+
+                            if (item.type === 'folder') {
+                                itemEl.addEventListener('dblclick', () => {
+                                    selectedItemsPaths = [];
+                                    selectedItemPath = null;
+                                    lastSelectedItemIndex = -1;
+                                    mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => el.classList.remove('selected'));
+                                    renderFileExplorerView(itemFullPath);
+                                });
+                            } else { // File
+                                itemEl.addEventListener('dblclick', () => openFile(itemFullPath));
+                            }
                             mainView.appendChild(itemEl);
                         });
                     }
 
                     upButton.addEventListener('click', () => {
-                        selectItem(null, null); // Clear selection
+                        selectedItemsPaths = [];
+                        lastSelectedItemIndex = -1;
+                        selectedItemPath = null;
+                        mainView.querySelectorAll('.file-explorer-item.selected').forEach(el => el.classList.remove('selected'));
                         const currentWindowPath = windowEl.dataset.currentPath;
                         // ... rest of the up button logic ...
                         // (Ensure it uses currentWindowPath, not the 'path' variable from renderFileExplorerView's scope if 'path' is different)
