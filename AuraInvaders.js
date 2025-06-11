@@ -30,6 +30,7 @@ function AuraInvadersGame(canvas) {
   const playerSpeed = 5;
   const bulletSpeed = 7;
   const invaderSpeed = 1; // Initial speed, can be increased
+  const invaderBulletSpeed = 5;
   const invaderDropDistance = 10;
   const maxShootCooldown = 20; // Frames between player shots
   const invaderShootInterval = 1000; // ms between invader shots

@@ -16,6 +16,8 @@
     <script src="AuraGameSDK.js"></script>
     <script src="AuraBreaker.js"></script> <!-- Add this line -->
     <script src="AuraInvaders.js"></script>
+    <script src="AuraOS/AuraPong.js"></script>
+    <script src="AuraOS/AuraTetris.js"></script>
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
         :root {
@@ -4985,6 +4987,22 @@
                             description: "Defend AuraOS from waves of alien invaders in this classic arcade shooter. Control your ship, dodge enemy fire, and clear the screen of invaders.",
                             longDescription: "Aura Invaders brings the timeless space shooter experience to AuraOS. Pilot your advanced fighter ship, strategically eliminate descending alien formations, and watch out for their retaliatory fire. Features include scoring, lives, and increasing difficulty. Integrated with AuraOS Game Center for score tracking.",
                             controls: "Left/Right arrow keys to move. Spacebar or Up arrow key to shoot."
+                        },
+                        {
+                            id: 'aura-pong',
+                            title: 'Aura Pong',
+                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><rect x="3" y="11" width="2" height="4"/><rect x="19" y="11" width="2" height="4"/><circle cx="12" cy="12" r="1.5"/></svg>', // Simple placeholder icon
+                            description: 'Classic Pong game with an Aura twist.',
+                            longDescription: 'Experience the timeless arcade classic Pong. Control your paddle and try to outscore your opponent in this fast-paced game. Features simple controls and endless fun. Can you become the Aura Pong champion?',
+                            controls: 'Player 1: W (up), S (down). Player 2: Up Arrow (up), Down Arrow (down).'
+                        },
+                        {
+                            id: 'aura-tetris',
+                            title: 'Aura Tetris',
+                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><rect x="8" y="4" width="4" height="4"/><rect x="12" y="8" width="4" height="4"/><rect x="8" y="12" width="4" height="4"/><rect x="4" y="8" width="4" height="4"/></svg>', // Simple placeholder icon
+                            description: 'Fit the falling blocks and clear lines.',
+                            longDescription: 'Challenge your spatial reasoning with Aura Tetris. Manipulate the falling tetrominoes to create complete horizontal lines. As you clear lines, the speed increases. Plan your moves carefully to avoid a stack-up!',
+                            controls: 'Left/Right Arrows: Move block. Up Arrow: Rotate block. Down Arrow: Soft drop. Spacebar: Hard drop.'
                         }
                         // { id: 'space-shooter', title: 'Space Shooter', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M12 2L2.5 6.5V17.5L12 22L21.5 17.5V6.5L12 2ZM4.5 7.65L12 11.54V19.5L4.5 15.35V7.65ZM13.5 11.54L20.5 7.65V15.35L13.5 19.5V11.54Z"/></svg>' }
                     ];
@@ -5040,6 +5058,28 @@
                                 } else if (typeof AuraInvadersGame === 'function' && gameData.id === 'aura-invaders') {
                                     currentGameInstance = new AuraInvadersGame(canvas);
                                     currentGameInstance.start();
+                                } else if (gameData.id === 'aura-pong') {
+                                    if (typeof AuraPongGame === 'function') {
+                                        currentGameInstance = new AuraPongGame(canvas);
+                                        currentGameInstance.start();
+                                    } else {
+                                        console.error('AuraPongGame constructor not found!');
+                                        AuraGameSDK.ui.showNotification('Error', 'Could not load Aura Pong.', 'error');
+                                        // Revert to detail view if game fails to load
+                                        const gameToReDetail = games.find(g => g.id === gameData.id);
+                                        if (gameToReDetail) showGameDetails(gameToReDetail);
+                                    }
+                                } else if (gameData.id === 'aura-tetris') {
+                                    if (typeof AuraTetrisGame === 'function') {
+                                        currentGameInstance = new AuraTetrisGame(canvas);
+                                        currentGameInstance.start();
+                                    } else {
+                                        console.error('AuraTetrisGame constructor not found!');
+                                        AuraGameSDK.ui.showNotification('Error', 'Could not load Aura Tetris.', 'error');
+                                        // Revert to detail view if game fails to load
+                                        const gameToReDetail = games.find(g => g.id === gameData.id);
+                                        if (gameToReDetail) showGameDetails(gameToReDetail);
+                                    }
                                 } else {
                                     console.error('Game constructor not found for ' + gameData.id);
                                     AuraGameSDK.ui.showNotification('Error', 'Could not load game: ' + gameData.title, 'error');
