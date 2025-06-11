@@ -11,7 +11,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Fira+Code&display=swap" rel="stylesheet">
 
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
@@ -81,6 +81,9 @@
         .background-effect.wallpaper-sunset { background: linear-gradient(45deg, #1d2b64, #f8cdda); }
         .background-effect.wallpaper-forest { background: linear-gradient(45deg, #0f2027, #203a43, #2c5364); }
         .background-effect.wallpaper-aurora { background: linear-gradient(120deg, #0f0c29, #302b63, #24243e); }
+        .background-effect.wallpaper-ocean { background: linear-gradient(45deg, #0077be, #00a6d6, #90d5e5); }
+        .background-effect.wallpaper-space { background: linear-gradient(180deg, #0f0c29, #302b63, #24243e); }
+        .background-effect.wallpaper-minimalist { background: linear-gradient(45deg, #e0e0e0, #f5f5f5); }
 
 
         .blob { position: absolute; border-radius: 50%; filter: blur(150px); opacity: 0.5; will-change: transform; }
@@ -821,8 +824,28 @@
                             <div class="setting-row">
                                 <label><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg><span>Papel de Parede</span></label>
                                 <div class="control"><select id="wallpaper-select">
-                                    <option value="default">Padrão Aura</option><option value="aurora">Aurora</option><option value="sunset">Pôr do Sol</option><option value="forest">Floresta</option>
+                                    <option value="default">Padrão Aura</option>
+                                    <option value="aurora">Aurora</option>
+                                    <option value="sunset">Pôr do Sol</option>
+                                    <option value="forest">Floresta</option>
+                                    <option value="ocean">Oceano</option>
+                                    <option value="space">Espaço</option>
+                                    <option value="minimalist">Minimalista</option>
                                 </select></div>
+                            </div>
+                            <div class="setting-row">
+                                <label><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor"/><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg><span>Raio da Borda (UI)</span></label>
+                                <div class="control"><input type="range" min="0" max="30" step="1" id="ui-corner-radius-slider"></div>
+                            </div>
+                            <div class="setting-row">
+                                <label><svg viewBox="0 0 24 24"><path d="M9.93 13.5h4.14L12 7.98zM20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-4.05 14H8.05l1.8-5h4.3l1.8 5z"/></svg><span>Fonte do Sistema</span></label>
+                                <div class="control">
+                                    <select id="system-font-select">
+                                        <option value="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Inter (Padrão)</option>
+                                        <option value="Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Roboto</option>
+                                        <option value="'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Lato</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="setting-row">
                                 <label><svg viewBox="0 0 24 24"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69z"/></svg><span>Brilho Fundo</span></label>
@@ -846,6 +869,29 @@
                         </div>
                          <div class="settings-category">
                             <h3>Sistema</h3>
+                            <div class="setting-row">
+                                <label><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg><span>Restaurar Padrões</span></label>
+                                <div class="control">
+                                    <button id="reset-settings-button" style="width: 100%; background-color: var(--red-accent); color: white;">Resetar Tudo</button>
+                                </div>
+                            </div>
+                            <div class="settings-category" id="system-info-category">
+                                <h4>Informações do Sistema</h4>
+                                <div class="setting-row">
+                                    <label>Usuário Logado:</label>
+                                    <span id="sys-info-user">AuraUser</span>
+                                </div>
+                                <div class="setting-row">
+                                    <label>Resolução da Tela:</label>
+                                    <span id="sys-info-resolution"></span>
+                                </div>
+                                <div class="setting-row">
+                                    <label>Processos em Execução:</label>
+                                    <ul id="sys-info-processes" style="list-style-type: none; padding-left: 0; max-height: 100px; overflow-y: auto; text-align: right; width: 45%;">
+                                        <!-- Processos serão listados aqui -->
+                                    </ul>
+                                </div>
+                            </div>
                             <div id="about-os"><h4>AuraOS</h4><p>Complete Desktop Experience v2.0</p></div>
                         </div>`;
                     
@@ -854,14 +900,48 @@
                     windowEl.querySelector('#brightness-slider').value = state.themeSettings['--background-brightness'] || 1;
                     windowEl.querySelector('#accent-color-picker').value = state.themeSettings['--highlight-primary'] || '#8a63d2';
                     windowEl.querySelector('#wallpaper-select').value = state.themeSettings.wallpaper || 'default';
+                    const currentCornerRadius = state.themeSettings['--ui-corner-radius'] ? parseInt(state.themeSettings['--ui-corner-radius'].replace('px', '')) : 20;
+                    windowEl.querySelector('#ui-corner-radius-slider').value = currentCornerRadius;
+                    windowEl.querySelector('#system-font-select').value = state.systemFont || "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
                     
                     windowEl.querySelector('#brightness-slider').addEventListener('input', e => setSystemProperty('--background-brightness', e.target.value));
                     windowEl.querySelector('#accent-color-picker').addEventListener('input', e => setSystemProperty('--highlight-primary', e.target.value));
                     windowEl.querySelector('#wallpaper-select').addEventListener('change', e => setWallpaper(e.target.value));
+                    windowEl.querySelector('#ui-corner-radius-slider').addEventListener('input', e => setSystemProperty('--ui-corner-radius', e.target.value + 'px'));
+                    windowEl.querySelector('#system-font-select').addEventListener('change', e => {
+                        document.body.style.fontFamily = e.target.value;
+                        saveSystemState();
+                    });
                     
                     windowEl.querySelector('#theme-buttons').addEventListener('click', e => { if(e.target.dataset.theme) setTheme(e.target.dataset.theme); });
                     windowEl.querySelector('#dock-pos-buttons').addEventListener('click', e => { if(e.target.dataset.pos) setDockPosition(e.target.dataset.pos); });
                     windowEl.querySelector('#icon-size-buttons').addEventListener('click', e => { if(e.target.dataset.size) setIconSize(e.target.dataset.size); });
+                    windowEl.querySelector('#reset-settings-button').addEventListener('click', () => {
+                        if (confirm("Tem certeza que deseja restaurar todas as configurações para o padrão? Isso também limpará o sistema de arquivos.")) {
+                            localStorage.removeItem('auraOS_systemState');
+                            localStorage.removeItem('auraOS_fileSystem');
+                            window.location.reload();
+                        }
+                    });
+
+                    // Popular informações do sistema
+                    windowEl.querySelector('#sys-info-resolution').textContent = window.innerWidth + 'x' + window.innerHeight;
+                    const processesList = windowEl.querySelector('#sys-info-processes');
+                    processesList.innerHTML = ''; // Limpar lista anterior
+                    const openWindows = document.querySelectorAll('.window:not(.minimized)');
+                    if (openWindows.length > 0) {
+                        openWindows.forEach(win => {
+                            const title = win.querySelector('.window-title')?.textContent || 'Janela Sem Título';
+                            const li = document.createElement('li');
+                            li.textContent = title;
+                            processesList.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = 'Nenhum processo ativo';
+                        processesList.appendChild(li);
+                    }
+
 
                     updateThemeControls();
                     break;
@@ -1163,8 +1243,8 @@
                     else termLog('Uso: theme [dark|light]', 'output-error');
                 },
                 wallpaper: (args) => {
-                    if (['default', 'aurora', 'sunset', 'forest'].includes(args[0])) setWallpaper(args[0]);
-                    else termLog('Uso: wallpaper [default|aurora|sunset|forest]', 'output-error');
+                    if (['default', 'aurora', 'sunset', 'forest', 'ocean', 'space', 'minimalist'].includes(args[0])) setWallpaper(args[0]);
+                    else termLog('Uso: wallpaper [default|aurora|sunset|forest|ocean|space|minimalist]', 'output-error');
                 },
                 ls: (args) => {
                     const node = getFileSystemNode(currentPath);
@@ -1423,6 +1503,7 @@
             return state || {
                 theme: 'dark',
                 dockPosition: 'bottom',
+                systemFont: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                 themeSettings: {}
             };
         }
@@ -1431,10 +1512,12 @@
             const state = {
                 theme: root.className.includes('light') ? 'light' : 'dark',
                 dockPosition: dock.className.replace('dock-', ''),
+                systemFont: document.body.style.fontFamily || "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                 themeSettings: {
                     '--highlight-primary': root.style.getPropertyValue('--highlight-primary'),
                     '--background-brightness': root.style.getPropertyValue('--background-brightness'),
                     '--desktop-icon-size': root.style.getPropertyValue('--desktop-icon-size'),
+                    '--ui-corner-radius': root.style.getPropertyValue('--ui-corner-radius'),
                     'wallpaper': document.querySelector('.background-effect').className.split(' ').find(c => c.startsWith('wallpaper-'))?.replace('wallpaper-', '')
                 }
             };
@@ -1447,6 +1530,9 @@
             const state = loadSystemState();
             setTheme(state.theme);
             setDockPosition(state.dockPosition);
+            if (state.systemFont) {
+                document.body.style.fontFamily = state.systemFont;
+            }
             Object.keys(state.themeSettings).forEach(prop => {
                 if (prop === 'wallpaper') {
                     if(state.themeSettings[prop]) setWallpaper(state.themeSettings[prop]);
