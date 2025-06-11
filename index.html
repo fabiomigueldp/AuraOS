@@ -1207,7 +1207,7 @@
         }
 
         .calculator-display {
-            background-color: rgba(0, 0, 0, 0.2); /* Match window body */
+            background: var(--glass-background); /* Match window body */
             color: white;
             text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
             font-size: 48px; /* Large font */
@@ -1215,6 +1215,7 @@
             text-align: right;
             padding: 20px;
             box-sizing: border-box;
+            border-bottom: 1px solid var(--glass-border);
             flex-grow: 1; /* Allow display to take available space */
             display: flex;
             flex-direction: column;
@@ -1234,7 +1235,7 @@
             grid-template-columns: repeat(4, 1fr);
             grid-gap: 8px; /* Increased gap for round buttons */
             padding: 10px; /* Add some padding around the button grid */
-            background-color: #3c3c3c; /* Match window body, lines are not needed for round buttons */
+            background-color: transparent; /* Match window body, lines are not needed for round buttons */
         }
 
         .calculator-buttons button {
@@ -1243,7 +1244,7 @@
             font-weight: 400;
             border: 1px solid var(--glass-border);
             /* padding: 18px 0; Remove padding or adjust significantly */
-            background-color: rgba(80, 80, 80, 0.5); /* Dark gray for numbers and general buttons */
+            background-color: rgba(80, 80, 80, 0.35); /* Dark gray for numbers and general buttons */
             color: white;
             cursor: pointer;
             transition: background-color 0.2s ease, transform 0.1s ease, filter 0.2s ease; /* Added transform transition */
@@ -1258,29 +1259,29 @@
         }
 
         .calculator-buttons button:hover {
-            background-color: rgba(100, 100, 100, 0.7);
+            background-color: rgba(100, 100, 100, 0.5);
         }
 
         .calculator-buttons button:active {
-            background-color: rgba(60, 60, 60, 0.6);
+            background-color: rgba(60, 60, 60, 0.4);
             transform: scale(0.95);
         }
 
         /* Specific button styles based on macOS theme */
         .calculator-buttons button.btn-operator {
-            background-color: rgba(255, 149, 0, 0.6); /* Orange for operators */
+            background-color: rgba(255, 149, 0, 0.45); /* Orange for operators */
             color: white;
         }
-        .calculator-buttons button.btn-operator:hover { background-color: rgba(255, 149, 0, 0.8); }
-        .calculator-buttons button.btn-operator:active { background-color: rgba(255, 149, 0, 0.5); }
+        .calculator-buttons button.btn-operator:hover { background-color: rgba(255, 149, 0, 0.65); }
+        .calculator-buttons button.btn-operator:active { background-color: rgba(255, 149, 0, 0.35); }
 
 
         .calculator-buttons button.btn-light-gray {
-            background-color: rgba(212, 212, 210, 0.4); /* Light gray for AC, +/-, % */
+            background-color: rgba(212, 212, 210, 0.3); /* Light gray for AC, +/-, % */
             color: var(--text-color);
         }
-        .calculator-buttons button.btn-light-gray:hover { background-color: rgba(212, 212, 210, 0.6); }
-        .calculator-buttons button.btn-light-gray:active { background-color: rgba(212, 212, 210, 0.3); }
+        .calculator-buttons button.btn-light-gray:hover { background-color: rgba(212, 212, 210, 0.5); }
+        .calculator-buttons button.btn-light-gray:active { background-color: rgba(212, 212, 210, 0.2); }
 
 
         /* Zero button spanning two columns */
