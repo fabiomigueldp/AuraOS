@@ -1,7 +1,7 @@
 class DBManager {
     constructor() {
         this.dbName = 'AURA_OS_DB';
-        this.dbVersion = 1;
+        this.dbVersion = 2;
         this.db = null;
     }
 
@@ -11,17 +11,36 @@ class DBManager {
 
             request.onupgradeneeded = (event) => {
                 this.db = event.target.result;
-                console.log('Upgrading database...');
-                // Create 'files' object store if it doesn't exist
+                console.log('Upgrading database to version', this.dbVersion); // Updated log
+
+                // Existing stores
                 if (!this.db.objectStoreNames.contains('files')) {
-                    this.db.createObjectStore('files', { keyPath: 'path' }); // Using 'path' as keyPath for files
+                    this.db.createObjectStore('files', { keyPath: 'path' });
                     console.log('Created "files" object store.');
                 }
-                // Create 'settings' object store if it doesn't exist
                 if (!this.db.objectStoreNames.contains('settings')) {
                     this.db.createObjectStore('settings', { keyPath: 'key' });
                     console.log('Created "settings" object store.');
                 }
+
+                // New Game Center stores
+                if (!this.db.objectStoreNames.contains('games')) {
+                    this.db.createObjectStore('games', { keyPath: 'gameId' });
+                    console.log('Created "games" object store.');
+                }
+
+                if (!this.db.objectStoreNames.contains('game_saves')) {
+                    this.db.createObjectStore('game_saves', { keyPath: 'saveId' });
+                    console.log('Created "game_saves" object store.');
+                }
+
+                if (!this.db.objectStoreNames.contains('high_scores')) {
+                    const scoreStore = this.db.createObjectStore('high_scores', { autoIncrement: true });
+                    scoreStore.createIndex('by_game', 'gameId', { unique: false });
+                    console.log('Created "high_scores" object store and "by_game" index.');
+                }
+                // Add any other future stores here in subsequent versions
+
                 console.log('Database upgrade complete.');
             };
 
