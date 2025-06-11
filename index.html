@@ -11,7 +11,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Fira+Code&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
 
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
@@ -268,14 +268,14 @@
         #notes-app .notes-editor-area textarea {
             flex-grow: 1;
             width: 100%;
-            background: transparent; /* Correct, shows parent's new background */
+            background: transparent; /* Correct, shows parent\'s new background */
             border: none;
             outline: none;
             color: var(--text-color); /* Theme-adaptive */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Set in previous step */
             font-size: 14px; /* Adjusted font size */
             resize: none;
-            padding: 0; /* Remove textarea's own padding, rely on container's padding */
+            padding: 0; /* Remove textarea\'s own padding, rely on container\'s padding */
             box-sizing: border-box; /* Good practice */
         }
 
@@ -283,13 +283,13 @@
 
         /* Light Theme Sidebar Background & Separators */
         .light-theme #notes-app .notes-sidebar {
-            background-color: #f0f0f0; /* Light gray, slightly different from editor's off-white */
+            background-color: #f0f0f0; /* Light gray, slightly different from editor\'s off-white */
             border-right: 1px solid #dcdcdc; /* Subtle light gray line */
         }
 
         /* Dark Theme Sidebar Background & Separators */
         .dark-theme #notes-app .notes-sidebar {
-            background-color: #363638; /* Dark gray, distinct from editor's dark gray */
+            background-color: #363638; /* Dark gray, distinct from editor\'s dark gray */
             border-right: 1px solid #2a2a2c; /* Subtle dark gray line, darker than sidebar */
         }
 
@@ -337,7 +337,7 @@
         }
 
         #notes-app .note-item.active {
-            /* font-weight: 600; /* Removed, assuming macOS doesn't change weight */
+            /* font-weight: 600; /* Removed, assuming macOS doesn\'t change weight */
             /* color is set by theme-specific rules */
         }
 
@@ -702,7 +702,7 @@
 
             const notesDir = getFileSystemNode('/Anotações/');
             if (!notesDir || notesDir.type !== 'folder') {
-                // Create /Anotações if it doesn't exist
+                // Create /Anotações if it doesn\'t exist
                 if (!getFileSystemNode('/')) { // Ensure root exists
                     fileSystem['/'] = { type: 'folder', children: {} };
                 }
@@ -796,7 +796,6 @@
                         // statusBar.textContent = 'Pronto'; // REMOVED
                         textarea.placeholder = "Comece a digitar aqui..."; // Reset placeholder
                     }
-
                     notesAppWindow.querySelectorAll('.note-item.active').forEach(item => item.classList.remove('active'));
                     listItem.classList.add('active');
 
@@ -1001,7 +1000,7 @@
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
                             </button>
                             <button class="file-explorer-action-btn" data-action="create-folder" title="Nova Pasta" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 1.99 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L4 18c0 1.11.89 2 1.99 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>
                             </button>
                             <button class="file-explorer-action-btn" data-action="delete" title="Excluir Selecionado" style="margin-left: 5px; background:none; border:none; color:var(--text-color); cursor:pointer;">
                                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -1361,7 +1360,7 @@
 
                     renderNoteList(windowEl, currentNotePath); // Initial render
 
-                    // Attempt to load the first note if no currentNotePath is set or if it's invalid
+                    // Attempt to load the first note if no currentNotePath is set or if it\'s invalid
                     if (!currentNotePath || !getFileSystemNode(currentNotePath)) {
                         const firstNoteItem = windowEl.querySelector('.note-item');
                         if (firstNoteItem) {
@@ -1398,7 +1397,7 @@
                     let saveTimeout;
                     textarea.addEventListener('input', () => {
                         const activeNotePath = windowEl.dataset.currentNotePath;
-                        if (!activeNotePath) return; // Don't save if no note is selected
+                        if (!activeNotePath) return; // Don\'t save if no note is selected
 
                         // statusBar.textContent = 'Salvando...'; // REMOVED
                         clearTimeout(saveTimeout);
@@ -1644,7 +1643,7 @@
           <span style="color: var(--highlight-primary);">    @@@@@@@@@@@@@@@@@@      </span><span style="color: var(--text-color);"><b>Kernel:</b> 1.0-JS-DOM</span>
           <span style="color: var(--highlight-primary);">   @@@@@@@@@@@@@@@@@@@@     </span><span style="color: var(--text-color);"><b>Uptime:</b> ${Math.floor(performance.now()/1000)}s</span>
           <span style="color: var(--highlight-primary);">  @@@@@@@@@@@@@@@@@@@@@@    </span><span style="color: var(--text-color);"><b>Windows:</b> ${document.querySelectorAll('.window').length}</span>
-          <span style="color: var(--highlight-primary);">  @@@@@@@@@@@@@@@@@@@@@@    </span><span style="color: var(--text-color);"><b>Shell:</b> AuraSH (ZSH-like)</span>
+          <span style="color: var(--highlight-primary);">  @@@@@@@@@@@@@@@@@@@@@@    </span><span style="color: var,--text-color);"><b>Shell:</b> AuraSH (ZSH-like)</span>
           <span style="color: var(--highlight-primary);">   @@@@@@@@@@@@@@@@@@@@     </span><span style="color: var(--text-color);"><b>Theme:</b> ${localStorage.getItem('auraOS_theme') || 'dark'}</span>
           <span style="color: var(--highlight-primary);">    @@@@@@@@@@@@@@@@@@      </span>
           <span style="color: var(--highlight-primary);">     @@@@@@@@@@@@@@@@       </span>
