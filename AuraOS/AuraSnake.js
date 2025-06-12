@@ -37,7 +37,7 @@ function AuraSnakeGame(canvas) {
     let lastTickTime = 0;
 
     // Sound assets
-    const dummySound = { play: function() { /* console.log('SFX muted'); */ }, pause: function() {}, set currentTime(val) {}, get currentTime() {return 0;}, set volume(val) {}, get volume() {return 0;} };
+    const dummySound = { play: function() {}, pause: function() {}, currentTime: 0, volume: 0 };
     const eatSound = dummySound;
     const gameOverSound = dummySound;
 
