@@ -68,6 +68,33 @@ class AuraTerminalApp {
         this._newTermLine();
     }
 
+    resolvePath(current, target) {
+        if (!current) current = '/';
+        if (!target) target = ''; // Ensure target is a string
+
+        // If target is an absolute path
+        if (target.startsWith('/')) {
+            current = '/'; // Start from root
+        }
+
+        const currentParts = current.split('/').filter(p => p.length > 0);
+        const targetParts = target.split('/').filter(p => p.length > 0);
+
+        for (const part of targetParts) {
+            if (part === '..') {
+                if (currentParts.length > 0) {
+                    currentParts.pop();
+                }
+            } else if (part !== '.' && part !== '') { // Ignore empty parts and '.'
+                currentParts.push(part);
+            }
+        }
+        // Join parts and ensure it starts with a single slash, and handles the root case.
+        let newPath = '/' + currentParts.join('/');
+        if (newPath === '//') newPath = '/'; // Handle cases like /../../ resulting in //
+        return newPath;
+    }
+
     _initCommands() {
         this.commands = {
             help: (args) => this._termLog(`Comandos disponíveis:
@@ -131,7 +158,7 @@ class AuraTerminalApp {
             },
             ls: async (args) => {
                 const pathArg = args.find(arg => !arg.startsWith('-'));
-                const targetPath = pathArg ? resolvePath(this.currentPath, pathArg) : this.currentPath;
+                const targetPath = pathArg ? this.resolvePath(this.currentPath, pathArg) : this.currentPath;
 
                 try {
                     // Check if targetPath is a directory
@@ -233,7 +260,7 @@ class AuraTerminalApp {
                     return;
                 }
 
-                const newPath = resolvePath(this.currentPath, targetPathArg);
+                const newPath = this.resolvePath(this.currentPath, targetPathArg);
                 try {
                     const node = await dbManager.loadFile(newPath);
                     if (node && node.type === 'folder') {
@@ -256,7 +283,7 @@ class AuraTerminalApp {
                 }
 
                 for (const filePathArg of filesToCat) {
-                    const path = resolvePath(this.currentPath, filePathArg);
+                    const path = this.resolvePath(this.currentPath, filePathArg);
                     try {
                         const node = await dbManager.loadFile(path);
 
@@ -295,14 +322,14 @@ class AuraTerminalApp {
                     return;
                 }
 
-                const targetPath = resolvePath(this.currentPath, pathArg);
+                const targetPath = this.resolvePath(this.currentPath, pathArg);
                 const dirName = targetPath.split('/').pop();
 
                 // Helper function to create a single directory
                 const createSingleDirectory = async (dirPath, name) => {
                     try {
                         // Check if parent exists and is a folder
-                        const parentPath = resolvePath(dirPath, '..');
+                        const parentPath = this.resolvePath(dirPath, '..');
                         if (parentPath !== '/') { // Root has no parent to check this way
                             try {
                                 const parentNode = await dbManager.loadFile(parentPath);
@@ -388,9 +415,9 @@ class AuraTerminalApp {
                     this._termLog('Usage: touch <filepath>', 'output-error');
                     return;
                 }
-                const filePath = resolvePath(this.currentPath, args[0]);
+                const filePath = this.resolvePath(this.currentPath, args[0]);
                 const fileName = filePath.split('/').pop();
-                const parentPath = resolvePath(filePath, '..');
+                const parentPath = this.resolvePath(filePath, '..');
 
                 try {
                     // Check parent directory
@@ -448,7 +475,7 @@ class AuraTerminalApp {
                     return;
                 }
 
-                const path = resolvePath(this.currentPath, targetNameArg);
+                const path = this.resolvePath(this.currentPath, targetNameArg);
 
                 let nodeToDelete;
                 try {
@@ -560,16 +587,22 @@ class AuraTerminalApp {
                 this._termLog(header, 'output-text');
                 this._termLog(dataRow, 'output-text');
             },
-            edit: (args) => {
+            edit: async (args) => {
                 if (!args[0]) {
                     this._termLog('Usage: edit <filepath>', 'output-error');
                     return;
                 }
-                const resolvedPath = resolvePath(this.currentPath, args[0]);
-                const fileNode = getFileSystemNode(resolvedPath);
+                const resolvedPath = this.resolvePath(this.currentPath, args[0]);
+                let fileNode;
+                try {
+                    fileNode = await dbManager.loadFile(resolvedPath);
+                } catch (error) {
+                    this._termLog(`Error: File '${resolvedPath}' not found: ${error.message}`, 'output-error');
+                    return;
+                }
 
                 if (!fileNode || fileNode.type !== 'file') {
-                    this._termLog(`Error: File '${resolvedPath}' not found or is not a file.`, 'output-error');
+                    this._termLog(`Error: File '${resolvedPath}' not found or is not a file (type is ${fileNode ? fileNode.type : 'unknown'}).`, 'output-error');
                     return;
                 }
                 // Assuming 'notes-app' can handle a filePath in its data
@@ -721,8 +754,8 @@ Ping statistics for ${hostname}:
                     return;
                 }
 
-                const sourcePath = resolvePath(this.currentPath, paths[0]);
-                const destPath = resolvePath(this.currentPath, paths[1]);
+                const sourcePath = this.resolvePath(this.currentPath, paths[0]);
+                const destPath = this.resolvePath(this.currentPath, paths[1]);
 
                 const getFileName = (path) => path.substring(path.lastIndexOf('/') + 1);
 
@@ -752,7 +785,7 @@ Ping statistics for ${hostname}:
                                 throw new Error("Destination is a file");
                             }
                             // Ensure parent of dest exists if dest is a new subdir
-                            const destParentPath = resolvePath(dest, '..');
+                            const destParentPath = this.resolvePath(dest, '..');
                             if (destParentPath !== '/' && destParentPath !== dest) {
                                 try {
                                     const destParentNode = await dbManager.loadFile(destParentPath);
@@ -784,7 +817,7 @@ Ping statistics for ${hostname}:
 
                         for (const item of items) {
                             // item.path is full path of source item, item.name is just the name
-                            await copyItemRecursive(item.path, resolvePath(dest, item.name));
+                            await copyItemRecursive(item.path, this.resolvePath(dest, item.name));
                         }
                     } else { // It's a file
                         let destNodeForFile;
@@ -798,11 +831,11 @@ Ping statistics for ${hostname}:
                         let finalDestPath = dest;
                         if (destNodeForFile && destNodeForFile.type === 'folder') {
                             // If dest is an existing directory, copy source file *into* it
-                            finalDestPath = resolvePath(dest, getFileName(src));
+                            finalDestPath = this.resolvePath(dest, getFileName(src));
                         }
 
                         // Ensure parent of finalDestPath exists if it's a new file in a non-root directory
-                         const finalDestParentPath = resolvePath(finalDestPath, '..');
+                         const finalDestParentPath = this.resolvePath(finalDestPath, '..');
                          if (finalDestParentPath !== '/' && finalDestParentPath !== finalDestPath) {
                              try {
                                  const finalDestParentNode = await dbManager.loadFile(finalDestParentPath);
@@ -850,8 +883,8 @@ Ping statistics for ${hostname}:
                     return;
                 }
 
-                const sourcePath = resolvePath(this.currentPath, paths[0]);
-                const destPath = resolvePath(this.currentPath, paths[1]);
+                const sourcePath = this.resolvePath(this.currentPath, paths[0]);
+                const destPath = this.resolvePath(this.currentPath, paths[1]);
 
                 if (sourcePath === destPath) {
                     this._termLog('mv: source and destination are the same.', 'output-error');
@@ -1046,7 +1079,7 @@ Ping statistics for ${hostname}:
                         // Resolve the directory part relative to current path
                         // For example, if currentWord is 'somefolder/other/', resolvePath(this.currentPath, 'somefolder/other/')
                         // If currentWord is '/abs/path/', resolvePath will handle it correctly.
-                        dirToListFrom = resolvePath(this.currentPath, originalPathPrefixTyped);
+                        dirToListFrom = this.resolvePath(this.currentPath, originalPathPrefixTyped);
                     }
 
                     try {
