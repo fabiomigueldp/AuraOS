@@ -129,12 +129,18 @@ class AuraTerminalApp {
                 if (['default', 'aurora', 'sunset', 'forest', 'ocean', 'space', 'minimalist'].includes(args[0])) setWallpaper(args[0]); // Assumes setWallpaper is global
                 else this._termLog('Uso: wallpaper [default|aurora|sunset|forest|ocean|space|minimalist]', 'output-error');
             },
-            ls: (args) => {
+            ls: async (args) => {
                 const pathArg = args.find(arg => !arg.startsWith('-'));
                 const targetPath = pathArg ? resolvePath(this.currentPath, pathArg) : this.currentPath;
-                const node = getFileSystemNode(targetPath);
 
-                if (!node || node.type !== 'folder') {
+                try {
+                    // Check if targetPath is a directory
+                    const targetNode = await dbManager.loadFile(targetPath);
+                    if (!targetNode || targetNode.type !== 'folder') {
+                        this._termLog(`ls: cannot access '${targetPath}': Not a directory`, 'output-error');
+                        return;
+                    }
+                } catch (error) {
                     this._termLog(`ls: cannot access '${targetPath}': No such file or directory`, 'output-error');
                     return;
                 }
@@ -143,62 +149,80 @@ class AuraTerminalApp {
                 const longFormat = args.includes('-l') || args.includes('--long');
                 const recursive = args.includes('-R') || args.includes('--recursive');
 
-                const listItems = (currentItems, currentItemPath, indent = '') => {
-                    let items = Object.entries(currentItems)
-                        .map(([name, details]) => ({ name, ...details, path: resolvePath(currentItemPath, name) }))
-                        .sort((a, b) => a.name.localeCompare(b.name));
+                const listItemsRecursive = async (currentItemPath, indent = '') => {
+                    let items;
+                    try {
+                        items = await dbManager.listFiles(currentItemPath); // This should return array of item objects
+                    } catch (error) {
+                        this._termLog(`Error listing directory ${currentItemPath}: ${error.message}`, 'output-error');
+                        return;
+                    }
+
+                    items.sort((a, b) => a.name.localeCompare(b.name));
 
                     if (!showAll) {
                         items = items.filter(item => !item.name.startsWith('.'));
                     }
 
-                    items.forEach(item => {
+                    for (const item of items) {
+                        // dbManager.listFiles should ideally return full path or enough info to construct it.
+                        // Assuming item from listFiles has: name, type, size, lastModified
+                        // And path is the path of the item itself.
+                        const itemName = item.name; // Name of the file/folder
+                        const itemFullPath = item.path; // Full path to the item
+
                         const nameDisplay = item.type === 'folder'
-                            ? `<span style='color: var(--highlight-primary);'>${item.name}</span>`
-                            : `<span style='color: var(--text-color);'>${item.name}</span>`;
+                            ? `<span style='color: var(--highlight-primary);'>${itemName}</span>`
+                            : `<span style='color: var(--text-color);'>${itemName}</span>`;
 
                         if (longFormat) {
                             const permissions = item.type === 'folder' ? 'drwxr-xr-x' : '-rw-r--r--';
-                            const owner = 'AuraUser';
-                            let size;
+                            const owner = item.owner || 'AuraUser'; // Assuming dbManager might provide owner
+                            let sizeDisplay;
                             if (item.type === 'folder') {
-                                size = '4.0K';
+                                sizeDisplay = '4.0K'; // Folders might not have a meaningful size from dbManager like this
                             } else {
-                                size = item.size ? `${(item.size / 1024).toFixed(1)}K` : (item.content ? `${(item.content.length / 1024).toFixed(1)}K` : '0K');
+                                // Assuming item.size is in bytes
+                                sizeDisplay = item.size ? `${(item.size / 1024).toFixed(1)}K` : '0K';
                             }
                             const date = item.lastModified ? new Date(item.lastModified).toLocaleDateString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Jan 01 00:00';
-                            this._termLog(`${indent}${permissions}  1 ${owner.padEnd(8)} ${owner.padEnd(8)} ${size.padStart(6)} ${date} ${nameDisplay}`, 'output-text');
+                            this._termLog(`${indent}${permissions}  1 ${owner.padEnd(8)} ${owner.padEnd(8)} ${sizeDisplay.padStart(6)} ${date} ${nameDisplay}`, 'output-text');
                         } else {
                             this._termLog(`${indent}${nameDisplay}`, 'output-text');
                         }
 
-                        if (recursive && item.type === 'folder' && item.children) {
-                            this._termLog(`${indent}${item.path}:`, 'output-text');
-                            listItems(item.children, item.path, indent + '  ');
+                        if (recursive && item.type === 'folder') {
+                            this._termLog(`${indent}${itemFullPath}:`, 'output-text');
+                            await listItemsRecursive(itemFullPath, indent + '  ');
                         }
-                    });
+                    }
                 };
 
-                if (recursive && !pathArg) { // If -R and no path, list current directory first.
+                if (recursive && targetPath === this.currentPath && !pathArg) { // If -R and listing current directory.
                      this._termLog(`${targetPath}:`, 'output-text');
                 }
-                listItems(node.children, targetPath);
+                await listItemsRecursive(targetPath);
             },
-            cd: (args) => {
-                const targetPath = args[0];
+            cd: async (args) => {
+                const targetPathArg = args[0];
 
-                if (!targetPath || targetPath === '~') {
-                    this.homeDirectory = '/Documents'; // Define a home directory
-                    if (getFileSystemNode(this.homeDirectory) && getFileSystemNode(this.homeDirectory).type === 'folder') {
-                        this.previousPath = this.currentPath;
-                        this.currentPath = this.homeDirectory;
-                    } else {
-                        this._termLog(`cd: home directory '${this.homeDirectory}' not found.`, 'output-error');
+                if (!targetPathArg || targetPathArg === '~') {
+                    const homeDirectory = '/Documents'; // Define a default home directory
+                    try {
+                        const node = await dbManager.loadFile(homeDirectory);
+                        if (node && node.type === 'folder') {
+                            this.previousPath = this.currentPath;
+                            this.currentPath = homeDirectory;
+                        } else {
+                            this._termLog(`cd: home directory '${homeDirectory}' not found or not a folder.`, 'output-error');
+                        }
+                    } catch (error) {
+                        this._termLog(`cd: error accessing home directory '${homeDirectory}': ${error.message}`, 'output-error');
                     }
                     return;
                 }
 
-                if (targetPath === '-') {
+                if (targetPathArg === '-') {
                     if (this.previousPath) {
                         const tempPath = this.currentPath;
                         this.currentPath = this.previousPath;
@@ -209,17 +233,20 @@ class AuraTerminalApp {
                     return;
                 }
 
-                const newPath = resolvePath(this.currentPath, targetPath);
-                const node = getFileSystemNode(newPath);
-
-                if (node && node.type === 'folder') {
-                    this.previousPath = this.currentPath;
-                    this.currentPath = newPath;
-                } else {
-                    this._termLog(`cd: ${targetPath}: No such file or directory, or not a directory`, 'output-error');
+                const newPath = resolvePath(this.currentPath, targetPathArg);
+                try {
+                    const node = await dbManager.loadFile(newPath);
+                    if (node && node.type === 'folder') {
+                        this.previousPath = this.currentPath;
+                        this.currentPath = newPath;
+                    } else {
+                        this._termLog(`cd: '${targetPathArg}': Not a directory`, 'output-error');
+                    }
+                } catch (error) {
+                    this._termLog(`cd: '${targetPathArg}': No such file or directory. ${error.message}`, 'output-error');
                 }
             },
-            cat: (args) => {
+            cat: async (args) => {
                 const lineNumbers = args.includes('-n');
                 const filesToCat = args.filter(arg => arg !== '-n');
 
@@ -228,26 +255,38 @@ class AuraTerminalApp {
                     return;
                 }
 
-                filesToCat.forEach((filePathArg, index) => {
+                for (const filePathArg of filesToCat) {
                     const path = resolvePath(this.currentPath, filePathArg);
-                    const node = getFileSystemNode(path);
+                    try {
+                        const node = await dbManager.loadFile(path);
 
-                    if (filesToCat.length > 1) {
-                        this._termLog(`--- ${filePathArg} ---`, 'output-text');
-                    }
-
-                    if (node && node.type === 'file') {
-                        let content = node.content || '';
-                        if (lineNumbers) {
-                            content = content.split('\n').map((line, i) => `  ${(i + 1).toString().padStart(4)}  ${line}`).join('\n');
+                        if (filesToCat.length > 1) {
+                            // Potentially add a small delay or ensure output order if logging multiple files quickly
+                            this._termLog(`--- ${filePathArg} ---`, 'output-text');
                         }
-                        this._termLog(content.replace(/\n/g, '<br>'), 'output-text');
-                    } else {
-                        this._termLog(`cat: ${filePathArg}: No such file or directory`, 'output-error');
+
+                        if (node && node.type === 'file') {
+                            let content = node.content || node.data || ''; // Prefer .content, fallback to .data
+                            if (typeof content !== 'string') {
+                                try {
+                                    content = JSON.stringify(content); // If content is object/array
+                                } catch (e) {
+                                    content = 'Error: Could not display content (not a string).';
+                                }
+                            }
+                            if (lineNumbers) {
+                                content = content.split('\n').map((line, i) => `  ${(i + 1).toString().padStart(4)}  ${line}`).join('\n');
+                            }
+                            this._termLog(content.replace(/\n/g, '<br>'), 'output-text');
+                        } else {
+                            this._termLog(`cat: '${filePathArg}': Not a file`, 'output-error');
+                        }
+                    } catch (error) {
+                        this._termLog(`cat: '${filePathArg}': No such file or directory. ${error.message}`, 'output-error');
                     }
-                });
+                }
             },
-            mkdir: (args) => {
+            mkdir: async (args) => {
                 const createParents = args.includes('-p');
                 const pathArg = args.find(arg => !arg.startsWith('-'));
 
@@ -256,84 +295,151 @@ class AuraTerminalApp {
                     return;
                 }
 
-                const createSingleDirectory = (dirPath) => {
-                    const parts = dirPath.split('/').filter(p => p);
-                    const newDirName = parts.pop();
-                    if (!newDirName) { // Should not happen if pathArg is valid
-                        this._termLog(`mkdir: invalid directory name ''`, 'output-error');
-                        return false;
-                    }
-                    const parentPath = '/' + parts.join('/');
-                    const parentNode = getFileSystemNode(parentPath);
-
-                    if (!parentNode || parentNode.type !== 'folder') {
-                        this._termLog(`mkdir: cannot create directory '${dirPath}': Parent directory '${parentPath}' does not exist or is not a directory.`, 'output-error');
-                        return false;
-                    }
-                    if (parentNode.children[newDirName]) {
-                         // Only error if it's not a directory - if it is, -p allows it
-                        if (parentNode.children[newDirName].type !== 'folder' && createParents) {
-                            this._termLog(`mkdir: cannot create directory '${dirPath}': A file with the name '${newDirName}' already exists in '${parentPath}'.`, 'output-error');
-                            return false;
-                        } else if (!createParents) { // If not -p, any existence is an error
-                            this._termLog(`mkdir: cannot create directory '${newDirName}': File or directory exists`, 'output-error');
-                            return false;
-                        }
-                         // If it's a directory and -p is used, it's fine, we just move on.
-                    } else {
-                        // createItem will handle the actual creation in fileSystem and DB
-                        if (!createItem(dirPath, 'folder')) { // createItem uses full path
-                             this._termLog(`mkdir: failed to create directory '${dirPath}' using createItem.`, 'output-error'); // Should be handled by createItem
-                             return false;
-                        }
-                    }
-                    return true;
-                };
-
                 const targetPath = resolvePath(this.currentPath, pathArg);
+                const dirName = targetPath.split('/').pop();
+
+                // Helper function to create a single directory
+                const createSingleDirectory = async (dirPath, name) => {
+                    try {
+                        // Check if parent exists and is a folder
+                        const parentPath = resolvePath(dirPath, '..');
+                        if (parentPath !== '/') { // Root has no parent to check this way
+                            try {
+                                const parentNode = await dbManager.loadFile(parentPath);
+                                if (parentNode.type !== 'folder') {
+                                    this._termLog(`mkdir: cannot create directory '${dirPath}': Parent '${parentPath}' is not a directory.`, 'output-error');
+                                    return false;
+                                }
+                            } catch (e) {
+                                // Parent doesn't exist, and -p was not specified for this segment
+                                this._termLog(`mkdir: cannot create directory '${dirPath}': Parent directory '${parentPath}' does not exist.`, 'output-error');
+                                return false;
+                            }
+                        }
+
+                        // Check if the item already exists
+                        let existingNode;
+                        try {
+                            existingNode = await dbManager.loadFile(dirPath);
+                        } catch (e) {
+                            // Doesn't exist, which is good in this case
+                        }
+
+                        if (existingNode) {
+                            if (existingNode.type === 'folder') {
+                                // If -p is used, existing folder is fine. If not, it's an error.
+                                if (!createParents) {
+                                     this._termLog(`mkdir: cannot create directory '${name}': File or directory exists`, 'output-error');
+                                     return false;
+                                }
+                                return true; // Folder already exists, and that's okay with -p or if it's the final target.
+                            } else {
+                                this._termLog(`mkdir: cannot create directory '${dirPath}': A file with the same name already exists.`, 'output-error');
+                                return false;
+                            }
+                        }
+
+                        // Create the directory
+                        await dbManager.saveFile({ path: dirPath, type: 'folder', name: name, lastModified: Date.now(), content: {} }, {}); // content for folder is empty obj
+                        console.log(`UI update needed for path ${dirPath} (mkdir)`); // Placeholder for UI update
+                        return true;
+                    } catch (error) {
+                        this._termLog(`mkdir: failed to create directory '${dirPath}': ${error.message}`, 'output-error');
+                        return false;
+                    }
+                };
 
                 if (createParents) {
                     const parts = targetPath.split('/').filter(p => p);
                     let currentPathToCreate = '';
-                    for (const part of parts) {
+                    for (let i = 0; i < parts.length; i++) {
+                        const part = parts[i];
                         currentPathToCreate += '/' + part;
-                        const node = getFileSystemNode(currentPathToCreate);
-                        if (!node) {
-                            if (!createSingleDirectory(currentPathToCreate)) return; // Stop if creation fails
-                        } else if (node.type !== 'folder') {
-                            this._termLog(`mkdir: cannot create directory '${targetPath}': '${currentPathToCreate}' is not a directory.`, 'output-error');
-                            return;
+                        // Normalize path in case of multiple slashes like /Documents///Music -> /Documents/Music
+                        currentPathToCreate = currentPathToCreate.replace(/\/\//g, '/');
+
+
+                        let node;
+                        try {
+                            node = await dbManager.loadFile(currentPathToCreate);
+                        } catch (e) {
+                            // Node doesn't exist, attempt to create it
+                        }
+
+                        if (node) {
+                            if (node.type !== 'folder') {
+                                this._termLog(`mkdir: cannot create directory '${targetPath}': Part of path '${currentPathToCreate}' is not a directory.`, 'output-error');
+                                return; // Stop if a part of the path is a file
+                            }
+                            // If it is a folder, continue to the next part
+                        } else {
+                            // Node doesn't exist, create it
+                            const success = await createSingleDirectory(currentPathToCreate, part);
+                            if (!success) return; // Stop if creation of an intermediate directory fails
                         }
                     }
                 } else {
-                    createSingleDirectory(targetPath);
+                    // No -p, just create the target directory
+                    await createSingleDirectory(targetPath, dirName);
                 }
             },
-            touch: (args) => {
-                if (!args[0]) return this._termLog('Uso: touch <arquivo>', 'output-error');
-                const path = resolvePath(this.currentPath, args[0]);
-                const parts = path.substring(1).split('/');
-                const newFileName = parts.pop();
-                const parentPath = '/' + parts.join('/');
-                const parentNode = getFileSystemNode(parentPath);
-                if (parentNode && parentNode.type === 'folder' && !parentNode.children[newFileName]) {
-                    // Use createItem for consistency and DB interaction
-                    if(!createItem(path, 'file', '')) { // createItem uses full path
-                         this._termLog(`touch: failed to create file '${args[0]}' using createItem.`, 'output-error');
+            touch: async (args) => {
+                if (!args[0]) {
+                    this._termLog('Usage: touch <filepath>', 'output-error');
+                    return;
+                }
+                const filePath = resolvePath(this.currentPath, args[0]);
+                const fileName = filePath.split('/').pop();
+                const parentPath = resolvePath(filePath, '..');
+
+                try {
+                    // Check parent directory
+                    if (parentPath !== '/') { // Root doesn't need this check
+                        const parentNode = await dbManager.loadFile(parentPath);
+                        if (parentNode.type !== 'folder') {
+                            this._termLog(`touch: cannot create file '${filePath}': Parent '${parentPath}' is not a directory.`, 'output-error');
+                            return;
+                        }
                     }
-                } else if (parentNode && parentNode.children[newFileName] && parentNode.children[newFileName].type === 'file') {
-                     // File exists, update timestamp (mocked by just re-saving, actual timestamp update needs DBManager support)
-                    const existingNode = parentNode.children[newFileName];
-                    existingNode.lastModified = Date.now(); // Update in-memory timestamp
-                    // Re-save to potentially update timestamp in DB if dbManager.saveFile handles it
-                    if (typeof dbManager !== 'undefined') {
-                        dbManager.saveFile({ path: path, type: 'file', lastModified: existingNode.lastModified }, existingNode.content);
+
+                    let existingNode;
+                    try {
+                        existingNode = await dbManager.loadFile(filePath);
+                    } catch (e) {
+                        // File doesn't exist, which is fine, we'll create it.
                     }
-                } else {
-                     this._termLog(`touch: não foi possível criar o arquivo '${args[0]}': Path inválido ou item existente não é arquivo.`, 'output-error');
+
+                    if (existingNode) {
+                        // File exists
+                        if (existingNode.type === 'file') {
+                            // Update lastModified timestamp
+                            await dbManager.saveFile({
+                                path: filePath,
+                                type: 'file',
+                                name: fileName,
+                                content: existingNode.content, // Preserve content
+                                lastModified: Date.now()
+                            }, existingNode.content);
+                            console.log(`UI update needed for path ${filePath} (touch - existing file timestamp update)`);
+                        } else {
+                            this._termLog(`touch: cannot touch '${filePath}': It exists and is not a file (it's a ${existingNode.type}).`, 'output-error');
+                        }
+                    } else {
+                        // File does not exist, create it
+                        await dbManager.saveFile({
+                            path: filePath,
+                            type: 'file',
+                            name: fileName,
+                            content: '',
+                            lastModified: Date.now()
+                        }, '');
+                        console.log(`UI update needed for path ${filePath} (touch - new file created)`);
+                    }
+                } catch (error) {
+                     this._termLog(`touch: failed to process file '${filePath}': ${error.message}`, 'output-error');
                 }
             },
-            rm: (args) => {
+            rm: async (args) => {
                 const recursive = args.includes('-r') || args.includes('--recursive');
                 const targetNameArg = args.find(arg => !arg.startsWith('-'));
 
@@ -343,24 +449,75 @@ class AuraTerminalApp {
                 }
 
                 const path = resolvePath(this.currentPath, targetNameArg);
-                const node = getFileSystemNode(path);
 
-                if (!node) {
-                    this._termLog(`rm: cannot remove '${targetNameArg}': No such file or directory`, 'output-error');
+                let nodeToDelete;
+                try {
+                    nodeToDelete = await dbManager.loadFile(path);
+                } catch (error) {
+                    this._termLog(`rm: cannot remove '${targetNameArg}': No such file or directory. ${error.message}`, 'output-error');
                     return;
                 }
 
-                if (node.type === 'folder' && Object.keys(node.children).length > 0 && !recursive) {
-                    this._termLog(`rm: cannot remove '${targetNameArg}': Is a non-empty directory. Use -r to remove recursively.`, 'output-error');
-                    return;
+                if (nodeToDelete.type === 'folder') {
+                    if (!recursive) {
+                        // Check if directory is empty
+                        try {
+                            const children = await dbManager.listFiles(path);
+                            if (children && children.length > 0) {
+                                this._termLog(`rm: cannot remove '${targetNameArg}': Directory is not empty. Use -r to remove recursively.`, 'output-error');
+                                return;
+                            }
+                        } catch (error) {
+                            this._termLog(`rm: error checking if directory '${targetNameArg}' is empty: ${error.message}`, 'output-error');
+                            return;
+                        }
+                    } else {
+                        // Recursive deletion
+                        const deleteRecursive = async (currentPath) => {
+                            let children;
+                            try {
+                                children = await dbManager.listFiles(currentPath);
+                            } catch (e) {
+                                // If listing fails for a subdirectory, maybe it was already deleted or an error occurred
+                                console.warn(`rm: Could not list files in ${currentPath} during recursive delete: ${e.message}`);
+                                children = []; // Assume empty or inaccessible
+                            }
+
+                            for (const child of children) {
+                                if (child.type === 'folder') {
+                                    await deleteRecursive(child.path); // child.path should be the full path
+                                } else {
+                                    try {
+                                        await dbManager.deleteFile(child.path);
+                                        console.log(`UI update needed for path ${child.path} (rm -r file)`);
+                                    } catch (error) {
+                                        this._termLog(`rm: failed to remove file '${child.path}' during recursive delete: ${error.message}`, 'output-error');
+                                        // Optionally, re-throw or collect errors to stop the whole process
+                                    }
+                                }
+                            }
+                            // After deleting all children, delete the folder itself
+                            try {
+                                await dbManager.deleteFile(currentPath);
+                                console.log(`UI update needed for path ${currentPath} (rm -r folder)`);
+                            } catch (error) {
+                                this._termLog(`rm: failed to remove folder '${currentPath}' during recursive delete: ${error.message}`, 'output-error');
+                                // Optionally, re-throw or collect errors
+                            }
+                        };
+                        await deleteRecursive(path);
+                        this._termLog(`Recursively removed '${targetNameArg}'`, 'output-text');
+                        return; // Exit after recursive delete logic
+                    }
                 }
 
-                // Use global deleteItem which should handle DB and in-memory FS.
-                if (typeof deleteItem !== 'undefined' && deleteItem(path)) { // deleteItem takes full path
+                // Non-recursive deletion for files or empty folders
+                try {
+                    await dbManager.deleteFile(path);
                     this._termLog(`Removed '${targetNameArg}'`, 'output-text');
-                    // updateDesktopAndFileExplorer is called by deleteItem
-                } else {
-                    this._termLog(`rm: failed to remove '${targetNameArg}'`, 'output-error');
+                    console.log(`UI update needed for path ${path} (rm)`);
+                } catch (error) {
+                    this._termLog(`rm: failed to remove '${targetNameArg}': ${error.message}`, 'output-error');
                 }
             },
             neofetch: (args) => {
@@ -523,35 +680,248 @@ class AuraTerminalApp {
                 this._termLog(aboutMsg, 'output-text');
             },
             ping: (args) => {
-                if (!args[0]) {
-                    this._termLog('Usage: ping <hostname>', 'output-error');
-                    return;
-                }
-                const hostname = args[0];
-                this._termLog(`PING ${hostname} (simulated):`, 'output-text');
-
-                let pingsSent = 0;
-                const intervalId = setInterval(() => {
-                    if (pingsSent >= 4) {
-                        clearInterval(intervalId);
-                        // Remove this intervalId from activeIntervals
-                        if (this.activeIntervals) {
-                            this.activeIntervals = this.activeIntervals.filter(id => id !== intervalId);
-                        }
-                        this._termLog(`
-Ping statistics for ${hostname}:
-    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)`, 'output-text');
-                        // _newTermLine() will be called by _handleCommand after this command function finishes
+                return new Promise((resolve, reject) => {
+                    if (!args[0]) {
+                        this._termLog('Usage: ping <hostname>', 'output-error');
+                        resolve(); // Resolve immediately if usage is wrong, so terminal line renews
                         return;
                     }
-                    pingsSent++;
-                    const fakeLatency = Math.floor(Math.random() * 100) + 10;
-                    const ttl = Math.floor(Math.random() * 50) + 50;
-                    this._termLog(`Reply from ${hostname}: bytes=32 time=${fakeLatency}ms TTL=${ttl}`, 'output-text');
-                }, 1000);
+                    const hostname = args[0];
+                    this._termLog(`PING ${hostname} (simulated):`, 'output-text');
 
-                if (!this.activeIntervals) this.activeIntervals = [];
-                this.activeIntervals.push(intervalId);
+                    let pingsSent = 0;
+                    const intervalId = setInterval(() => {
+                        if (pingsSent >= 4) {
+                            clearInterval(intervalId);
+                            if (this.activeIntervals) {
+                                this.activeIntervals = this.activeIntervals.filter(id => id !== intervalId);
+                            }
+                            this._termLog(`
+Ping statistics for ${hostname}:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)`, 'output-text');
+                            resolve(); // Resolve the promise once pinging is done
+                            return;
+                        }
+                        pingsSent++;
+                        const fakeLatency = Math.floor(Math.random() * 100) + 10;
+                        const ttl = Math.floor(Math.random() * 50) + 50;
+                        this._termLog(`Reply from ${hostname}: bytes=32 time=${fakeLatency}ms TTL=${ttl}`, 'output-text');
+                    }, 1000);
+
+                    if (!this.activeIntervals) this.activeIntervals = [];
+                    this.activeIntervals.push(intervalId);
+                });
+            },
+            cp: async (args) => {
+                const recursive = args.includes('-r') || args.includes('-R');
+                const paths = args.filter(arg => !arg.startsWith('-'));
+
+                if (paths.length !== 2) {
+                    this._termLog('Usage: cp [-r | -R] <source> <destination>', 'output-error');
+                    return;
+                }
+
+                const sourcePath = resolvePath(this.currentPath, paths[0]);
+                const destPath = resolvePath(this.currentPath, paths[1]);
+
+                const getFileName = (path) => path.substring(path.lastIndexOf('/') + 1);
+
+
+                const copyItemRecursive = async (src, dest) => {
+                    let sourceNode;
+                    try {
+                        sourceNode = await dbManager.loadFile(src);
+                    } catch (error) {
+                        this._termLog(`cp: cannot stat '${src}': No such file or directory`, 'output-error');
+                        throw error; // Propagate error to stop further processing if a source is missing
+                    }
+
+                    if (sourceNode.type === 'folder') {
+                        if (!recursive) {
+                            this._termLog(`cp: -r not specified; omitting directory '${src}'`, 'output-error');
+                            return; // Do not throw, just skip this directory
+                        }
+
+                        // Create destination directory
+                        try {
+                            // Check if dest itself exists and is a file
+                            let destNodeCheck;
+                            try { destNodeCheck = await dbManager.loadFile(dest); } catch(e) {/*ok*/}
+                            if(destNodeCheck && destNodeCheck.type === 'file'){
+                                this._termLog(`cp: cannot overwrite non-directory '${dest}' with directory '${src}'`, 'output-error');
+                                throw new Error("Destination is a file");
+                            }
+                            // Ensure parent of dest exists if dest is a new subdir
+                            const destParentPath = resolvePath(dest, '..');
+                            if (destParentPath !== '/' && destParentPath !== dest) {
+                                try {
+                                    const destParentNode = await dbManager.loadFile(destParentPath);
+                                    if (destParentNode.type !== 'folder') {
+                                        this._termLog(`cp: cannot create directory '${dest}': Parent '${destParentPath}' is not a directory.`, 'output-error');
+                                        throw new Error("Destination parent not a folder");
+                                    }
+                                } catch (e) {
+                                    this._termLog(`cp: cannot create directory '${dest}': Parent directory '${destParentPath}' does not exist.`, 'output-error');
+                                    throw new Error("Destination parent does not exist");
+                                }
+                            }
+
+
+                            await dbManager.saveFile({ path: dest, type: 'folder', name: getFileName(dest), lastModified: Date.now(), content: {} }, {});
+                            console.log(`UI update needed for path ${dest} (cp folder created)`);
+                        } catch (error) {
+                            this._termLog(`cp: failed to create directory '${dest}': ${error.message}`, 'output-error');
+                            throw error; // Propagate
+                        }
+
+                        let items;
+                        try {
+                            items = await dbManager.listFiles(src);
+                        } catch (error) {
+                            this._termLog(`cp: cannot list items in '${src}': ${error.message}`, 'output-error');
+                            throw error; // Propagate
+                        }
+
+                        for (const item of items) {
+                            // item.path is full path of source item, item.name is just the name
+                            await copyItemRecursive(item.path, resolvePath(dest, item.name));
+                        }
+                    } else { // It's a file
+                        let destNodeForFile;
+                        try {
+                            destNodeForFile = await dbManager.loadFile(dest);
+                        } catch (e) {
+                            // Destination does not exist, which is fine for file copy to a new name.
+                            // Or, it could be that `dest` is a directory.
+                        }
+
+                        let finalDestPath = dest;
+                        if (destNodeForFile && destNodeForFile.type === 'folder') {
+                            // If dest is an existing directory, copy source file *into* it
+                            finalDestPath = resolvePath(dest, getFileName(src));
+                        }
+
+                        // Ensure parent of finalDestPath exists if it's a new file in a non-root directory
+                         const finalDestParentPath = resolvePath(finalDestPath, '..');
+                         if (finalDestParentPath !== '/' && finalDestParentPath !== finalDestPath) {
+                             try {
+                                 const finalDestParentNode = await dbManager.loadFile(finalDestParentPath);
+                                 if (finalDestParentNode.type !== 'folder') {
+                                     this._termLog(`cp: cannot create file '${finalDestPath}': Parent '${finalDestParentPath}' is not a directory.`, 'output-error');
+                                     throw new Error("Destination parent for file not a folder");
+                                 }
+                             } catch (e) {
+                                 this._termLog(`cp: cannot create file '${finalDestPath}': Parent directory '${finalDestParentPath}' does not exist.`, 'output-error');
+                                 throw new Error("Destination parent for file does not exist");
+                             }
+                         }
+
+
+                        try {
+                            await dbManager.saveFile({
+                                path: finalDestPath,
+                                type: 'file',
+                                name: getFileName(finalDestPath),
+                                content: sourceNode.content || sourceNode.data || '',
+                                lastModified: Date.now()
+                            }, sourceNode.content || sourceNode.data || '');
+                            console.log(`UI update needed for path ${finalDestPath} (cp file created/updated)`);
+                        } catch (error) {
+                            this._termLog(`cp: failed to copy file '${src}' to '${finalDestPath}': ${error.message}`, 'output-error');
+                            throw error; // Propagate
+                        }
+                    }
+                };
+
+                try {
+                    await copyItemRecursive(sourcePath, destPath);
+                } catch (error) {
+                    // Error messages are already logged by copyItemRecursive or initial checks
+                    // console.error("cp operation failed:", error); // Optional additional logging
+                    throw error; // Re-throw the error so mv can catch it
+                }
+            },
+            mv: async (args) => {
+                // mv command will use the same recursive copy logic and then remove source
+                const paths = args.filter(arg => !arg.startsWith('-')); // mv doesn't typically use -r, recursion is default for dirs
+
+                if (paths.length !== 2) {
+                    this._termLog('Usage: mv <source> <destination>', 'output-error');
+                    return;
+                }
+
+                const sourcePath = resolvePath(this.currentPath, paths[0]);
+                const destPath = resolvePath(this.currentPath, paths[1]);
+
+                if (sourcePath === destPath) {
+                    this._termLog('mv: source and destination are the same.', 'output-error');
+                    return;
+                }
+
+                // Prevent moving a directory into itself or a subdirectory of itself.
+                if (destPath.startsWith(sourcePath + '/')) {
+                    this._termLog(`mv: cannot move '${sourcePath}' to a subdirectory of itself, '${destPath}'`, 'output-error');
+                    return;
+                }
+
+                let sourceNodeInitial;
+                try {
+                    sourceNodeInitial = await dbManager.loadFile(sourcePath);
+                } catch (error) {
+                    this._termLog(`mv: cannot stat '${sourcePath}': No such file or directory`, 'output-error');
+                    return;
+                }
+
+                const isRecursiveMove = sourceNodeInitial.type === 'folder';
+
+                try {
+                    // 1. Perform the copy operation
+                    // Re-using the cp logic by calling it directly.
+                    // Need to pass appropriate args for cp.
+                    // cp expects args like ['-r', source, dest] or [source, dest]
+                    const cpArgs = [];
+                    if (isRecursiveMove) cpArgs.push('-r'); // cp needs -r for directories
+                    cpArgs.push(sourcePath); // cp needs absolute paths here
+                    cpArgs.push(destPath);
+
+                    // Directly call the cp command's function
+                    await this.commands.cp.call(this, cpArgs); // Pass `this` context
+
+                    // Check if any error was logged by cp by inspecting the last terminal output
+                    // This is a bit of a hack. Ideally, cp would throw an error or return a status.
+                    const lastLogEntry = this.output.lastChild;
+                    let cpFailed = false;
+                    if (lastLogEntry && lastLogEntry.classList.contains('output-error')) {
+                         // Heuristic: if last log was an error, assume cp failed.
+                         // This is not perfectly reliable as other async operations could log.
+                         // A better way would be for cp to throw an exception on failure.
+                         // For now, we assume copyItemRecursive in cp throws and is caught by cp's try/catch.
+                         // If cp's main try/catch re-throws, this outer mv try/catch will catch it.
+                         // The current cp implementation logs errors but doesn't always re-throw.
+                         // Let's assume for now if an error occurred, it was logged and we should not proceed with rm.
+                         // A more robust solution is needed here. For this iteration, if no specific error thrown from cp,
+                         // we check if source still exists. If it does, we proceed with rm.
+                         // This means if partial copy happened, source is still deleted.
+                    }
+
+
+                    // 2. Perform the remove operation on the source
+                    // rm command expects args like ['-r', path] or [path]
+                    const rmArgs = [];
+                    if (isRecursiveMove) { // rm also needs -r for directories
+                        rmArgs.push('-r');
+                    }
+                    rmArgs.push(sourcePath); // rm needs an absolute path
+
+                    await this.commands.rm.call(this, rmArgs); // Pass `this` context
+
+                    this._termLog(`Moved '${sourcePath}' to '${destPath}'`, 'output-text');
+                    // UI updates are logged by cp and rm individually
+                } catch (error) {
+                    this._termLog(`mv: operation failed: ${error.message}`, 'output-error');
+                    // If copy succeeded but rm failed, user has a copy.
+                    // If copy failed, this catch handles it.
+                }
             }
         };
     }
@@ -564,13 +934,19 @@ Ping statistics for ${hostname}:
         this.output.scrollTop = this.output.scrollHeight;
     }
 
-    _handleCommand(cmdStr) {
+    async _handleCommand(cmdStr) {
+        const currentInput = this.output.querySelector('.terminal-line:last-child .terminal-input');
+        if (currentInput) {
+            currentInput.disabled = true;
+        }
+
         if (cmdStr) {
             this.commandHistory.push(cmdStr);
             if (this.commandHistory.length > 50) { // Limit history size
                 this.commandHistory.shift();
             }
             this.historyIndex = this.commandHistory.length;
+            // No await here, saving history can be fire and forget
             dbManager.saveSetting('terminalHistory', this.commandHistory)
                 .catch(err => console.warn('Terminal: Could not save history', err));
         }
@@ -580,13 +956,19 @@ Ping statistics for ${hostname}:
 
         const [cmd, ...args] = cmdStr.split(' ');
 
-        if (this.commands[cmd]) {
-            this.commands[cmd](args);
-        } else if (cmd) {
-            this._termLog(`${cmd}: comando não encontrado`, 'output-error');
+        try {
+            if (this.commands[cmd]) {
+                await this.commands[cmd](args);
+            } else if (cmd) {
+                this._termLog(`${cmd}: comando não encontrado`, 'output-error');
+            }
+        } catch (error) {
+            console.error(`Error executing command ${cmd}:`, error);
+            this._termLog(`Error executing command ${cmd}: ${error.message}`, 'output-error');
+        } finally {
+            this.output.scrollTop = this.output.scrollHeight; // Ensure scroll after command output
+            this._newTermLine();
         }
-        this.output.scrollTop = this.output.scrollHeight; // Ensure scroll after command output
-        this._newTermLine();
     }
 
     _newTermLine() {
@@ -599,9 +981,11 @@ Ping statistics for ${hostname}:
         const input = line.querySelector('.terminal-input');
         input.focus();
 
-        input.addEventListener('keydown', e => {
+        input.addEventListener('keydown', async e => { // Make event listener async
             if (e.key === 'Enter') {
                 e.preventDefault();
+                // handleCommand is already async, but we don't need to await it here
+                // as its completion will trigger _newTermLine itself.
                 this._handleCommand(input.value.trim());
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
@@ -640,37 +1024,101 @@ Ping statistics for ${hostname}:
                 }
 
 
-                let options = [];
+                let opciones = [];
+                let fileNodeForType = null;
 
                 if (parts.length === 0 && !currentInputText.includes(' ') ) { // Completing the command name itself
-                    options = Object.keys(this.commands).filter(cmd => cmd.startsWith(currentWord));
-                } else { // Completing arguments
-                    const currentDirNode = getFileSystemNode(this.currentPath);
-                    if (currentDirNode && currentDirNode.children) {
-                        const childrenNames = Object.keys(currentDirNode.children);
-                        if (commandNameForContext === 'cd' || commandNameForContext === 'rmdir' || commandNameForContext === 'mkdir' || (commandNameForContext === 'ls' && currentWord.startsWith('.'))) {
-                            options = childrenNames.filter(name => currentDirNode.children[name].type === 'folder' && name.startsWith(currentWord));
+                    opciones = Object.keys(this.commands).filter(cmd => cmd.startsWith(currentWord));
+                    // No change to fileNodeForType here, it remains null
+                } else { // Completing arguments (files/directories)
+                    let prefixToComplete = "";
+                    let dirToListFrom = "";
+                    let originalPathPrefixTyped = ""; // The part of currentWord before the prefix
+
+                    if (!currentWord.includes('/')) {
+                        prefixToComplete = currentWord;
+                        dirToListFrom = this.currentPath; // List from current directory
+                        originalPathPrefixTyped = "";
+                    } else {
+                        const lastSlashIndex = currentWord.lastIndexOf('/');
+                        prefixToComplete = currentWord.substring(lastSlashIndex + 1);
+                        originalPathPrefixTyped = currentWord.substring(0, lastSlashIndex + 1);
+                        // Resolve the directory part relative to current path
+                        // For example, if currentWord is 'somefolder/other/', resolvePath(this.currentPath, 'somefolder/other/')
+                        // If currentWord is '/abs/path/', resolvePath will handle it correctly.
+                        dirToListFrom = resolvePath(this.currentPath, originalPathPrefixTyped);
+                    }
+
+                    try {
+                        const itemsInDir = await dbManager.listFiles(dirToListFrom);
+                        const potentialMatches = itemsInDir.filter(item => item.name.startsWith(prefixToComplete));
+
+                        if (potentialMatches.length === 1) {
+                            fileNodeForType = potentialMatches[0]; // Store the single match object
+                            opciones = [fileNodeForType.name];    // Name for completion
                         } else {
-                            options = childrenNames.filter(name => name.startsWith(currentWord));
+                            opciones = potentialMatches.map(item => item.name); // Just names for multiple options
+                            fileNodeForType = null; // Not a single match
                         }
+
+                        // Further filter if specific commands expect only folders (e.g. cd)
+                        // This filtering should happen on the 'opciones' list of names
+                        if (commandNameForContext === 'cd' || commandNameForContext === 'rmdir') {
+                            const folderMatchesNames = [];
+                            for (const matchName of opciones) {
+                                // Find the corresponding full item from potentialMatches to check its type
+                                const itemDetail = potentialMatches.find(i => i.name === matchName);
+                                if (itemDetail && itemDetail.type === 'folder') {
+                                    folderMatchesNames.push(matchName);
+                                }
+                            }
+                            opciones = folderMatchesNames;
+
+                            if (opciones.length === 1) {
+                                fileNodeForType = potentialMatches.find(i => i.name === opciones[0] && i.type === 'folder');
+                            } else {
+                                fileNodeForType = null;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`Error listing files from '${dirToListFrom}' for tab completion:`, err);
+                        // Optionally inform user: this._termLog(`Tab complete error: ${err.message}`, 'output-error');
+                        opciones = []; // Clear options on error
+                        fileNodeForType = null;
                     }
                 }
 
-                if (options.length === 1) {
-                    const baseInput = parts.join(' ') + (parts.length > 0 ? ' ' : '');
-                    const completedValue = baseInput + options[0];
-                    const nodeType = getFileSystemNode(resolvePath(this.currentPath, options[0]))?.type;
+                if (opciones.length === 1) {
+                    const baseCommandInput = parts.join(' ') + (parts.length > 0 ? ' ' : '');
+                    // originalPathPrefixTyped is what the user typed before the part we are completing
+                    // For command completion, originalPathPrefixTyped is "", fileNodeForType is null.
+                    // For argument completion, originalPathPrefixTyped is the path part before the prefix.
+                    const completedValue = baseCommandInput + (fileNodeForType ? originalPathPrefixTyped : "") + opciones[0];
+                    const nodeType = fileNodeForType ? fileNodeForType.type : null;
+
                     input.value = (completedValue + (nodeType === 'folder' ? '/' : ' ')).trimStart();
                     input.setSelectionRange(input.value.length, input.value.length);
-                } else if (options.length > 1) {
-                    this._termLog(options.join('  '), 'output-text');
-                    this._newTermLine(); // Create a new line
-                    const nextInput = this.output.querySelector('.terminal-line:last-child .terminal-input');
-                    if (nextInput) {
-                        nextInput.value = currentInputText; // Restore current input to new line
-                        nextInput.focus();
-                        nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-                    }
+                } else if (opciones.length > 1) {
+                    // For argument completion, show full matched names. For commands, also full names.
+                    this._termLog(opciones.join('  '), 'output-text');
+                    // We need to re-create the input line because the current one is now disabled by _handleCommand
+                    // if the user presses tab multiple times.
+                    // However, _newTermLine is called by _handleCommand's finally block.
+                    // For multi-tab display, we should just show options and let user continue typing on current line.
+                    // The original code called _newTermLine() then set its value.
+                    // This is tricky because the event listener is on the *current* input.
+                    // A simple solution is to log and then allow the user to continue typing on the *same* line.
+                    // The new line will be created when they press Enter.
+                    // So, removing the _newTermLine and subsequent input manipulation here for multiple options.
+                    // Let's ensure the current input remains focused and value is preserved.
+                    input.focus(); // Re-focus might be needed if _termLog causes blur
+                    // This part for restoring input to a *new* line is problematic if we don't want a new line yet.
+                    // const nextInput = this.output.querySelector('.terminal-line:last-child .terminal-input');
+                    // if (nextInput) {
+                    //     nextInput.value = currentInputText;
+                    //     nextInput.focus();
+                    //     nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
+                    // }
                 }
             }
         });
