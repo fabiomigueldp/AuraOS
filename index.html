@@ -4392,6 +4392,24 @@
             const windowEl = document.getElementById(windowId);
             if (!windowEl) return;
 
+            // Cleanup game instances when closing Game Center
+            if (appId === 'game-center' && window.currentGameInstance) {
+                // Stop the game if it's running
+                if (typeof window.currentGameInstance.stop === 'function' && 
+                    typeof window.currentGameInstance.isRunning === 'function' && 
+                    window.currentGameInstance.isRunning()) {
+                    window.currentGameInstance.stop();
+                }
+                
+                // Call cleanup method if available (for music cleanup, etc.)
+                if (typeof window.currentGameInstance.cleanup === 'function') {
+                    window.currentGameInstance.cleanup();
+                }
+                
+                window.currentGameInstance = null;
+                console.log("AuraOS: Game instance cleaned up on window close");
+            }
+
             // Disparar evento customizado para limpeza interna do app
             windowEl.dispatchEvent(new CustomEvent('aura:close'));
 
