@@ -222,33 +222,6 @@ class AuraTerminalApp {
   ping <hostname>           - Envia pacotes ICMP ECHO_REQUEST para um host de rede (simulado).`, 'output-text'),
         clear: (args) => { this.output.innerHTML = ''; },
         pwd: (args) => this._termLog(this.currentPath, 'output-text'),
-  cat <arquivo>             - Exibe o conteúdo de um arquivo.
-  mkdir <diretorio>         - Cria um novo diretório.
-  touch <arquivo>           - Cria um novo arquivo vazio.
-  rm <arquivo/diretorio>    - Remove um arquivo ou diretório.
-  cp <origem> <destino>     - Copia arquivos ou diretórios (recursivamente).
-  mv <origem> <destino>     - Move (renomeia) arquivos ou diretórios.
-  df                        - Exibe informações de uso do disco (simulado).
-  open <app_id>             - Abre um aplicativo (ex: open control-panel).
-  theme [dark|light]        - Muda o tema do sistema.
-  wallpaper [nome]          - Muda o papel de parede (ex: wallpaper aurora).
-  taskmgr                   - Abre o Gerenciador de Tarefas.
-  reboot                    - Reinicia o AuraOS.
-  shutdown                  - Desliga o AuraOS (volta para tela de login).
-  clear                     - Limpa o terminal.
-  neofetch                  - Exibe informações do sistema (estilo Neofetch).
-  echo [texto]              - Exibe o texto fornecido.
-  help                      - Mostra esta lista de comandos.
-  edit <filepath>           - Abre um arquivo de texto para edição.
-  run <game_id>             - Executa um jogo.
-  ps                        - Lista os processos (janelas) ativos.
-  kill <window_id>          - Termina um processo (fecha uma janela).
-  history                   - Mostra o histórico de comandos.
-  date                      - Exibe a data e hora atuais.
-  whoami                    - Exibe o nome do usuário atual.
-  about                     - Mostra informações sobre o AuraOS.
-  ping <hostname>           - Envia pacotes ICMP ECHO_REQUEST para um host de rede (simulado).`, 'output-text'),
-        clear: (args) => { this.output.innerHTML = ''; },
         pwd: (args) => this._termLog(this.currentPath, 'output-text'),
         reboot: (args) => window.location.reload(),
         shutdown: (args) => {
