@@ -13,13 +13,13 @@ function AuraInvadersGame(canvas) {
   AuraGameSDK.init('aura-invaders', canvas);
 
   // Sound Effects
-  const playerShootSound = new Audio('https://www.sfxr.me/static/wav/r_shoot1.wav');
-  const invaderDestroyedSound = new Audio('https://www.sfxr.me/static/wav/r_explosion1.wav');
-  const playerDestroyedSound = new Audio('https://www.sfxr.me/static/wav/r_hit1.wav');
+  // const playerShootSound = new Audio('https://www.sfxr.me/static/wav/r_shoot1.wav');
+  // const invaderDestroyedSound = new Audio('https://www.sfxr.me/static/wav/r_explosion1.wav');
+  // const playerDestroyedSound = new Audio('https://www.sfxr.me/static/wav/r_hit1.wav');
 
-  playerShootSound.volume = 0.3;
-  invaderDestroyedSound.volume = 0.2;
-  playerDestroyedSound.volume = 0.4;
+  // playerShootSound.volume = 0.3;
+  // invaderDestroyedSound.volume = 0.2;
+  // playerDestroyedSound.volume = 0.4;
 
   // Game state variables (local scope)
   let score = 0;
@@ -185,8 +185,8 @@ function AuraInvadersGame(canvas) {
         height: 10,
         speed: bulletSpeed
       });
-      playerShootSound.currentTime = 0; // Rewind to start
-      playerShootSound.play().catch(e => console.warn("AuraInvaders: Error playing player shoot sound:", e));
+      // playerShootSound.currentTime = 0; // Rewind to start
+      // playerShootSound.play().catch(e => console.warn("AuraInvaders: Error playing player shoot sound:", e));
       shootCooldown = maxShootCooldown;
     }
 
@@ -216,8 +216,8 @@ function AuraInvadersGame(canvas) {
     }
 
     if (anInvaderReachedBottom) {
-        playerDestroyedSound.currentTime = 0;
-        playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (invader bottom):", e));
+        // playerDestroyedSound.currentTime = 0;
+        // playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (invader bottom):", e));
         gameOver(false);
         return;
     }
@@ -263,8 +263,8 @@ function AuraInvadersGame(canvas) {
           invaders[j].alive = false;
           bullets.splice(i, 1);
           score += 10;
-          invaderDestroyedSound.currentTime = 0;
-          invaderDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing invader destroyed sound:", e));
+          // invaderDestroyedSound.currentTime = 0;
+          // invaderDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing invader destroyed sound:", e));
           // Check for win condition
           if (invaders.every(inv => !inv.alive)) {
             gameOver(true);
@@ -280,8 +280,8 @@ function AuraInvadersGame(canvas) {
       if (checkCollision(invaderBullets[k], player)) {
         invaderBullets.splice(k, 1);
         lives--;
-        playerDestroyedSound.currentTime = 0;
-        playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (bullet hit):", e));
+        // playerDestroyedSound.currentTime = 0;
+        // playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (bullet hit):", e));
         // Reset player position (optional, or give brief invulnerability)
         player.x = canvas.width / 2 - player.width / 2;
         player.y = canvas.height - 60;
