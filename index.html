@@ -995,13 +995,17 @@
 
         /* Volume controls styling - ensure consistency */
         .volume-controls {
-            /* position, display, align-items already set */
+            position: relative;
+            display: flex;
+            align-items: center;
         }
-        .volume-icon { /* Already sized by .control-button svg rule */
-            /* fill, transition already set */
+        .volume-icon {
+            cursor: pointer;
+            fill: var(--text-color);
+            transition: fill 0.2s ease;
         }
-        .volume-icon:hover { /* Already handled by .control-button:hover svg */
-             /* fill: var(--highlight-primary); */
+        .volume-icon:hover {
+            fill: var(--highlight-primary);
         }
 
         .volume-slider-container {
@@ -1391,7 +1395,7 @@
         .login-box button:hover { transform: scale(1.05); background-color: var(--highlight-secondary); }
 
 
-/* --- Notification System --- */
+        /* --- Notification System --- */
 #notification-container {
     position: fixed;
     top: 20px;
@@ -1402,6 +1406,216 @@
     align-items: flex-end;
     gap: 10px;
 }
+
+        /* Music player footer buttons styling */
+        .music-footer-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-top: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .music-action-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            min-width: auto;
+            height: 32px;
+        }
+        
+        .music-action-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--highlight-primary);
+            transform: scale(1.05);
+        }
+        
+        .music-action-button:active {
+            transform: scale(0.98);
+        }
+        
+        .music-action-button svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+        
+        .music-action-button.add-button:hover {
+            background: color-mix(in srgb, var(--highlight-primary) 20%, rgba(255, 255, 255, 0.1));
+            border-color: var(--highlight-primary);
+        }
+        
+        .music-action-button.clear-button:hover {
+            background: color-mix(in srgb, var(--red-accent) 20%, rgba(255, 255, 255, 0.1));
+            border-color: var(--red-accent);
+        }
+        
+        /* Custom file picker styling */
+        .custom-file-picker {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .custom-file-picker input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .custom-file-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            color: var(--text-color);
+            transition: all 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .custom-file-picker:hover .custom-file-button {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--highlight-primary);
+        }
+        
+        .custom-file-button svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--highlight-primary);
+        }
+        
+        .file-name {
+            font-size: 0.9rem;
+            color: var(--subtle-text-color);
+            font-style: italic;
+        }
+        
+        /* AuraOS Modal styling */
+        .aura-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: var(--glass-background);
+            backdrop-filter: blur(20px) saturate(1.5);
+            -webkit-backdrop-filter: blur(20px) saturate(1.5);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius);
+            padding: 30px;
+            min-width: 400px;
+            max-width: 500px;
+            z-index: 1000000;
+            color: var(--text-color);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            box-shadow: var(--window-shadow);
+        }
+        
+        .aura-modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        .aura-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .aura-modal-overlay.show {
+            opacity: 1;
+        }
+        
+        .aura-modal h3 {
+            margin: 0 0 20px 0;
+            text-align: center;
+            color: var(--text-color);
+        }
+        
+        .aura-modal-form-group {
+            margin-bottom: 15px;
+        }
+        
+        .aura-modal-form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .aura-modal-form-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            color: var(--text-color);
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        
+        .aura-modal-form-group input[type="text"]:focus {
+            outline: none;
+            border-color: var(--highlight-primary);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .aura-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .aura-modal-button {
+            padding: 10px 20px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        
+        .aura-modal-button.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+        }
+        
+        .aura-modal-button.cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .aura-modal-button.primary {
+            background: var(--highlight-primary);
+            color: white;
+            border-color: var(--highlight-primary);
+        }
+        
+        .aura-modal-button.primary:hover {
+            background: color-mix(in srgb, var(--highlight-primary) 90%, black);
+        }
 
 .notification-toast {
     background-color: var(--glass-background);
@@ -2630,6 +2844,126 @@
 
         dialogEl.setAttribute('tabindex', '-1');
         dialogEl.focus();
+    };
+
+    window.AuraOS.dialog.prompt = function(message = 'Enter a value:', defaultValue = '', onConfirm, onCancel) {
+        // Remove any existing dialog and overlay first to prevent duplicates
+        const existingDialog = document.getElementById('aura-dialog-prompt');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        const existingOverlay = document.getElementById('aura-dialog-overlay-prompt');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+
+        const dialogId = 'aura-dialog-prompt';
+        const dialogOverlayId = 'aura-dialog-overlay-prompt';
+
+        // Create overlay
+        const overlayEl = document.createElement('div');
+        overlayEl.id = dialogOverlayId;
+        overlayEl.className = 'aura-dialog-overlay';
+
+        // Create dialog
+        const dialogEl = document.createElement('div');
+        dialogEl.id = dialogId;
+        dialogEl.style.position = 'fixed';
+        dialogEl.style.top = '50%';
+        dialogEl.style.left = '50%';
+        dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+        dialogEl.style.zIndex = '2000000';
+        dialogEl.style.opacity = '0';
+        dialogEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+        dialogEl.innerHTML = `
+            <div class="aura-dialog-content">
+                <p id="aura-dialog-prompt-message" style="margin-bottom: 15px; font-size: 1rem;">${message}</p>
+                <input type="text" id="aura-dialog-prompt-input" style="
+                    width: 100%; 
+                    padding: 10px; 
+                    border: 1px solid var(--glass-border); 
+                    border-radius: var(--ui-corner-radius-small, 8px); 
+                    background: var(--glass-background); 
+                    color: var(--text-color); 
+                    font-size: 0.9rem;
+                    margin-bottom: 20px;
+                    box-sizing: border-box;
+                " value="${defaultValue}" />
+                <div class="aura-dialog-buttons" style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="aura-dialog-prompt-cancel-btn" class="aura-dialog-button aura-dialog-button-cancel">Cancelar</button>
+                    <button id="aura-dialog-prompt-confirm-btn" class="aura-dialog-button aura-dialog-button-confirm">OK</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlayEl);
+        document.body.appendChild(dialogEl);
+        document.body.classList.add('aura-dialog-open');
+
+        // Trigger entry animation
+        requestAnimationFrame(() => {
+            overlayEl.classList.add('show');
+            dialogEl.style.opacity = '1';
+            dialogEl.style.transform = 'translate(-50%, -50%) scale(1)';
+        });
+
+        const confirmButton = dialogEl.querySelector('#aura-dialog-prompt-confirm-btn');
+        const cancelButton = dialogEl.querySelector('#aura-dialog-prompt-cancel-btn');
+        const inputField = dialogEl.querySelector('#aura-dialog-prompt-input');
+
+        const closeDialog = (callback, inputValue = null) => {
+            dialogEl.style.opacity = '0';
+            dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
+            overlayEl.classList.remove('show');
+
+            setTimeout(() => {
+                if (document.getElementById(dialogId)) {
+                    document.getElementById(dialogId).remove();
+                }
+                if (document.getElementById(dialogOverlayId)) {
+                    document.getElementById(dialogOverlayId).remove();
+                }
+                document.body.classList.remove('aura-dialog-open');
+                if (typeof callback === 'function') {
+                    callback(inputValue);
+                }
+            }, 300);
+        };
+
+        confirmButton.addEventListener('click', () => {
+            const value = inputField.value;
+            closeDialog(onConfirm, value);
+        });
+
+        cancelButton.addEventListener('click', () => {
+            closeDialog(onCancel, null);
+        });
+
+        overlayEl.addEventListener('click', () => {
+            closeDialog(onCancel, null);
+        });
+
+        // Handle Enter key
+        inputField.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const value = inputField.value;
+                closeDialog(onConfirm, value);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeDialog(onCancel, null);
+            }
+        });
+
+        dialogEl.setAttribute('tabindex', '-1');
+        dialogEl.focus();
+        
+        // Focus the input field and select text
+        setTimeout(() => {
+            inputField.focus();
+            inputField.select();
+        }, 100);
     };    // Global Variables - Declare outside of DOMContentLoaded for proper scope
     let fileSystem = {}; // Will be loaded from IndexedDB
     let state = {}; // Global state object, populated by loadSystemState
@@ -3409,8 +3743,16 @@
             }
             
             try {
-                // Confirm deletion
-                if (!confirm(`Tem certeza que deseja remover "${song.title}" por ${song.artist} da biblioteca?`)) {
+                // Confirm deletion using AuraOS dialog
+                const confirmed = await new Promise((resolve) => {
+                    AuraOS.dialog.confirm(
+                        `Tem certeza que deseja remover "${song.title}" por ${song.artist} da biblioteca?\n\nEsta ação não pode ser desfeita.`,
+                        () => resolve(true),
+                        () => resolve(false)
+                    );
+                });
+                
+                if (!confirmed) {
                     return;
                 }
                 
@@ -4317,7 +4659,7 @@
                     /*
                         const parts = selectedItemPath.split('/').filter(p => p); // Get path components
                         if (parts.length === 0 && selectedItemPath === '/') { // Double check for root, already handled but good practice
-                            alert("Não é possível excluir o diretório raiz.");
+                            AuraOS.showNotification({title: 'Erro ao Excluir', message: "Não é possível excluir o diretório raiz.", type: 'error'});
                             return;
                         }
                         parts.pop(); // Remove item name to get parent's components
@@ -4332,7 +4674,7 @@
                             selectItem(null, null); // Clear selection
                             updateDesktopAndFileExplorer(pathToUpdate);
                         } else {
-                            alert(`Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfSelectedItemPath}'. (Caminho completo: ${selectedItemPath})`);
+                            AuraOS.showNotification({title: 'Erro ao Excluir', message: `Erro ao excluir '${itemName}'. Item não encontrado em '${parentOfSelectedItemPath}'. (Caminho completo: ${selectedItemPath})`, type: 'error'});
                             // It's possible the item was deleted by another process/tab, refresh view
                             selectItem(null, null);
                             updateDesktopAndFileExplorer(windowEl.dataset.currentPath);
@@ -4678,31 +5020,35 @@
                     body.innerHTML = `
                         <div class="music-playlist">
                             <div class="music-header">
-                                <input type="text" id="music-search" placeholder="Buscar na playlist...">
-                                <div class="music-header-buttons">
-                                    <button id="refresh-library-btn" class="add-music-button" title="Atualizar Biblioteca">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                                        </svg>
-                                    </button>
-                                    <button id="discover-files-btn" class="add-music-button" title="Descobrir Arquivos" style="margin-left: 5px;">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                                        </svg>
-                                    </button>
-                                    <button id="clear-db-btn" class="add-music-button" title="Limpar Cache" style="margin-left: 5px;">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                                        </svg>
-                                    </button>
-                                    <button id="add-music-btn" class="add-music-button" title="Adicionar Música">
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                        </svg>
-                                    </button>
-                                </div>
+                                <input type="text" id="music-search" placeholder="🔍 Buscar na playlist...">
                             </div>
                             <div id="playlist-container"></div>
+                            <div class="music-footer-buttons">
+                                <button id="refresh-library-btn" class="music-action-button" title="Atualizar Biblioteca">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                    </svg>
+                                    <span>Atualizar</span>
+                                </button>
+                                <button id="discover-files-btn" class="music-action-button" title="Descobrir Arquivos">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                    </svg>
+                                    <span>Descobrir</span>
+                                </button>
+                                <button id="clear-db-btn" class="music-action-button clear-button" title="Limpar Cache">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                        <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                                    </svg>
+                                    <span>Limpar</span>
+                                </button>
+                                <button id="add-music-btn" class="music-action-button add-button" title="Adicionar Música">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                    </svg>
+                                    <span>Adicionar</span>
+                                </button>
+                            </div>
                         </div>
                         <div class="music-player-main">
                             <div class="album-art"></div>
@@ -4842,11 +5188,11 @@
                     }
                     
                     // Local function to handle adding music with access to local variables
-                    async function handleAddMusicLocal(dialogContainer) {
-                        const musicFile = dialogContainer.querySelector('#music-file-input').files[0];
-                        const coverFile = dialogContainer.querySelector('#cover-file-input').files[0];
-                        const artist = dialogContainer.querySelector('#artist-input').value.trim();
-                        const title = dialogContainer.querySelector('#title-input').value.trim();
+                    async function handleAddMusicLocal(modal) {
+                        const musicFile = modal.querySelector('#music-file-input').files[0];
+                        const coverFile = modal.querySelector('#cover-file-input').files[0];
+                        const artist = modal.querySelector('#artist-input').value.trim();
+                        const title = modal.querySelector('#title-input').value.trim();
                         
                         if (!musicFile || !artist || !title) {
                             AuraOS.showNotification({
@@ -4941,8 +5287,16 @@
                                 }, coverDataUrl);
                             }
                             
-                            // Close dialog
-                            document.body.removeChild(dialogContainer);
+                            // Close modal
+                            const overlay = document.querySelector('.aura-modal-overlay');
+                            if (overlay) {
+                                overlay.classList.remove('show');
+                                modal.classList.remove('show');
+                                setTimeout(() => {
+                                    if (overlay.parentNode) document.body.removeChild(overlay);
+                                    if (modal.parentNode) document.body.removeChild(modal);
+                                }, 300);
+                            }
                             
                             // Refresh music library to include new song
                             await refreshMusicLibraryLocal();
@@ -4964,90 +5318,6 @@
                         }
                     }
                     
-                    // Local function to show add music dialog with access to local functions
-                    function showAddMusicDialogLocal() {
-                        const dialogHTML = `
-                            <div class="add-music-dialog" style="
-                                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                                background: var(--glass-background); backdrop-filter: blur(20px);
-                                border: 1px solid var(--glass-border); border-radius: var(--ui-corner-radius);
-                                padding: 30px; min-width: 400px; z-index: 1000000; color: var(--text-color);
-                            ">
-                                <h3 style="margin: 0 0 20px 0; text-align: center;">Adicionar Nova Música</h3>
-                                
-                                <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Arquivo de Música:</label>
-                                    <input type="file" id="music-file-input" accept=".mp3,.m4a,.wav,.flac,.ogg" style="
-                                        width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
-                                        border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
-                                    ">
-                                    <small style="opacity: 0.7; font-size: 0.8rem;">Formatos suportados: MP3, M4A, WAV, FLAC, OGG</small>
-                                </div>
-                                
-                                <div style="margin-bottom: 15px;">
-                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Capa (PNG - opcional):</label>
-                                    <input type="file" id="cover-file-input" accept=".png,.jpg,.jpeg" style="
-                                        width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
-                                        border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
-                                    ">
-                                </div>
-                                
-                                <div style="margin-bottom: 20px;">
-                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Nome do Artista:</label>
-                                    <input type="text" id="artist-input" placeholder="Ex: Nome do Artista" style="
-                                        width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
-                                        border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
-                                    ">
-                                </div>
-                                
-                                <div style="margin-bottom: 20px;">
-                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">Título da Música:</label>
-                                    <input type="text" id="title-input" placeholder="Ex: Nome da Música" style="
-                                        width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
-                                        border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
-                                    ">
-                                </div>
-                                
-                                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                                    <button id="cancel-add-music" style="
-                                        padding: 10px 20px; background: rgba(255,255,255,0.1); 
-                                        border: 1px solid var(--glass-border); border-radius: 8px; 
-                                        color: var(--text-color); cursor: pointer;
-                                    ">Cancelar</button>
-                                    <button id="confirm-add-music" style="
-                                        padding: 10px 20px; background: var(--highlight-primary); 
-                                        border: 1px solid var(--highlight-primary); border-radius: 8px; 
-                                        color: white; cursor: pointer;
-                                    ">Adicionar</button>
-                                </div>
-                            </div>
-                            <div class="dialog-overlay" style="
-                                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                                background: rgba(0,0,0,0.5); z-index: 999999;
-                            "></div>
-                        `;
-                        
-                        const dialogContainer = document.createElement('div');
-                        dialogContainer.innerHTML = dialogHTML;
-                        document.body.appendChild(dialogContainer);
-                        
-                        // Event listeners
-                        const cancelBtn = dialogContainer.querySelector('#cancel-add-music');
-                        const confirmBtn = dialogContainer.querySelector('#confirm-add-music');
-                        const overlay = dialogContainer.querySelector('.dialog-overlay');
-                        
-                        const closeDialog = () => {
-                            document.body.removeChild(dialogContainer);
-                        };
-                        
-                        cancelBtn.addEventListener('click', closeDialog);
-                        overlay.addEventListener('click', closeDialog);
-                        
-                        confirmBtn.addEventListener('click', () => {
-                            handleAddMusicLocal(dialogContainer);
-                        });
-                    }
-                    
                     // Local function to remove a song from the library
                     async function removeSongFromLibraryLocal(song) {
                         if (!song.isLocal) {
@@ -5060,8 +5330,16 @@
                         }
                         
                         try {
-                            // Confirm deletion
-                            if (!confirm(`Tem certeza que deseja remover "${song.title}" por ${song.artist} da biblioteca?`)) {
+                            // Confirm deletion using AuraOS dialog
+                            const confirmed = await new Promise((resolve) => {
+                                AuraOS.dialog.confirm(
+                                    `Tem certeza que deseja remover "${song.title}" por ${song.artist} da biblioteca?\n\nEsta ação não pode ser desfeita.`,
+                                    () => resolve(true),
+                                    () => resolve(false)
+                                );
+                            });
+                            
+                            if (!confirmed) {
                                 return;
                             }
                             
@@ -5130,7 +5408,7 @@
 
                     // Add music button functionality
                     addMusicBtn.addEventListener('click', () => {
-                        showAddMusicDialogLocal();
+                        createCustomAddMusicDialog();
                     });
                     
                     // Refresh library button functionality
@@ -5182,7 +5460,14 @@
                     // Clear music cache button functionality
                     const clearDbBtn = body.querySelector('#clear-db-btn');
                     clearDbBtn.addEventListener('click', async () => {
-                        const confirmed = confirm('⚠️ Tem certeza que deseja limpar o cache de música?\n\nIsso removerá todas as músicas locais carregadas no banco de dados, mas não afetará os arquivos físicos do projeto.');
+                        // Confirm clear cache using AuraOS dialog
+                        const confirmed = await new Promise((resolve) => {
+                            AuraOS.dialog.confirm(
+                                '⚠️ Tem certeza que deseja limpar o cache de música?\n\nIsso removerá todas as músicas locais carregadas no banco de dados, mas não afetará os arquivos físicos do projeto.',
+                                () => resolve(true),
+                                () => resolve(false)
+                            );
+                        });
                         
                         if (!confirmed) return;
                         
@@ -5487,7 +5772,8 @@
                                             song.isLocal ? '📍 Música local' : '🌐 Música online'
                                         ].filter(Boolean).join('\n');
                                         
-                                        alert(details);
+                                        // Show song details in custom modal
+                                        showSongDetailsModal(song);
                                     }
                                 });
                                 
