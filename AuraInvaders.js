@@ -13,7 +13,12 @@ function AuraInvadersGame(canvas) {
   AuraGameSDK.init('aura-invaders', canvas);
 
   // Sound Effects
-  const dummySound = { play: function() {}, pause: function() {}, currentTime: 0, volume: 0 };
+  const dummySound = { 
+    play: function() { return Promise.resolve(); }, 
+    pause: function() {}, 
+    currentTime: 0, 
+    volume: 0 
+  };
   const playerShootSound = dummySound;
   const invaderDestroyedSound = dummySound;
   const playerDestroyedSound = dummySound;
@@ -166,6 +171,8 @@ function AuraInvadersGame(canvas) {
 
   // --- Game Logic ---
   function update() {
+    if (!gameRunning) return; // Safety check to prevent execution when game is stopped
+    
     // Player Movement
     if (keys.ArrowLeft && player.x > 0) {
       player.x -= player.speed;
@@ -217,9 +224,11 @@ function AuraInvadersGame(canvas) {
     }
 
     if (anInvaderReachedBottom) {
-        playerDestroyedSound.currentTime = 0;
-        playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (invader bottom):", e));
-        gameOver(false);
+        if (lives > 0) {
+          playerDestroyedSound.currentTime = 0;
+          playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (invader bottom):", e));
+          gameOver(false);
+        }
         return;
     }
 
@@ -278,7 +287,7 @@ function AuraInvadersGame(canvas) {
 
     // Collision Detection: Invader Bullets vs. Player
     for (let k = invaderBullets.length - 1; k >= 0; k--) {
-      if (checkCollision(invaderBullets[k], player)) {
+      if (lives > 0 && checkCollision(invaderBullets[k], player)) {
         invaderBullets.splice(k, 1);
         lives--;
         playerDestroyedSound.currentTime = 0;
@@ -357,9 +366,10 @@ function AuraInvadersGame(canvas) {
 
   function gameLoop() {
     if (!gameRunning) return;
-    animationFrameId = requestAnimationFrame(gameLoop); // Store the ID
     update();
+    if (!gameRunning) return; // Check again after update in case gameOver was called
     draw();
+    animationFrameId = requestAnimationFrame(gameLoop); // Store the ID
   }
 
   // Initial setup call (draws initial state but game is not "running")
