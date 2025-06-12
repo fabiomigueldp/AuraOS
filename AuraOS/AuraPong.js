@@ -66,10 +66,12 @@ function AuraPongGame(canvas) {
   const scoreSoundUrl = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3'; // Example generic score
   const wallHitSoundUrl = 'https://www.soundjay.com/button/sounds/button-09.mp3'; // Example generic wall hit
 
+  const dummySound = { play: function() { /* console.log('SFX muted'); */ }, pause: function() {}, set currentTime(val) {}, get currentTime() {return 0;}, set volume(val) {}, get volume() {return 0;} };
+
   try {
-    // this.hitSound = new Audio(hitSoundUrl);
-    // this.scoreSound = new Audio(scoreSoundUrl);
-    // this.wallHitSound = new Audio(wallHitSoundUrl);
+    this.hitSound = dummySound;
+    this.scoreSound = dummySound;
+    this.wallHitSound = dummySound;
 
     // Optional: Set volume
     // this.hitSound.volume = 0.5;
