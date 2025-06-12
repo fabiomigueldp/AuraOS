@@ -331,7 +331,16 @@ AuraPongGame.prototype.gameOver = function(playerWon) {
     });
   } else {
     console.warn('AuraGameSDK.ui.showNotification not available. Skipping game result notification.');
-    alert(resultMessage); // Simple fallback
+    // Fallback using AuraOS notification system if available
+    if (typeof AuraOS !== 'undefined' && AuraOS.showNotification) {
+      AuraOS.showNotification({
+        title: 'Aura Pong',
+        message: resultMessage,
+        type: 'info'
+      });
+    } else {
+      console.log(resultMessage); // Console fallback
+    }
   }
 
   // 2. Submit Score to Leaderboard

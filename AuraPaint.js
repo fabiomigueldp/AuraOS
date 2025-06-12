@@ -405,9 +405,11 @@ class AuraPaintApp {
                     () => {}
                 );
             } else {
-                if (confirm('You have unsaved changes. Do you want to continue without saving?')) {
-                    this.performFileNew();
-                }
+                AuraOS.dialog.confirm(
+                    'Você tem alterações não salvas. Deseja continuar sem salvar?',
+                    () => this.performFileNew(),
+                    () => {} // Do nothing if user cancels
+                );
             }
         } else {
             this.performFileNew();

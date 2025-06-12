@@ -413,7 +413,11 @@ class AuraFlowApp {
     async _handleSaveImage() { // Made async
         if (typeof createItem !== 'function' || typeof getFileSystemNode !== 'function' || typeof AuraOS === 'undefined' || typeof AuraOS.showNotification !== 'function') {
             console.error("Required File System API or Notification API not available for saving image.");
-            alert("Error: File system API not available. Cannot save image."); // Fallback alert
+            AuraOS.showNotification({
+                title: 'Erro de Sistema',
+                message: '❌ API do sistema de arquivos não disponível. Não é possível salvar a imagem.',
+                type: 'error'
+            });
             return;
         }
         const dataURL = this.canvas.toDataURL('image/png');
