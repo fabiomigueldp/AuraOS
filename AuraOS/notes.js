@@ -12,7 +12,7 @@ class AuraNotesApp {
         this.windowEl.addEventListener('aura:close', this.boundDestroy);
 
         this._initUI();       // Existing
-        this._initEditor();   // Modified in this step
+        this._initEditor();   // Existing
         this._loadNotesList(); // Existing
     }
 
@@ -147,44 +147,74 @@ class AuraNotesApp {
     async _handleNewNote() {
         console.log('AuraNotesApp: Handling new note creation.');
         await this._ensureNotesDirectory();
+
         let newNoteName = 'Nova Anotação.txt';
-        let counter = 1;
+        let counter = 0; // Start counter at 0 for "Nova Anotação.txt" first
         const baseName = 'Nova Anotação';
-        let newFilePath = `/Notes/${newNoteName}`;
+        let newFilePath;
+        let fileExists = true; // Assume file exists to enter loop
+
         try {
-            while (true) {
-                try {
-                    await dbManager.loadFile(newFilePath);
-                    counter++;
+            while (fileExists) {
+                if (counter === 0) {
+                    newNoteName = `${baseName}.txt`;
+                } else {
                     newNoteName = `${baseName} (${counter}).txt`;
-                    newFilePath = `/Notes/${newNoteName}`;
-                } catch (error) {
-                    break;
+                }
+                newFilePath = `/Notes/${newNoteName}`; // Ensure leading slash for absolute path
+
+                // Check if file exists
+                let existingFile = null;
+                try {
+                    existingFile = await dbManager.loadFile(newFilePath);
+                } catch (loadError) {
+                    // dbManager.loadFile might throw if not found, which is desired for this check
+                    existingFile = null;
+                }
+
+                if (existingFile) {
+                    console.log(`AuraNotesApp: File ${newFilePath} exists, trying next name.`);
+                    counter++;
+                    fileExists = true;
+                } else {
+                    // File does not exist, this name is unique
+                    fileExists = false;
+                }
+
+                if (counter > 100) { // Safety break for extreme cases
+                    AuraOS.showNotification({ title: 'Error Creating Note', message: 'Too many notes with similar names. Please try a different name or clean up existing notes.', type: 'error'});
+                    console.error('AuraNotesApp: Exceeded max attempts to find unique note name.');
+                    return; // Exit if too many attempts
                 }
             }
+
             const initialContent = `# ${newNoteName.replace('.txt', '')}\n\n`;
             await dbManager.saveFile({
                 path: newFilePath,
                 type: 'file',
                 lastModified: Date.now()
             }, initialContent);
+
             console.log(`AuraNotesApp: New note created at ${newFilePath}`);
-            const newNoteForCache = {
-                id: newFilePath,
-                path: newFilePath,
-                content: initialContent,
-                lastModified: Date.now()
-            };
-            this.notesCache.unshift(newNoteForCache);
-            this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
+
+            // REMOVED: Direct cache manipulation here.
+            // this.notesCache.unshift(newNoteForCache);
+            // this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
+
+            // _loadNotesList will refresh the cache from DB and then render.
             await this._loadNotesList();
+            // _loadNotesList now handles selecting the new note or the first note.
+            // We need to ensure the *newly created* note is selected.
+            // So, after _loadNotesList, we explicitly load the one we just created.
             await this._loadNoteIntoEditor(newFilePath);
+
             if (this.editor) {
                 this.editor.focus();
             }
+
         } catch (error) {
             console.error('AuraNotesApp: Error creating new note:', error);
-            AuraOS.showNotification({ title: 'Error Creating Note', message: error.message, type: 'error' });
+            AuraOS.showNotification({ title: 'Error Creating Note', message: `An unexpected error occurred: ${error.message}`, type: 'error' });
         }
     }
 
@@ -198,7 +228,7 @@ class AuraNotesApp {
                 console.error('AuraNotesApp: A file exists at /Notes/ path, cannot create directory.');
                 AuraOS.showNotification({ title: 'Notes App Error', message: 'File system conflict at /Notes/.', type: 'error' });
                 throw new Error('File system conflict at /Notes/.');
-            } else { // This else block might not be reached if loadFile throws for non-existence
+            } else {
                 console.log('AuraNotesApp: /Notes/ directory not found (or not a folder). Attempting to create it.');
                 await dbManager.saveFile({
                     path: notesDirPath,
@@ -211,20 +241,17 @@ class AuraNotesApp {
                 }
             }
         } catch (error) {
-            // This catch block handles errors from dbManager.loadFile (e.g., if item doesn't exist)
-            // OR errors from dbManager.saveFile if creation fails.
-            let dirExists = false; // Re-check specifically if it was a "not found" error for loadFile
+            let dirExists = false;
             try {
                 const notesDirObjectCheck = await dbManager.loadFile(notesDirPath);
                 if (notesDirObjectCheck && notesDirObjectCheck.type === 'folder') {
                     dirExists = true;
-                } else if (notesDirObjectCheck) { // Exists but not a folder
+                } else if (notesDirObjectCheck) {
                      console.error('AuraNotesApp: Path /Notes/ exists but is not a folder (checked in catch).');
                      AuraOS.showNotification({ title: 'Notes App Error', message: 'File system conflict for /Notes/.', type: 'error' });
                      throw new Error('Path /Notes/ exists but is not a folder.');
                 }
             } catch (nestedLoadError) {
-                 // This means it truly doesn't exist
                  console.log('AuraNotesApp: /Notes/ directory confirmed not to exist (load error in catch).');
             }
 
@@ -245,14 +272,13 @@ class AuraNotesApp {
                     AuraOS.showNotification({ title: 'Notes App Error', message: 'Failed to create /Notes/ directory.', type: 'error' });
                     throw createError;
                 }
-            } else if (error && dirExists) { // Original error was not "not found" but something else
+            } else if (error && dirExists) {
                  console.error('AuraNotesApp: Error ensuring /Notes/ directory (exists but other error occurred):', error);
                  AuraOS.showNotification({ title: 'Notes App Error', message: 'Error with /Notes/ directory.', type: 'error' });
                  throw error;
             }
         }
     }
-
 
     async _loadNotesList() {
         if (!this.notesListDiv) {
@@ -375,28 +401,23 @@ class AuraNotesApp {
         }
         this.editorContainerDiv.innerHTML = ''; // Clear placeholder
 
-        if (typeof require === 'undefined' || typeof monaco === 'undefined') {
-            console.error('AuraNotesApp: Monaco Editor (require or monaco global) not available. Ensure loader.js is loaded globally.');
-            this.editorContainerDiv.innerHTML = '<p style="color:red;padding:10px;">Error: Monaco Editor components not found. Check console.</p>';
-            // Attempt to load it dynamically as a fallback - might be too late if app expects it synchronously
-            const loaderScript = document.createElement('script');
-            loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
-            loaderScript.onload = () => {
-                console.log('AuraNotesApp: Fallback Monaco loader.js loaded. Attempting re-init (manual refresh might be needed).');
-                // Potentially re-call _initEditor or notify user to retry
-            };
-            document.head.appendChild(loaderScript);
+        if (typeof require === 'undefined') { // Check if loader has defined require
+            console.error('AuraNotesApp: Monaco Editor loader (require) is not available. Ensure loader.js is loaded globally and before notes.js.');
+            this.editorContainerDiv.innerHTML = '<p style="color:red;padding:10px;">Error: Monaco Editor loader `require` not found. Check console.</p>';
             return;
         }
 
-        // Path configuration for Monaco's assets.
-        // This is crucial when the loader is separate from where editor/editor.main is.
-        // The CDN structure usually handles this, but explicitly setting it can resolve issues.
         require.config({
             paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }
         });
 
         require(['vs/editor/editor.main'], () => {
+            if (typeof monaco === 'undefined') { // Check if monaco global is available after editor.main
+                console.error('AuraNotesApp: Monaco global object not available after loading editor.main. Check CDN integrity or script loading order.');
+                this.editorContainerDiv.innerHTML = '<p style="color:red;padding:10px;">Error: Monaco global object not found. Check console.</p>';
+                return;
+            }
+
             const isDarkTheme = document.documentElement.classList.contains('dark-theme');
             const editorTheme = isDarkTheme ? 'vs-dark' : 'vs';
 
@@ -442,7 +463,7 @@ class AuraNotesApp {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         const isNowDarkTheme = document.documentElement.classList.contains('dark-theme');
                         const newEditorTheme = isNowDarkTheme ? 'vs-dark' : 'vs';
-                        if (this.editor && monaco.editor) { // Ensure monaco.editor is also available
+                        if (this.editor && typeof monaco !== 'undefined' && monaco.editor) {
                             monaco.editor.setTheme(newEditorTheme);
                             console.log('AuraNotesApp: Monaco Editor theme updated to', newEditorTheme);
                         }
