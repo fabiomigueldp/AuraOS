@@ -64,17 +64,21 @@ class AuraFlowApp {
 
 
         console.log("AuraFlowApp instance created");
-        this.initUI();
-
-        this._loadAppSettings().then(() => {
-            this._initializeCurrentMode(); // This also applies palette
-            this.startAnimation();
-            this._updateControlPanelValues();
-        }).catch(error => {
-            console.error("Error loading AuraFlow settings, using defaults:", error);
-            this._initializeCurrentMode();
-            this.startAnimation();
-            this._updateControlPanelValues();
+        
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            this.initUI();
+            
+            this._loadAppSettings().then(() => {
+                this._initializeCurrentMode(); // This also applies palette
+                this.startAnimation();
+                this._updateControlPanelValues();
+            }).catch(error => {
+                console.error("Error loading AuraFlow settings, using defaults:", error);
+                this._initializeCurrentMode();
+                this.startAnimation();
+                this._updateControlPanelValues();
+            });
         });
 
         const windowElement = this.windowBody.closest('.window');
@@ -464,7 +468,18 @@ class AuraFlowApp {
 
     _updateCanvasSize() {
         // Update canvas dimensions to match the actual display size
+        if (!this.windowBody || !this.canvas) {
+            console.warn("AuraFlow: windowBody or canvas not available for sizing");
+            return;
+        }
+        
         const rect = this.windowBody.getBoundingClientRect();
+        
+        // Ensure we have valid dimensions
+        if (rect.width <= 0 || rect.height <= 0) {
+            console.warn("AuraFlow: Invalid windowBody dimensions:", rect);
+            return;
+        }
         
         // Set canvas size to match container
         this.canvas.width = rect.width;
