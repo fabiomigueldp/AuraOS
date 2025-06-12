@@ -7366,6 +7366,12 @@
                                         if (currentGameInstance && currentGameInstance.isRunning()) {
                                             currentGameInstance.stop();
                                         }
+                                        
+                                        // Call cleanup method if available
+                                        if (currentGameInstance && typeof currentGameInstance.cleanup === 'function') {
+                                            currentGameInstance.cleanup();
+                                        }
+                                        
                                         currentGameInstance = null;
                                         const gameToReDetail = games.find(g => g.id === gameData.id);
                                         if (gameToReDetail) {
@@ -7423,6 +7429,12 @@
                         gameItemEl.addEventListener('click', () => {
                             if (currentGameInstance && currentGameInstance.isRunning()) {
                                 currentGameInstance.stop();
+                                
+                                // Call cleanup method if available
+                                if (typeof currentGameInstance.cleanup === 'function') {
+                                    currentGameInstance.cleanup();
+                                }
+                                
                                 currentGameInstance = null;
                             }
                             const currentlyActive = gameListDiv.querySelector('.game-item.active');
@@ -7443,6 +7455,12 @@
                         if (currentGameInstance && currentGameInstance.isRunning()) {
                             currentGameInstance.stop();
                         }
+                        
+                        // Call cleanup method if available
+                        if (currentGameInstance && typeof currentGameInstance.cleanup === 'function') {
+                            currentGameInstance.cleanup();
+                        }
+                        
                         currentGameInstance = null;
                     });
                     break;

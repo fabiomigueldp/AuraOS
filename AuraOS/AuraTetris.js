@@ -267,6 +267,12 @@ if (isMusicPlaying) {
             isMusicPaused = false;
             console.log("AuraTetris: Music stopped due to cleanup");
         }
+        
+        // Remove visibility change listener
+        if (this._visibilityChangeHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
+            this._visibilityChangeHandler = null;
+        }
     };
 
     // Pause music (for window minimization, etc.)
@@ -296,5 +302,20 @@ if (isMusicPlaying) {
             });
         }
     }
+
+    // Listen for page visibility changes to pause/resume music
+    const handleVisibilityChange = () => {
+        if (document.hidden) {
+            this.pauseMusic();
+        } else {
+            this.resumeMusic();
+        }
+    };
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Store reference to remove listener on cleanup
+    this._visibilityChangeHandler = handleVisibilityChange;
 }
 window.AuraTetrisGame = AuraTetrisGame;
