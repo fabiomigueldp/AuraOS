@@ -21,6 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
 
     <script src="DBManager.js"></script>
+    <script src="WindowManager.js"></script>
     <script src="AuraGameSDK.js"></script>
     <script src="AuraBreaker.js"></script>
     <script src="AuraOS/AuraSnake.js"></script>
@@ -245,7 +246,8 @@
             backdrop-filter: blur(50px) saturate(1.8);
             -webkit-backdrop-filter: blur(50px) saturate(1.8);
             display: flex; flex-direction: column;
-            resize: both; overflow: hidden; /* ESSENCIAL PARA RESIZE FUNCIONAR */
+            /* resize: both; */ /* Removed for custom handles */
+            overflow: hidden; /* Still needed to contain content */
             transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.2s ease;
             transform-origin: center center;
             z-index: 1001; /* Garantir z-index base para janelas - acima do desktop-content */
@@ -267,7 +269,7 @@
         .control-btn.maximize-btn { background-color: var(--green-accent); }
         .control-btn:hover { transform: scale(1.2); }
 
-        .window-body { flex-grow: 1; overflow: auto; }
+        .window-body { position: relative; flex-grow: 1; overflow: auto; }
         .window-body::-webkit-scrollbar { display: none; }
 
         /* 5. BARRA SUPERIOR E DOCK - CORRIGIDO */
@@ -3065,6 +3067,9 @@
         window.AuraOS = {};
     }    window.AuraOS.showNotification = function({ title = 'Notification', message = '', icon = '', type = 'info', duration = 4000 }) {
         const container = document.getElementById('notification-container');
+        if (container && window.windowManager) {
+            container.style.zIndex = window.windowManager.getNewZIndex('notification');
+        }
         if (!container) {
             console.error('Notification container not found!');
             // Try to create it if it doesn't exist
@@ -3184,7 +3189,13 @@
         dialogEl.style.top = '50%';
         dialogEl.style.left = '50%';
         dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)'; // Start slightly scaled down for entry animation
-        dialogEl.style.zIndex = '2000000';
+        if (window.windowManager) {
+            overlayEl.style.zIndex = window.windowManager.getNewZIndex('dialog') - 1;
+            dialogEl.style.zIndex = window.windowManager.getNewZIndex('dialog');
+        } else {
+            overlayEl.style.zIndex = '1999999'; // Fallback
+            dialogEl.style.zIndex = '2000000'; // Fallback
+        }
         dialogEl.style.opacity = '0'; // Start transparent for entry animation
         dialogEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease'; // CSS transitions
 
@@ -3276,7 +3287,13 @@
         dialogEl.style.top = '50%';
         dialogEl.style.left = '50%';
         dialogEl.style.transform = 'translate(-50%, -50%) scale(0.9)';
-        dialogEl.style.zIndex = '2000000';
+        if (window.windowManager) {
+            overlayEl.style.zIndex = window.windowManager.getNewZIndex('dialog') - 1;
+            dialogEl.style.zIndex = window.windowManager.getNewZIndex('dialog');
+        } else {
+            overlayEl.style.zIndex = '1999999'; // Fallback
+            dialogEl.style.zIndex = '2000000'; // Fallback
+        }
         dialogEl.style.opacity = '0';
         dialogEl.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
 
@@ -3415,6 +3432,12 @@
             initializeDesktopIcons();
             initializeDesktopContextMenu();
             // ... other initializations from the original DOMContentLoaded ...
+            if (window.windowManager && typeof window.windowManager.loadAndRestoreWindowState === 'function') {
+                await window.windowManager.loadAndRestoreWindowState();
+                console.log("Window states restoration process initiated by WindowManager.");
+            } else {
+                console.error("WindowManager or loadAndRestoreWindowState not available at startup.");
+            }
             console.log("AuraOS original initialization sequence (post-DB) complete.");
         } catch (error) {
             console.error("Critical error during AuraOS initialization:", error);
@@ -4494,80 +4517,98 @@
     }
 
         // --- FUNÇÕES DE GERENCIAMENTO DE JANELAS (CORRIGIDO) ---
-        function createWindow(appId, data = {}) {
-            // Ensure fileSystem is loaded before creating windows that might depend on it.
-            // This is a basic check; a more robust system might use promises or events.
-            if (Object.keys(fileSystem).length === 0 && appId !== 'control-panel') { // Allow control panel to open for recovery
-                 AuraOS.showNotification({ title: 'Sistema de Arquivos Não Carregado', message: 'Aguardando o carregamento do sistema de arquivos. Tente novamente em breve.', type: 'warning' });
-                 console.warn("Attempted to create window before file system was fully loaded:", appId);
-                 return;
-            }
+    function createWindow(appId, data = {}, initialFocus = true) {
+        // Effective App ID: use data.appId if restoring, otherwise the passed appId
+        const effectiveAppId = data.appId || appId;
+        const appConfig = apps[effectiveAppId];
 
-            if (document.getElementById(appId) && !apps[appId]?.allowMultiple) {
-                focusWindow(document.getElementById(appId));
-                return;
-            }
-
-            const app = apps[appId];
-            if (!app) {
-                console.error('App not found:', appId);
-                return;
-            }
-            
-            const windowEl = document.createElement('div');
-            windowEl.className = 'window';
-            
-            const uniqueId = appId + (apps[appId].allowMultiple ? `-${Date.now()}` : '');
-            windowEl.id = uniqueId;
-            windowEl.dataset.creationTime = Date.now(); // Store creation timestamp
-
-            // Ensure the window element itself is known to the tracker, even if no listeners yet
-            if (window.AuraOS && window.AuraOS.trackedEventListeners && !window.AuraOS.trackedEventListeners.listeners.has(windowEl)) {
-                window.AuraOS.trackedEventListeners.listeners.set(windowEl, new Map());
-            }
-            
-            windowEl.style.width = data.width || `${app.width}px`;
-            windowEl.style.height = data.height || `${app.height}px`;
-            
-            // Posição inicial centralizada e dentro da tela
-            const topPos = data.top || Math.max(60, (window.innerHeight - (data.height || app.height)) / 2);
-            const leftPos = data.left || Math.max(10, (window.innerWidth - (data.width || app.width)) / 2);
-            windowEl.style.top = `${topPos}px`;
-            windowEl.style.left = `${leftPos}px`;
-
-            windowEl.style.zIndex = data.zIndex || ++zIndexCounter;
-            
-            windowEl.innerHTML = `
-                <div class="window-header">
-                    <div class="window-controls">
-                        <div class="control-btn close-btn" title="Fechar"></div>
-                        <div class="control-btn minimize-btn" title="Minimizar"></div>
-                        <div class="control-btn maximize-btn" title="Maximizar"></div>
-                    </div>
-                    <span class="window-title">${data.title || app.title}</span>
-                </div>
-                <div class="window-body"></div>`;
-            
-            // CORREÇÃO: Anexar janelas ao body ao invés do desktop para evitar problemas de z-index
-            document.body.appendChild(windowEl);
-            
-            makeWindowDraggable(windowEl);
-            focusWindow(windowEl);
-
-            const dockItem = document.querySelector(`.dock-item[data-app-id="${appId}"]`);
-            if(dockItem) dockItem.classList.add('active');
-
-            windowEl.querySelector('.close-btn').addEventListener('click', (e) => { e.stopPropagation(); closeWindow(uniqueId, appId); });
-            windowEl.querySelector('.minimize-btn').addEventListener('click', (e) => { e.stopPropagation(); minimizeWindow(uniqueId); });
-            
-            initializeAppLogic(uniqueId, appId, windowEl, data);
-            saveDesktopState();
-            return windowEl;
+        if (!appConfig) {
+            console.error('App config not found for ID:', effectiveAppId);
+            AuraOS.showNotification({title:'Erro', message: `Definição do app ${effectiveAppId} não encontrada.`, type: 'error'});
+            return null;
         }
 
-        function closeWindow(windowId, appId) {
+        // Use restoredId if provided, otherwise generate uniqueId
+        const uniqueId = data.restoredId || (effectiveAppId + (appConfig.allowMultiple ? `-${Date.now()}` : ''));
+
+        let existingWindow = document.getElementById(uniqueId);
+        // If it's a restore operation and the window already exists, something is wrong.
+        // We should ideally not proceed or attempt to reconcile. For now, let's just log and return it.
+        if (existingWindow && data.restoredId) {
+            console.warn(`Window with ID ${uniqueId} already exists in DOM during restore. Attempting to focus.`);
+            if (window.windowManager) window.windowManager.focusWindow(existingWindow);
+            return existingWindow;
+        } else if (existingWindow && !appConfig.allowMultiple && !data.restoredId) {
+             // Standard behavior: focus existing single-instance window
+            if (window.windowManager) window.windowManager.focusWindow(existingWindow);
+            else focusWindow(existingWindow); // Fallback
+            return existingWindow;
+        }
+
+
+        const windowEl = document.createElement('div');
+        windowEl.className = 'window';
+        windowEl.id = uniqueId;
+        // IMPORTANT: Store the base appId on the element for WindowManager to use during save
+        windowEl.dataset.appId = effectiveAppId;
+
+        const wWidth = data.width ? parseFloat(String(data.width).replace('px','')) : appConfig.width;
+        const wHeight = data.height ? parseFloat(String(data.height).replace('px','')) : appConfig.height;
+        let wTop = data.top ? parseFloat(String(data.top).replace('px','')) : Math.max(45, (window.innerHeight - wHeight) / 2);
+        let wLeft = data.left ? parseFloat(String(data.left).replace('px','')) : Math.max(5, (window.innerWidth - wWidth) / 2);
+
+        // Ensure windows are not created off-screen from saved state
+        const workAreaCheck = window.windowManager ? window.windowManager.getWorkArea() : {x:0, y:40, width: window.innerWidth, height: window.innerHeight-40};
+        wLeft = Math.max(workAreaCheck.x, Math.min(wLeft, workAreaCheck.x + workAreaCheck.width - wWidth));
+        wTop = Math.max(workAreaCheck.y, Math.min(wTop, workAreaCheck.y + workAreaCheck.height - wHeight));
+
+
+        windowEl.style.width = `${wWidth}px`;
+        windowEl.style.height = `${wHeight}px`;
+        windowEl.style.top = `${wTop}px`;
+        windowEl.style.left = `${wLeft}px`;
+
+        windowEl.innerHTML = `
+            <div class="window-header">
+                <div class="window-controls">
+                    <div class="control-btn close-btn" title="Fechar"></div>
+                    <div class="control-btn minimize-btn" title="Minimizar"></div>
+                    <div class="control-btn maximize-btn" title="Maximizar"></div>
+                </div>
+                <span class="window-title">${data.title || appConfig.title}</span>
+            </div>
+            <div class="window-body"></div>`;
+
+        document.body.appendChild(windowEl);
+        makeWindowDraggable(windowEl); // This should be fine before registration
+
+        if (window.windowManager) {
+            window.windowManager.registerWindow(windowEl, {
+                title: data.title || appConfig.title,
+                initialData: data, // Pass all data for WM to pick what it needs
+                resizable: data.resizable !== undefined ? data.resizable : appConfig.resizable,
+                filePath: data.filePath,
+                initialState: data.initialState, // Pass initial state for WM to apply
+                restoredId: data.restoredId,      // Signal to WM if it's a restored window
+                zIndexToRestore: data.zIndexToRestore // Pass zIndex for WM to apply if restoring
+            });
+            // Focus is now handled by loadAndRestoreWindowState for restored windows,
+            // and by registerWindow for brand new windows.
+        } else {
+            windowEl.style.zIndex = data.zIndexToRestore || ++zIndexCounter; // Fallback
+            if (initialFocus) focusWindow(windowEl); // Fallback
+        }
+
+        initializeAppLogic(uniqueId, effectiveAppId, windowEl, data);
+        // saveDesktopState(); // Called by WM methods or drag/resize end
+        return windowEl;
+    }
+
+        async function closeWindow(windowId, appId) { // Made async
             const windowEl = document.getElementById(windowId);
             if (!windowEl) return;
+
+            if (window.windowManager) window.windowManager.unregisterWindow(windowEl);
 
             // Cleanup game instances when closing Game Center
             if (appId === 'game-center' && window.currentGameInstance) {
@@ -4620,14 +4661,14 @@
                     const dockItem = document.querySelector(`.dock-item[data-app-id="${appId}"]`);
                     if(dockItem) dockItem.classList.remove('active');
                 }
-                saveDesktopState();
+                await saveDesktopState(); // Awaited
             }, 300);
         }
 
-        function minimizeWindow(windowId) {
+        async function minimizeWindow(windowId) { // Made async
              const windowEl = document.getElementById(windowId);
              if (windowEl) {
-                 windowEl.classList.add('minimized');
+                if (window.windowManager) window.windowManager.setWindowState(document.getElementById(windowId), "minimized");
                  
                  // Pause music for Tetris game when minimized
                  const canvas = windowEl.querySelector('canvas');
@@ -4637,26 +4678,23 @@
                      window.currentGameInstance.pauseMusic();
                  }
                  
-                 saveDesktopState();
+                 await saveDesktopState(); // Awaited
              }
         }
 
         function focusWindow(windowEl) {
-            if(windowEl.classList.contains('minimized')) {
-                windowEl.classList.remove('minimized');
-                
-                // Resume music for Tetris game when restored
-                const canvas = windowEl.querySelector('canvas');
-                if (canvas && window.currentGameInstance && 
-                    typeof window.currentGameInstance.resumeMusic === 'function' &&
-                    windowEl.id.includes('game-center')) {
-                    window.currentGameInstance.resumeMusic();
+            if (!windowEl) return;
+            if (window.windowManager) {
+                const record = window.windowManager.getWindowRecord(windowEl);
+                if (record && record.state === 'minimized') {
+                    window.windowManager.setWindowState(windowEl, 'normal');
                 }
+                window.windowManager.focusWindow(windowEl);
+            } else {
+                document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
+                windowEl.classList.add('focused');
+                // windowEl.style.zIndex = ++zIndexCounter; // zIndexCounter is not defined here anymore
             }
-            document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
-            windowEl.classList.add('focused');
-            windowEl.style.zIndex = ++zIndexCounter;
-            saveDesktopState();
         }
 
         function makeWindowDraggable(el) {
@@ -4667,29 +4705,67 @@
                 // Ignorar cliques nos botões de controle
                 if (e.target.classList.contains('control-btn')) return;
 
-                focusWindow(el);
-                offsetX = e.clientX - el.getBoundingClientRect().left;
-                offsetY = e.clientY - el.getBoundingClientRect().top;
+                const record = window.windowManager ? window.windowManager.getWindowRecord(el) : null;
+                if (record && (record.state === "maximized" || record.state === "snapped-left" || record.state === "snapped-right")) {
+                    const oldWidth = el.offsetWidth; // Not used in simpler approach
+                    const oldHeight = el.offsetHeight; // Not used in simpler approach
+
+                    window.windowManager.setWindowState(el, "normal");
+
+                    offsetX = (record.originalNormalSize.width / 2);
+                    offsetY = 15;
+                } else {
+                    offsetX = e.clientX - el.getBoundingClientRect().left;
+                    offsetY = e.clientY - el.getBoundingClientRect().top;
+                }
+
+                if (window.windowManager) window.windowManager.focusWindow(el); // Ensure focus is handled by WM
 
                 function onMouseMove(e) {
                     let newLeft = e.clientX - offsetX;
                     let newTop = e.clientY - offsetY;
 
-                    // Manter a janela dentro dos limites da tela
-                    const topBarHeight = 40;
+                    // Manter a janela dentro dos limites da tela (basic boundary)
+                    // WM's getWorkArea might be used for more precise boundary checks if needed
+                    const topBarHeight = document.getElementById('top-bar')?.offsetHeight || 40;
                     newTop = Math.max(topBarHeight, newTop);
                     newTop = Math.min(newTop, window.innerHeight - el.offsetHeight);
                     newLeft = Math.max(0, newLeft);
                     newLeft = Math.min(newLeft, window.innerWidth - el.offsetWidth);
 
+                    if (window.windowManager) {
+                        const snapEdge = window.windowManager.isSnappingActive(e.clientX, e.clientY);
+                        if (snapEdge) {
+                            window.windowManager.showSnapPreview(snapEdge);
+                            el.dataset.activeSnapEdge = snapEdge;
+                        } else {
+                            window.windowManager.hideSnapPreview();
+                            delete el.dataset.activeSnapEdge;
+                        }
+                    }
+
                     el.style.left = `${newLeft}px`;
                     el.style.top = `${newTop}px`;
                 }
 
-                function onMouseUp() {
+                async function onMouseUp() { // Made async
                     window.removeEventListener('mousemove', onMouseMove);
                     window.removeEventListener('mouseup', onMouseUp);
-                    saveDesktopState();
+
+                    if (window.windowManager) {
+                        window.windowManager.hideSnapPreview();
+                        const activeSnapEdge = el.dataset.activeSnapEdge;
+                        if (activeSnapEdge) {
+                            window.windowManager.snapWindow(el, activeSnapEdge);
+                            delete el.dataset.activeSnapEdge;
+                        }
+                        const currentRecord = window.windowManager.getWindowRecord(el);
+                        if(currentRecord) {
+                            currentRecord.currentPosition = { top: el.offsetTop, left: el.offsetLeft };
+                            currentRecord.currentSize = {width: el.offsetWidth, height: el.offsetHeight};
+                        }
+                    }
+                    await saveDesktopState(); // Awaited
                 }
 
                 window.addEventListener('mousemove', onMouseMove);
@@ -8446,6 +8522,13 @@
           // --- GERENCIAMENTO DE ESTADO E INICIALIZAÇÃO --- (Modified for IndexedDB)
         // Global state object is declared above, populated by loadSystemState
 
+        async function saveDesktopState() { // Make sure it's async
+            if (window.windowManager) {
+                await window.windowManager.saveWindowState(); // Add await
+            }
+            // Any other non-window related desktop state saving can remain here if needed
+        }
+
         async function loadSystemState() { // Made async
             try {
                 const settingsFromDB = await dbManager.getAllSettings();
@@ -8497,8 +8580,6 @@
         // Individual settings are saved by setSystemProperty (via setX functions).
         // The loadSystemState populates the 'state' object on startup.
 
-
-        function saveDesktopState() { /* Placeholder for window positions, etc. Not FS/System state. */ }
 
         async function applySystemState() { // Made async
             // Applies the global 'state' object (already loaded by loadSystemState) to the UI.
@@ -8775,6 +8856,11 @@
             if (desktopBackground) {
                 desktopBackground.style.backdropFilter = 'blur(40px)';
             }
+            if (window.windowManager) {
+                lockScreen.style.zIndex = window.windowManager.getNewZIndex('lockScreen');
+            } else {
+                lockScreen.style.zIndex = '1000000'; // Fallback, should match Z_INDEX_LAYERS.lockScreen
+            }
             lockScreen.style.display = 'flex';
             lockScreenClock.textContent = new Date().toLocaleTimeString('pt-BR'); // Initial time update
             setTimeout(() => {
@@ -8930,6 +9016,17 @@
                             lockScreenClock.textContent = currentTime;
                         }
                     }, 1000);
+
+                    document.body.addEventListener('mousedown', (e) => {
+                        const clickedWindow = e.target.closest('.window');
+                        if (clickedWindow && window.windowManager) {
+                            if (!e.target.closest('.window-controls') && !e.target.closest('.resize-handle')) {
+                                window.windowManager.focusWindow(clickedWindow);
+                            }
+                        } else if (!clickedWindow && !e.target.closest('.context-menu') && !e.target.closest('#dock')) {
+                            // Potentially deselect windows or handle click on desktop background
+                        }
+                    }, true);
 
                     // Dock
                     dock.addEventListener('click', (e) => {
@@ -9297,7 +9394,11 @@
             menu.style.borderRadius = 'var(--ui-corner-radius-small)';
             menu.style.boxShadow = 'var(--window-shadow)';
             menu.style.padding = '5px';
-            menu.style.zIndex = '100000'; // Ensure it's on top
+            if (window.windowManager) {
+                menu.style.zIndex = window.windowManager.getNewZIndex('contextMenu');
+            } else {
+                menu.style.zIndex = '100000'; // Fallback
+            }
 
             menuItems.forEach(item => {
                 const menuItemEl = document.createElement('div');
