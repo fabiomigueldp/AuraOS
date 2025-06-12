@@ -2878,8 +2878,17 @@
                     }
                 }
                 
-                // Populate with auto-discovered project files
-                await populateWithProjectFiles();
+                // Check if we already have music files in the database
+                const existingTracks = await dbManager.listFiles('music/tracks');
+                const existingCovers = await dbManager.listFiles('music/covers');
+                
+                // Only run auto-discovery if no files exist yet
+                if (existingTracks.length === 0 && existingCovers.length === 0) {
+                    console.log('No music files found in database, running auto-discovery...');
+                    await populateWithProjectFiles();
+                } else {
+                    console.log(`Music files already exist in database: ${existingTracks.length} tracks, ${existingCovers.length} covers`);
+                }
                 
             } catch (error) {
                 console.error('Error ensuring music directories exist:', error);
@@ -2888,113 +2897,95 @@
         
         async function populateWithProjectFiles() {
             try {
-                console.log('Auto-discovering music files in project directory...');
+                console.log('🎵 Loading known music files from project...');
                 
-                // Strategy: Since we can't list directories directly in browser,
-                // we'll use a smart discovery approach that tests common patterns
+                // Strategy: Load only known existing files to avoid 404 spam
                 const discoveredFiles = [];
                 
-                // Define supported file extensions
-                const musicExtensions = ['mp3', 'm4a', 'wav', 'flac', 'ogg'];
-                const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-                
-                // Common naming patterns to try (expandable)
-                const commonPatterns = [
-                    // Known files from current directory
-                    'beethoven_-_fur_elise',
-                    'bennett_-_vois_sur_ton_chemin',
-                    'local_artist_-_gape_noster',
-                    
-                    // Common music patterns to test
-                    'track_01', 'track_02', 'track_03', 'track_04', 'track_05',
-                    'song_01', 'song_02', 'song_03', 'song_04', 'song_05',
-                    'music_01', 'music_02', 'music_03', 'music_04', 'music_05',
-                    'audio_01', 'audio_02', 'audio_03', 'audio_04', 'audio_05',
-                    
-                    // Artist patterns
-                    'artist_-_song', 'artist_-_title', 'band_-_track',
-                    
-                    // Generic patterns
-                    'sample', 'demo', 'test', 'music', 'audio', 'sound'
+                // 📁 MUSIC LIBRARY REGISTRY
+                // To add new music: 
+                // 1. Add files to music/tracks/ and music/covers/ folders
+                // 2. Add the base filename (without extension) to the registry below
+                const musicRegistry = [
+                    {
+                        name: 'beethoven_-_fur_elise',
+                        audioFile: 'beethoven_-_fur_elise.mp3',
+                        coverFile: 'beethoven_-_fur_elise.png'
+                    },
+                    {
+                        name: 'bennett_-_vois_sur_ton_chemin', 
+                        audioFile: 'bennett_-_vois_sur_ton_chemin.mp3',
+                        coverFile: 'bennett_-_vois_sur_ton_chemin.png'
+                    },
+                    {
+                        name: 'local_artist_-_gape_noster',
+                        audioFile: 'local_artist_-_gape_noster.mp3', 
+                        coverFile: 'local_artist_-_gape_noster.png'
+                    }
+                    // 🎼 ADD NEW MUSIC HERE:
+                    // {
+                    //     name: 'artist_name_-_song_title',
+                    //     audioFile: 'artist_name_-_song_title.mp3', // or .m4a, .wav, etc.
+                    //     coverFile: 'artist_name_-_song_title.png'  // optional, can be null
+                    // }
                 ];
                 
-                // Auto-discovery function for music files
-                async function discoverMusicFiles() {
-                    console.log('🔍 Discovering music files...');
-                    const foundFiles = [];
-                    
-                    for (const pattern of commonPatterns) {
-                        for (const ext of musicExtensions) {
-                            const filename = `${pattern}.${ext}`;
-                            const fileUrl = `music/tracks/${filename}`;
-                            
-                            try {
-                                const response = await fetch(fileUrl, { method: 'HEAD' });
-                                if (response.ok) {
-                                    foundFiles.push({
-                                        filename,
-                                        path: `music/tracks/${filename}`,
-                                        url: fileUrl,
-                                        type: 'audio',
-                                        pattern
-                                    });
-                                    console.log(`✅ Found music file: ${filename}`);
-                                }
-                            } catch (error) {
-                                // File doesn't exist, continue silently
+                
+                // Process each entry in the music registry
+                console.log(`📂 Processing ${musicRegistry.length} registered music entries...`);
+                
+                for (const entry of musicRegistry) {
+                    // Try to load audio file
+                    if (entry.audioFile) {
+                        const audioPath = `music/tracks/${entry.audioFile}`;
+                        try {
+                            const response = await fetch(audioPath, { method: 'HEAD' });
+                            if (response.ok) {
+                                discoveredFiles.push({
+                                    filename: entry.audioFile,
+                                    path: audioPath,
+                                    url: audioPath,
+                                    type: 'audio',
+                                    name: entry.name
+                                });
+                                console.log(`✅ Found audio: ${entry.audioFile}`);
+                            } else {
+                                console.log(`⚠️ Audio file not found: ${entry.audioFile} (${response.status})`);
                             }
+                        } catch (error) {
+                            console.log(`❌ Error checking audio: ${entry.audioFile}`);
                         }
                     }
                     
-                    return foundFiles;
-                }
-                
-                // Auto-discovery function for cover images
-                async function discoverCoverFiles(musicPatterns) {
-                    console.log('🖼️ Discovering cover images...');
-                    const foundFiles = [];
-                    
-                    // Use patterns from discovered music files
-                    const patternsToTry = [...new Set([...musicPatterns, ...commonPatterns])];
-                    
-                    for (const pattern of patternsToTry) {
-                        for (const ext of imageExtensions) {
-                            const filename = `${pattern}.${ext}`;
-                            const fileUrl = `music/covers/${filename}`;
-                            
-                            try {
-                                const response = await fetch(fileUrl, { method: 'HEAD' });
-                                if (response.ok) {
-                                    foundFiles.push({
-                                        filename,
-                                        path: `music/covers/${filename}`,
-                                        url: fileUrl,
-                                        type: 'image',
-                                        pattern
-                                    });
-                                    console.log(`✅ Found cover image: ${filename}`);
-                                }
-                            } catch (error) {
-                                // File doesn't exist, continue silently
+                    // Try to load cover file if specified
+                    if (entry.coverFile) {
+                        const coverPath = `music/covers/${entry.coverFile}`;
+                        try {
+                            const response = await fetch(coverPath, { method: 'HEAD' });
+                            if (response.ok) {
+                                discoveredFiles.push({
+                                    filename: entry.coverFile,
+                                    path: coverPath,
+                                    url: coverPath,
+                                    type: 'image',
+                                    name: entry.name
+                                });
+                                console.log(`✅ Found cover: ${entry.coverFile}`);
+                            } else {
+                                console.log(`⚠️ Cover file not found: ${entry.coverFile} (${response.status})`);
                             }
+                        } catch (error) {
+                            console.log(`❌ Error checking cover: ${entry.coverFile}`);
                         }
                     }
-                    
-                    return foundFiles;
                 }
                 
-                // Discover music files first
-                const musicFiles = await discoverMusicFiles();
-                discoveredFiles.push(...musicFiles);
                 
-                // Extract patterns from found music files for cover discovery
-                const musicPatterns = musicFiles.map(file => file.pattern);
+                // Summary
+                const musicCount = discoveredFiles.filter(f => f.type === 'audio').length;
+                const coverCount = discoveredFiles.filter(f => f.type === 'image').length;
                 
-                // Discover cover files based on music patterns
-                const coverFiles = await discoverCoverFiles(musicPatterns);
-                discoveredFiles.push(...coverFiles);
-                
-                console.log(`🎵 Discovery complete! Found ${musicFiles.length} music files and ${coverFiles.length} covers`);
+                console.log(`🎯 Registry discovery complete: ${musicCount} music files, ${coverCount} covers found`);
                 
                 // Load discovered files into DBManager
                 for (const file of discoveredFiles) {
@@ -3058,16 +3049,11 @@
                     }
                 }
                 
-                // Summary
-                const musicCount = discoveredFiles.filter(f => f.type === 'audio').length;
-                const coverCount = discoveredFiles.filter(f => f.type === 'image').length;
-                
-                console.log(`🎯 Auto-discovery summary: ${musicCount} music files, ${coverCount} covers loaded into database`);
                 
                 if (musicCount > 0) {
                     AuraOS.showNotification({
-                        title: 'Descoberta Automática',
-                        message: `🎵 ${musicCount} música(s) e ${coverCount} capa(s) descobertas automaticamente!`,
+                        title: 'Registro de Música',
+                        message: `🎵 ${musicCount} música(s) e ${coverCount} capa(s) carregadas do registro!`,
                         type: 'success',
                         duration: 3000
                     });
@@ -3076,10 +3062,10 @@
                 return discoveredFiles;
                 
             } catch (error) {
-                console.error('❌ Error in auto-discovery:', error);
+                console.error('❌ Error in registry loading:', error);
                 AuraOS.showNotification({
-                    title: 'Erro na Descoberta',
-                    message: 'Falha ao descobrir arquivos de música automaticamente',
+                    title: 'Erro no Registro',
+                    message: 'Falha ao carregar arquivos de música do registro',
                     type: 'error',
                     duration: 3000
                 });
@@ -3089,6 +3075,16 @@
 
         // Function to initialize music database
         async function initializeMusicDatabase() {
+            console.log('Initializing music database...');
+            
+            // Show loading notification
+            AuraOS.showNotification({
+                title: 'Player de Música',
+                message: '🎵 Carregando biblioteca de música...',
+                type: 'info',
+                duration: 2000
+            });
+            
             const localSongs = await scanMusicLibrary();
             songDatabase = [...staticSongs, ...localSongs];
             
@@ -3100,15 +3096,15 @@
                 const hasCovers = localSongs.filter(song => song.artworkUrl && !song.artworkUrl.startsWith('https://i.scdn.co')).length;
                 
                 AuraOS.showNotification({
-                    title: 'Biblioteca de Música',
-                    message: `✨ ${tracks} música(s) encontrada(s) • ${hasCovers} com capa personalizada`,
+                    title: 'Biblioteca Carregada',
+                    message: `✨ ${tracks} música(s) local(is) • ${hasCovers} com capa personalizada • ${staticSongs.length} online`,
                     type: 'success',
                     duration: 4000
                 });
             } else {
                 AuraOS.showNotification({
-                    title: 'Biblioteca de Música',
-                    message: '📁 Nenhuma música local encontrada. Use o botão + para adicionar músicas!',
+                    title: 'Biblioteca Carregada',
+                    message: `📁 ${staticSongs.length} músicas online carregadas. Use 🔍 para descobrir arquivos locais ou + para adicionar!`,
                     type: 'info',
                     duration: 5000
                 });
@@ -4904,6 +4900,11 @@
                                             <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                                         </svg>
                                     </button>
+                                    <button id="discover-files-btn" class="add-music-button" title="Descobrir Arquivos" style="margin-left: 5px;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                        </svg>
+                                    </button>
                                     <button id="clear-db-btn" class="add-music-button" title="Limpar Cache" style="margin-left: 5px;">
                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                             <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
@@ -5363,6 +5364,75 @@
                             refreshLibraryBtn.disabled = false;
                             refreshLibraryBtn.style.opacity = '1';
                             svg.style.animation = '';
+                        }
+                    });
+                    
+                    // Discover files button functionality
+                    const discoverFilesBtn = body.querySelector('#discover-files-btn');
+                    discoverFilesBtn.addEventListener('click', async () => {
+                        discoverFilesBtn.disabled = true;
+                        discoverFilesBtn.style.opacity = '0.5';
+                        
+                        // Add spinning animation
+                        const svg = discoverFilesBtn.querySelector('svg');
+                        svg.style.animation = 'spin 1s linear infinite';
+                        
+                        AuraOS.showNotification({
+                            title: 'Descoberta de Arquivos',
+                            message: '🔍 Procurando por arquivos de música no projeto...',
+                            type: 'info',
+                            duration: 2000
+                        });
+                        
+                        try {
+                            await populateWithProjectFiles();
+                            await refreshMusicLibraryLocal();
+                        } finally {
+                            discoverFilesBtn.disabled = false;
+                            discoverFilesBtn.style.opacity = '1';
+                            svg.style.animation = '';
+                        }
+                    });
+                    
+                    // Clear music cache button functionality
+                    const clearDbBtn = body.querySelector('#clear-db-btn');
+                    clearDbBtn.addEventListener('click', async () => {
+                        const confirmed = confirm('⚠️ Tem certeza que deseja limpar o cache de música?\n\nIsso removerá todas as músicas locais carregadas no banco de dados, mas não afetará os arquivos físicos do projeto.');
+                        
+                        if (!confirmed) return;
+                        
+                        clearDbBtn.disabled = true;
+                        clearDbBtn.style.opacity = '0.5';
+                        
+                        try {
+                            // Clear music files from database
+                            const musicFiles = await dbManager.listFiles('music');
+                            for (const file of musicFiles) {
+                                if (file.type === 'file') {
+                                    await dbManager.deleteFile(file.path);
+                                }
+                            }
+                            
+                            AuraOS.showNotification({
+                                title: 'Cache Limpo',
+                                message: '🗑️ Cache de música removido. Use "Descobrir Arquivos" para recarregar.',
+                                type: 'success',
+                                duration: 4000
+                            });
+                            
+                            // Refresh library to show only static songs
+                            await refreshMusicLibraryLocal();
+                            
+                        } catch (error) {
+                            console.error('Error clearing music cache:', error);
+                            AuraOS.showNotification({
+                                title: 'Erro',
+                                message: '❌ Erro ao limpar o cache de música.',
+                                type: 'error'
+                            });
+                        } finally {
+                            clearDbBtn.disabled = false;
+                            clearDbBtn.style.opacity = '1';
                         }
                     });
                     
