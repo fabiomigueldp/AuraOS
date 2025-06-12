@@ -255,6 +255,7 @@ class AuraFlowApp {
         if (!this.controlPanel) return;
         clearTimeout(this.controlPanelHideTimeout);
         this.controlPanel.style.opacity = '1';
+        this.controlPanel.style.transform = 'translateY(0)';
         this.controlPanel.style.pointerEvents = 'auto';
     }
 
@@ -263,6 +264,7 @@ class AuraFlowApp {
         clearTimeout(this.controlPanelHideTimeout);
         this.controlPanelHideTimeout = setTimeout(() => {
             this.controlPanel.style.opacity = '0';
+            this.controlPanel.style.transform = 'translateY(10px)';
             this.controlPanel.style.pointerEvents = 'none';
         }, 3000); // Hide after 3 seconds
     }
@@ -460,14 +462,45 @@ class AuraFlowApp {
     }
 
 
+    _updateCanvasSize() {
+        // Update canvas dimensions to match the actual display size
+        const rect = this.windowBody.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set the actual size in memory (scaled for high DPI displays)
+        this.canvas.width = rect.width * dpr;
+        this.canvas.height = rect.height * dpr;
+        
+        // Scale the drawing context so everything draws at the correct size
+        this.ctx.scale(dpr, dpr);
+        
+        // Set the display size (CSS pixels)
+        this.canvas.style.width = rect.width + 'px';
+        this.canvas.style.height = rect.height + 'px';
+        
+        console.log(`Canvas updated to: ${rect.width}x${rect.height} (display) / ${this.canvas.width}x${this.canvas.height} (actual)`);
+    }
+
     initUI() {
         // Clear the windowBody
         this.windowBody.innerHTML = '';
+        
+        // Set windowBody to relative positioning for absolute positioning of controls
+        this.windowBody.style.position = 'relative';
+        this.windowBody.style.overflow = 'hidden';
 
-        // Create canvas element
+        // Create canvas element that fills the entire window
         this.canvas = document.createElement('canvas');
-        this.canvas.width = this.windowBody.offsetWidth;
-        this.canvas.height = this.windowBody.offsetHeight * 0.8;
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.canvas.style.display = 'block';
+        
+        // Set initial canvas size
+        this._updateCanvasSize();
+        
         this.windowBody.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d');
 
@@ -483,13 +516,26 @@ class AuraFlowApp {
         this.controlPanel = document.createElement('div');
         this.controlPanel.id = 'auraFlowControlPanel';
         Object.assign(this.controlPanel.style, {
-            position: 'absolute', top: '10px', left: '10px',
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
             background: 'var(--glass-background)',
             border: '1px solid var(--glass-border)',
-            backdropFilter: 'blur(10px) saturate(1.5)',
-            padding: '15px', borderRadius: 'var(--ui-corner-radius-small)',
-            zIndex: '10', color: 'var(--text-color)',
-            opacity: '0', pointerEvents: 'none', transition: 'opacity 0.3s ease-in-out'
+            backdropFilter: 'blur(20px) saturate(1.8)',
+            WebkitBackdropFilter: 'blur(20px) saturate(1.8)', // Safari support
+            padding: '16px',
+            borderRadius: 'var(--ui-corner-radius)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1)',
+            zIndex: '1000',
+            color: 'var(--text-color)',
+            opacity: '0',
+            pointerEvents: 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: 'translateY(10px)',
+            minWidth: '280px',
+            maxWidth: '350px',
+            fontSize: '13px',
+            fontFamily: 'var(--system-font, -apple-system, BlinkMacSystemFont, sans-serif)'
         });
 
         // Auto-hide listeners for panel
@@ -535,15 +581,16 @@ class AuraFlowApp {
         if (typeof ResizeObserver === 'function') {
             this.resizeObserver = new ResizeObserver(entries => {
                 for (let entry of entries) {
-                    // Debounce or throttle resize handling if it becomes performance intensive
-                    const { width, height } = entry.contentRect;
-                    this.canvas.width = width;
-                    this.canvas.height = height;
-                    console.log(`Canvas resized to: ${width}x${height}. Re-initializing current mode.`);
-                    this._initializeCurrentMode(); // Re-initialize art for new dimensions
+                    // Update canvas size dynamically
+                    this._updateCanvasSize();
+                    
+                    // Reinitialize current mode with new dimensions
+                    if (this.isVisible) {
+                        this._initializeCurrentMode();
+                    }
                 }
             });
-            this.resizeObserver.observe(this.canvas);
+            this.resizeObserver.observe(this.windowBody);
         }
 
 
@@ -551,12 +598,23 @@ class AuraFlowApp {
         const createControlRow = (labelText, controlElement) => {
             const row = document.createElement('div');
             row.className = 'control-row';
-            Object.assign(row.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' });
+            Object.assign(row.style, { 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '12px',
+                gap: '12px'
+            });
 
             const label = document.createElement('label');
             label.textContent = labelText;
-            label.style.fontSize = '0.9rem';
-            label.style.marginRight = '10px';
+            Object.assign(label.style, {
+                fontSize: '13px',
+                fontWeight: '500',
+                color: 'var(--text-color)',
+                minWidth: '60px',
+                textAlign: 'left'
+            });
             if (controlElement.id) label.htmlFor = controlElement.id;
 
             row.appendChild(label);
@@ -564,9 +622,72 @@ class AuraFlowApp {
             return row;
         };
 
+        // Style function for buttons
+        const styleButton = (button, isPrimary = false) => {
+            Object.assign(button.style, {
+                padding: '6px 12px',
+                border: '1px solid var(--glass-border)',
+                borderRadius: 'var(--ui-corner-radius-small)',
+                background: isPrimary ? 'var(--highlight-primary)' : 'var(--glass-background)',
+                color: isPrimary ? 'white' : 'var(--text-color)',
+                fontSize: '12px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)'
+            });
+            
+            button.addEventListener('mouseenter', () => {
+                button.style.transform = 'translateY(-1px)';
+                button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                if (!isPrimary) {
+                    button.style.background = 'var(--glass-hover, rgba(255, 255, 255, 0.1))';
+                }
+            });
+            
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = 'translateY(0)';
+                button.style.boxShadow = 'none';
+                if (!isPrimary) {
+                    button.style.background = 'var(--glass-background)';
+                }
+            });
+        };
+
+        // Style function for select elements
+        const styleSelect = (select) => {
+            Object.assign(select.style, {
+                padding: '6px 8px',
+                border: '1px solid var(--glass-border)',
+                borderRadius: 'var(--ui-corner-radius-small)',
+                background: 'var(--glass-background)',
+                color: 'var(--text-color)',
+                fontSize: '12px',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                minWidth: '120px',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)'
+            });
+        };
+
+        // Style function for range inputs
+        const styleRange = (range) => {
+            Object.assign(range.style, {
+                width: '100px',
+                height: '4px',
+                background: 'var(--glass-border)',
+                borderRadius: '2px',
+                outline: 'none',
+                cursor: 'pointer'
+            });
+        };
+
         // Mode Selector
         const modeSelect = document.createElement('select');
         modeSelect.id = 'auraFlowModeSelect';
+        styleSelect(modeSelect);
         ['particleFlow', 'connectedFibers', 'voronoi'].forEach(mode => {
             const option = document.createElement('option');
             option.value = mode;
@@ -581,21 +702,36 @@ class AuraFlowApp {
         // Element Count Slider
         const countSliderRow = document.createElement('div'); // Container for this row
         countSliderRow.id = 'auraFlowElementCountRow'; // To show/hide the whole row
-        Object.assign(countSliderRow.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' });
+        Object.assign(countSliderRow.style, { 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '12px',
+            gap: '12px'
+        });
 
         const countLabel = document.createElement('label');
         countLabel.textContent = 'Density:';
         countLabel.htmlFor = 'auraFlowElementCount';
-        countLabel.style.fontSize = '0.9rem';
-        countLabel.style.marginRight = '10px';
+        Object.assign(countLabel.style, {
+            fontSize: '13px',
+            fontWeight: '500',
+            color: 'var(--text-color)',
+            minWidth: '60px'
+        });
         countSliderRow.appendChild(countLabel);
 
         const countSliderContainer = document.createElement('div'); // To hold slider and value
-        Object.assign(countSliderContainer.style, { display: 'flex', alignItems: 'center' });
+        Object.assign(countSliderContainer.style, { 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: '8px'
+        });
 
         const countSlider = document.createElement('input');
         countSlider.type = 'range';
         countSlider.id = 'auraFlowElementCount';
+        styleRange(countSlider);
         // Min/max/step will be set by _updateControlPanelVisibility
         this._boundHandleElementCountChange = this._handleElementCountChange.bind(this);
         countSlider.addEventListener('input', this._boundHandleElementCountChange);
@@ -603,8 +739,13 @@ class AuraFlowApp {
 
         const countValueSpan = document.createElement('span');
         countValueSpan.id = 'auraFlowElementCountValue';
-        countValueSpan.style.marginLeft = '10px';
-        countValueSpan.style.minWidth = '30px'; // Ensure space for value
+        Object.assign(countValueSpan.style, {
+            minWidth: '35px',
+            fontSize: '12px',
+            color: 'var(--subtle-text-color)',
+            textAlign: 'right',
+            fontFamily: 'var(--monospace-font, Menlo, Monaco, monospace)'
+        });
         countSliderContainer.appendChild(countValueSpan);
 
         countSliderRow.appendChild(countSliderContainer);
@@ -613,10 +754,16 @@ class AuraFlowApp {
 
         // Color Palette Button
         const paletteButtonContainer = document.createElement('div');
-        Object.assign(paletteButtonContainer.style, { display: 'flex', alignItems: 'center' });
+        Object.assign(paletteButtonContainer.style, { 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: '8px'
+        });
+        
         const colorPaletteBtn = document.createElement('button');
         colorPaletteBtn.id = 'auraFlowColorPaletteBtn';
-        colorPaletteBtn.textContent = 'Cycle Palette';
+        colorPaletteBtn.textContent = 'Cycle';
+        styleButton(colorPaletteBtn);
         this._boundHandleColorPaletteChange = this._handleColorPaletteChange.bind(this);
         colorPaletteBtn.addEventListener('click', this._boundHandleColorPaletteChange);
         paletteButtonContainer.appendChild(colorPaletteBtn);
@@ -624,7 +771,11 @@ class AuraFlowApp {
         const paletteNameSpan = document.createElement('span');
         paletteNameSpan.id = 'auraFlowPaletteName';
         paletteNameSpan.textContent = this.palettes[this.currentPaletteIndex].name;
-        paletteNameSpan.style.marginLeft = '10px';
+        Object.assign(paletteNameSpan.style, {
+            fontSize: '12px',
+            color: 'var(--subtle-text-color)',
+            fontStyle: 'italic'
+        });
         paletteButtonContainer.appendChild(paletteNameSpan);
         this.controlPanel.appendChild(createControlRow('Palette:', paletteButtonContainer));
 
