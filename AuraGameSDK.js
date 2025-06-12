@@ -40,6 +40,14 @@ const AuraGameSDK = {
          * @returns {Promise<void>} A Promise that resolves on successful save, or rejects on error.
          */
         async saveState(data) {
+            if (!AuraGameSDK._dbManager) {
+                console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' saveState]: FATAL - window.dbManager instance not found.');
+                return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
+            }
+            if (AuraGameSDK._dbManager.initializationPromise === null) {
+                console.warn('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' saveState]: dbManager.initializationPromise is null. Calling AuraGameSDK._dbManager.init() now to create/get it.');
+                AuraGameSDK._dbManager.init();
+            }
             if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
                 console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
                 return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
@@ -82,6 +90,14 @@ const AuraGameSDK = {
          * @returns {Promise<object|null>} A Promise that resolves with the saved data object, or null if no save state is found or an error occurs.
          */
         async loadState() {
+            if (!AuraGameSDK._dbManager) {
+                console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' loadState]: FATAL - window.dbManager instance not found.');
+                return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
+            }
+            if (AuraGameSDK._dbManager.initializationPromise === null) {
+                console.warn('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' loadState]: dbManager.initializationPromise is null. Calling AuraGameSDK._dbManager.init() now to create/get it.');
+                AuraGameSDK._dbManager.init();
+            }
             if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
                 console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
                 return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
@@ -131,6 +147,14 @@ const AuraGameSDK = {
          * @returns {Promise<void>} A Promise that resolves on successful submission, or rejects on error.
          */
         async submitScore(playerName, score) {
+            if (!AuraGameSDK._dbManager) {
+                console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' submitScore]: FATAL - window.dbManager instance not found.');
+                return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
+            }
+            if (AuraGameSDK._dbManager.initializationPromise === null) {
+                console.warn('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' submitScore]: dbManager.initializationPromise is null. Calling AuraGameSDK._dbManager.init() now to create/get it.');
+                AuraGameSDK._dbManager.init();
+            }
             if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
                 console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
                 return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
@@ -186,6 +210,14 @@ const AuraGameSDK = {
          * @returns {Promise<Array<object>>} A Promise that resolves with an array of score objects, or an empty array if none are found or an error occurs.
          */
         async getHighScores(gameId, limit = 10) {
+            if (!AuraGameSDK._dbManager) {
+                console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' getHighScores]: FATAL - window.dbManager instance not found.');
+                return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
+            }
+            if (AuraGameSDK._dbManager.initializationPromise === null) {
+                console.warn('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' getHighScores]: dbManager.initializationPromise is null. Calling AuraGameSDK._dbManager.init() now to create/get it.');
+                AuraGameSDK._dbManager.init();
+            }
             if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
                 console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
                 return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
