@@ -4555,16 +4555,16 @@
 
                     createFolderButton.addEventListener('click', () => {
                         const currentExplorerPath = windowEl.dataset.currentPath;
-                        let newFolderName = prompt("Digite o nome da nova pasta:", "Nova Pasta");
-
-                        if (!newFolderName || newFolderName.trim() === "") {
-                            // User cancelled or entered empty/whitespace name
-                            if (newFolderName !== null) { // Only alert if not cancelled
-                                 AuraOS.showNotification({title: 'Nome Inválido', message: "Nome da pasta não pode ser vazio.", type: 'warning'});
-                            }
-                            return;
-                        }
-                        newFolderName = newFolderName.trim(); // Trim whitespace
+                        
+                        AuraOS.dialog.prompt(
+                            "Digite o nome da nova pasta:",
+                            "Nova Pasta",
+                            (newFolderName) => {
+                                if (!newFolderName || newFolderName.trim() === "") {
+                                    AuraOS.showNotification({title: 'Nome Inválido', message: "Nome da pasta não pode ser vazio.", type: 'warning'});
+                                    return;
+                                }
+                                newFolderName = newFolderName.trim(); // Trim whitespace
 
                         // Basic sanitization - remove characters not typically allowed in folder names
                         // You might want a more robust sanitization function for a real OS
@@ -4592,6 +4592,11 @@
                         } else {
                             AuraOS.showNotification({title: 'Erro ao Criar Pasta', message: "Não foi possível criar a pasta no caminho atual. Diretório pai não encontrado ou inválido.", type: 'error'});
                         }
+                    },
+                    () => {
+                        // onCancel - no action needed, user cancelled folder creation
+                    }
+                );
                     });
 
                     deleteButton.addEventListener('click', () => {
@@ -8453,23 +8458,39 @@
                         {
                             label: "Nova Pasta",
                             action: () => {
-                                const folderName = prompt("Nome da nova pasta:", "Nova Pasta");
-                                if (folderName && folderName.trim() !== "") {
-                                    createItem('/Desktop/' + folderName.trim(), 'folder');
-                                } else if (folderName !== null) { // Not cancelled, but empty or whitespace
-                                    AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome da pasta não pode ser vazio.', type: 'warning'});
-                                }
+                                AuraOS.dialog.prompt(
+                                    "Nome da nova pasta:",
+                                    "Nova Pasta",
+                                    (folderName) => {
+                                        if (folderName && folderName.trim() !== "") {
+                                            createItem('/Desktop/' + folderName.trim(), 'folder');
+                                        } else {
+                                            AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome da pasta não pode ser vazio.', type: 'warning'});
+                                        }
+                                    },
+                                    () => {
+                                        // onCancel - no action needed
+                                    }
+                                );
                             }
                         },
                         {
                             label: "Novo Arquivo de Texto",
                             action: () => {
-                                const fileName = prompt("Nome do novo arquivo:", "novo_arquivo.txt");
-                                if (fileName && fileName.trim() !== "") {
-                                    createItem('/Desktop/' + fileName.trim(), 'file', '');
-                                } else if (fileName !== null) { // Not cancelled, but empty or whitespace
-                                    AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome do arquivo não pode ser vazio.', type: 'warning'});
-                                }
+                                AuraOS.dialog.prompt(
+                                    "Nome do novo arquivo:",
+                                    "novo_arquivo.txt",
+                                    (fileName) => {
+                                        if (fileName && fileName.trim() !== "") {
+                                            createItem('/Desktop/' + fileName.trim(), 'file', '');
+                                        } else {
+                                            AuraOS.showNotification({ title: 'Nome Inválido', message: 'O nome do arquivo não pode ser vazio.', type: 'warning'});
+                                        }
+                                    },
+                                    () => {
+                                        // onCancel - no action needed
+                                    }
+                                );
                             }
                         },
                         {
