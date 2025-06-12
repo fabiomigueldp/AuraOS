@@ -2631,6 +2631,158 @@
             transform: scale(0.97);
         }
 
+    /* Styles for Aura3DViewerApp */
+    .aura-3d-viewer-container {
+        display: flex;
+        height: 100%;
+        width: 100%;
+        font-family: var(--system-font); /* Apply system font to the whole app */
+    }
+
+    .aura-3d-viewer-sidebar {
+        width: 200px; /* Maintain original width */
+        height: 100%;
+        background: var(--glass-background);
+        border-right: 1px solid var(--glass-border); /* Use border-right for sidebar */
+        padding: 10px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        display: flex; /* For aligning headers and lists */
+        flex-direction: column; /* Stack headers and lists vertically */
+    }
+
+    .aura-3d-viewer-sidebar h3 { /* Styling for headers like "Cloud Models" */
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--subtle-text-color);
+        margin-top: 10px;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+    .aura-3d-viewer-sidebar h3:first-child {
+        margin-top: 0; /* No top margin for the first header */
+    }
+
+    .sidebar-item {
+        padding: 8px 12px;
+        margin-bottom: 4px;
+        border-radius: var(--ui-corner-radius-small, 8px); /* Use small radius or a fixed value */
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease;
+        color: var(--text-color);
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sidebar-item:hover {
+        background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.15);
+    }
+
+    .light-theme .sidebar-item:hover {
+        background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.1);
+    }
+
+    .sidebar-item.active {
+        background-color: var(--highlight-primary);
+        color: white; /* Or a contrasting color variable if available */
+        font-weight: 500;
+    }
+
+    .light-theme .sidebar-item.active {
+        /* Ensure the active color is distinct in light theme if --highlight-primary is too light */
+        background-color: var(--highlight-primary);
+        color: white; /* Or a variable for text on primary background */
+    }
+
+
+    .aura-3d-viewer-main-area {
+        flex-grow: 1;
+        height: 100%;
+        padding: 15px; /* Slightly more padding */
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        /* justify-content: center; /* Let content flow naturally, not always centered */
+    }
+
+    .current-model-name {
+        padding-bottom: 12px; /* Increased padding */
+        font-weight: 600; /* Bolder */
+        font-size: 1.1rem; /* Slightly larger */
+        color: var(--text-color);
+        text-align: center; /* Center the model name */
+        width: 100%; /* Ensure it takes full width for centering */
+    }
+
+    .model-viewer-tag { /* Class for the <model-viewer> component */
+        width: 100%;
+        height: calc(100% - 100px); /* Adjust height to fill available space, considering controls and name */
+        min-height: 200px; /* Minimum height to prevent collapse */
+        border: 1px solid var(--glass-border);
+        border-radius: var(--ui-corner-radius-small, 8px); /* Consistent rounding */
+        margin-bottom: 15px; /* Space between viewer and controls */
+    }
+
+    .model-controls {
+        padding-top: 10px;
+        display: flex;
+        gap: 10px;
+        justify-content: center; /* Center control buttons */
+        width: 100%;
+    }
+
+    /* AuraOS Standard Button Styling (Applied to 3D viewer controls) */
+    .aura-os-button { /* Common class for all control buttons */
+        background: var(--glass-background);
+        color: var(--text-color);
+        border: 1px solid var(--glass-border);
+        padding: 10px 15px; /* Standard padding */
+        border-radius: var(--ui-corner-radius-small, 8px);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem; /* Standard font size */
+        font-weight: 500; /* Standard font weight */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .aura-os-button:hover {
+        border-color: var(--glass-border-focus);
+        background: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.1); /* Subtle highlight on hover */
+        transform: translateY(-1px);
+    }
+
+    .light-theme .aura-os-button:hover {
+        background: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.08);
+    }
+
+    .aura-os-button:active {
+        background: var(--highlight-primary);
+        color: white; /* Or a contrasting text color variable */
+        border-color: var(--highlight-primary);
+        transform: translateY(0px); /* Reset transform on active */
+        box-shadow: 0 2px 8px rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.3);
+    }
+
+    .light-theme .aura-os-button:active {
+         background: var(--highlight-primary);
+         color: white;
+         border-color: var(--highlight-primary);
+    }
+
+    /* Placeholder text style */
+    .viewer-placeholder-text {
+        text-align: center;
+        color: var(--subtle-text-color);
+        font-size: 1rem;
+        margin-top: auto; /* Push it towards center if main area is flex column */
+        margin-bottom: auto; /* Push it towards center */
+    }
+
     </style>
 </head>
 <body>    <div id="notification-container"></div>
