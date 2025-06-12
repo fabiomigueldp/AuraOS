@@ -1,7 +1,7 @@
 class DBManager {
     constructor() {
         this.dbName = 'AURA_OS_DB';
-        this.dbVersion = 2;
+        this.dbVersion = 3;
         this.db = null;
         this.initializationPromise = null;
     }
@@ -45,6 +45,12 @@ class DBManager {
                     console.log('Created "high_scores" object store and "by_game" index.');
                 }
                 // Add any other future stores here in subsequent versions
+
+                // New Achievements store for Game Center
+                if (!this.db.objectStoreNames.contains('achievements')) {
+                    this.db.createObjectStore('achievements', { keyPath: ['gameId', 'achievementId'] });
+                    console.log('Created "achievements" object store.');
+                }
 
                 console.log('Database upgrade complete.');
             };

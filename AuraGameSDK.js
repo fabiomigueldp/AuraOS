@@ -591,6 +591,321 @@ const AuraGameSDK = {
         }
     },
 
+    profile: {
+        /**
+         * Saves the game-specific user profile data.
+         * @param {object} profileData - The profile data to save. Must be JSON-serializable.
+         * @returns {Promise<void>} A Promise that resolves on successful save, or rejects on error.
+         */
+        async saveProfile(profileData) {
+            try {
+                await AuraGameSDK._ensureReady();
+            } catch (error) {
+                console.error(`AuraGameSDK.profile.saveProfile: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Cannot save profile. Error:`, error);
+                return Promise.reject(error);
+            }
+
+            if (!AuraGameSDK._gameId) {
+                const errorMsg = 'AuraGameSDK.profile.saveProfile: SDK not initialized with a gameId. Call init() first.';
+                console.error(errorMsg);
+                return Promise.reject(errorMsg);
+            }
+            if (typeof profileData !== 'object' || profileData === null) {
+                const errorMsg = 'AuraGameSDK.profile.saveProfile: Invalid profileData provided. Must be an object.';
+                console.error(errorMsg);
+                return Promise.reject(errorMsg);
+            }
+
+            const profileKey = `profile-${AuraGameSDK._gameId}`;
+            try {
+                // The 'settings' store expects an object { key: 'keyName', value: 'theValue' }
+                // We can also store gameId for potential direct queries on game-specific settings if needed,
+                // though profileKey already contains gameId.
+                await AuraGameSDK._dbManager.setObject('settings', {
+                    key: profileKey,
+                    value: profileData,
+                    gameId: AuraGameSDK._gameId
+                });
+                console.log(`AuraGameSDK.profile.saveProfile: Profile saved for game ${AuraGameSDK._gameId}.`);
+            } catch (error) {
+                console.error(`AuraGameSDK.profile.saveProfile: Error saving profile for game ${AuraGameSDK._gameId}:`, error);
+                return Promise.reject(error);
+            }
+        },
+
+        /**
+         * Loads the game-specific user profile data.
+         * @returns {Promise<object|null>} A Promise that resolves with the profile data object,
+         *                                or null if no profile is found or an error occurs.
+         */
+        async loadProfile() {
+            try {
+                await AuraGameSDK._ensureReady();
+            } catch (error) {
+                console.error(`AuraGameSDK.profile.loadProfile: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Cannot load profile. Error:`, error);
+                return Promise.resolve(null); // Resolve with null on pre-condition error
+            }
+
+            if (!AuraGameSDK._gameId) {
+                console.error('AuraGameSDK.profile.loadProfile: SDK not initialized with a gameId. Call init() first.');
+                return Promise.resolve(null); // Resolve with null if gameId is missing
+            }
+
+            const profileKey = `profile-${AuraGameSDK._gameId}`;
+            try {
+                const result = await AuraGameSDK._dbManager.getObject('settings', profileKey);
+                if (result && typeof result.value !== 'undefined') {
+                    console.log(`AuraGameSDK.profile.loadProfile: Profile loaded for game ${AuraGameSDK._gameId}.`);
+                    return result.value;
+                }
+                console.log(`AuraGameSDK.profile.loadProfile: No profile found for game ${AuraGameSDK._gameId}.`);
+                return null;
+            } catch (error) {
+                console.error(`AuraGameSDK.profile.loadProfile: Error loading profile for game ${AuraGameSDK._gameId}:`, error);
+                return Promise.resolve(null); // Resolve with null on error
+            }
+        }
+    },
+
+    achievements: {
+        /**
+         * Unlocks an achievement for the current game.
+         * @param {string} achievementId - A unique identifier for the achievement (e.g., "level_1_complete").
+         * @param {string} title - The user-facing title of the achievement (e.g., "Level 1 Conquered!").
+         * @param {string} description - A user-facing description of how the achievement was earned.
+         * @returns {Promise<void>} A Promise that resolves on successful unlock, or rejects on error.
+         */
+        async unlock(achievementId, title, description) {
+            try {
+                await AuraGameSDK._ensureReady();
+            } catch (error) {
+                console.error(`AuraGameSDK.achievements.unlock: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Cannot unlock achievement. Error:`, error);
+                return Promise.reject(error);
+            }
+
+            if (!AuraGameSDK._gameId) {
+                const errorMsg = 'AuraGameSDK.achievements.unlock: SDK not initialized with a gameId. Call init() first.';
+                console.error(errorMsg);
+                return Promise.reject(errorMsg);
+            }
+            if (typeof achievementId !== 'string' || !achievementId.trim()) {
+                const errorMsg = 'AuraGameSDK.achievements.unlock: achievementId must be a non-empty string.';
+                console.error(errorMsg);
+                return Promise.reject(errorMsg);
+            }
+            if (typeof title !== 'string' || !title.trim()) {
+                const errorMsg = 'AuraGameSDK.achievements.unlock: title must be a non-empty string.';
+                console.error(errorMsg);
+                return Promise.reject(errorMsg);
+            }
+            if (typeof description !== 'string' || !description.trim()) {
+                const errorMsg = 'AuraGameSDK.achievements.unlock: description must be a non-empty string.';
+                console.error(errorMsg);
+                return Promise.reject(errorMsg);
+            }
+
+            const achievementRecord = {
+                gameId: AuraGameSDK._gameId,
+                achievementId: achievementId.trim(),
+                title: title.trim(),
+                description: description.trim(),
+                timestamp: Date.now()
+            };
+
+            try {
+                await AuraGameSDK._dbManager.setObject('achievements', achievementRecord);
+                console.log(`AuraGameSDK.achievements.unlock: Achievement unlocked for game ${AuraGameSDK._gameId}: '${achievementId}'.`);
+                // Optionally, trigger a UI notification here if the OS supports it
+                // Example: AuraGameSDK.ui.showNotification(`Achievement Unlocked: ${title}`);
+            } catch (error) {
+                console.error(`AuraGameSDK.achievements.unlock: Error unlocking achievement '${achievementId}' for game ${AuraGameSDK._gameId}:`, error);
+                return Promise.reject(error);
+            }
+        },
+
+        /**
+         * Checks if a specific achievement has been unlocked for the current game.
+         * @param {string} achievementId - The identifier of the achievement to check.
+         * @returns {Promise<boolean>} A Promise that resolves with true if unlocked, false otherwise.
+         */
+        async isUnlocked(achievementId) {
+            try {
+                await AuraGameSDK._ensureReady();
+            } catch (error) {
+                console.error(`AuraGameSDK.achievements.isUnlocked: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Error:`, error);
+                return Promise.resolve(false);
+            }
+
+            if (!AuraGameSDK._gameId) {
+                console.error('AuraGameSDK.achievements.isUnlocked: SDK not initialized with a gameId.');
+                return Promise.resolve(false);
+            }
+            if (typeof achievementId !== 'string' || !achievementId.trim()) {
+                console.error('AuraGameSDK.achievements.isUnlocked: achievementId must be a non-empty string.');
+                return Promise.resolve(false);
+            }
+
+            const key = [AuraGameSDK._gameId, achievementId.trim()];
+            try {
+                const result = await AuraGameSDK._dbManager.getObject('achievements', key);
+                console.log(`AuraGameSDK.achievements.isUnlocked: Check for achievement '${achievementId}' in game ${AuraGameSDK._gameId}: ${Boolean(result)}.`);
+                return Boolean(result);
+            } catch (error) {
+                console.error(`AuraGameSDK.achievements.isUnlocked: Error checking achievement '${achievementId}' for game ${AuraGameSDK._gameId}:`, error);
+                return Promise.resolve(false); // Resolve with false on error
+            }
+        },
+
+        /**
+         * Gets all achievements unlocked for the current game.
+         * @returns {Promise<Array<object>>} A Promise that resolves with an array of achievement objects,
+         *                                   or an empty array if none are found or an error occurs.
+         */
+        async getGameAchievements() {
+            try {
+                await AuraGameSDK._ensureReady();
+            } catch (error) {
+                console.error(`AuraGameSDK.achievements.getGameAchievements: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Error:`, error);
+                return Promise.resolve([]);
+            }
+
+            if (!AuraGameSDK._gameId) {
+                console.error('AuraGameSDK.achievements.getGameAchievements: SDK not initialized with a gameId.');
+                return Promise.resolve([]);
+            }
+
+            if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.db) {
+                 console.error('AuraGameSDK.achievements.getGameAchievements: DB connection not available.');
+                 return Promise.resolve([]);
+            }
+
+            return new Promise((resolve) => {
+                const gameAchievements = [];
+                try {
+                    const db = AuraGameSDK._dbManager.db;
+                    const transaction = db.transaction('achievements', 'readonly');
+                    const store = transaction.objectStore('achievements');
+                    // Create a key range for all achievements for the current gameId.
+                    // The keyPath for 'achievements' is ['gameId', 'achievementId'].
+                    // We want all records where the first part of the key is AuraGameSDK._gameId.
+                    const range = IDBKeyRange.bound([AuraGameSDK._gameId, ''], [AuraGameSDK._gameId, '\uffff']);
+
+                    const request = store.openCursor(range);
+
+                    request.onsuccess = (event) => {
+                        const cursor = event.target.result;
+                        if (cursor) {
+                            gameAchievements.push(cursor.value);
+                            cursor.continue();
+                        } else {
+                            // No more entries
+                            console.log(`AuraGameSDK.achievements.getGameAchievements: Found ${gameAchievements.length} achievements for game ${AuraGameSDK._gameId}.`);
+                            resolve(gameAchievements);
+                        }
+                    };
+
+                    request.onerror = (event) => {
+                        console.error(`AuraGameSDK.achievements.getGameAchievements: Error fetching achievements for game ${AuraGameSDK._gameId}:`, event.target.error);
+                        resolve([]); // Resolve with empty array on DB error
+                    };
+                } catch (error) {
+                    console.error(`AuraGameSDK.achievements.getGameAchievements: Critical error for game ${AuraGameSDK._gameId}:`, error);
+                    resolve([]); // Resolve with empty array on critical error
+                }
+            });
+        }
+    },
+
+    resources: {
+        _resources: {},
+
+        /**
+         * Initializes the resource manager with initial quantities for various resource types.
+         * Example: AuraGameSDK.resources.init({ gold: 100, wood: 50 });
+         * @param {object} initialResources - An object where keys are resource types (string)
+         *                                  and values are their initial amounts (number).
+         */
+        init(initialResources) {
+            if (typeof initialResources === 'object' && initialResources !== null) {
+                try {
+                    this._resources = JSON.parse(JSON.stringify(initialResources));
+                    console.log(`AuraGameSDK.resources: Initialized with`, this._resources);
+                } catch (e) {
+                    console.error('AuraGameSDK.resources.init: Error deep copying initialResources. Ensure it is JSON-serializable.', e);
+                    this._resources = {}; // Fallback to empty if copy fails
+                }
+            } else {
+                this._resources = {};
+                console.warn('AuraGameSDK.resources.init: initialResources was not a valid object. Initializing with empty resources.');
+            }
+        },
+
+        /**
+         * Gets the current amount of a specific resource.
+         * @param {string} resourceType - The type of resource to get (e.g., "gold").
+         * @returns {number} The amount of the resource, or 0 if the resource type is not defined.
+         */
+        get(resourceType) {
+            const amount = this._resources[resourceType];
+            return typeof amount === 'number' ? amount : 0;
+        },
+
+        /**
+         * Spends a specified amount of a resource.
+         * @param {string} resourceType - The type of resource to spend.
+         * @param {number} amount - The amount to spend. Must be a positive number.
+         * @returns {boolean} True if the resource was successfully spent, false otherwise (e.g., insufficient resources or invalid amount).
+         */
+        spend(resourceType, amount) {
+            if (typeof amount !== 'number' || amount < 0) {
+                console.error(`AuraGameSDK.resources.spend: Invalid amount. Amount must be a non-negative number. Attempted to spend ${amount} of ${resourceType}.`);
+                return false;
+            }
+            if (this._resources[resourceType] !== undefined && this._resources[resourceType] >= amount) {
+                this._resources[resourceType] -= amount;
+                console.log(`AuraGameSDK.resources.spend: Spent ${amount} of ${resourceType}. Remaining: ${this._resources[resourceType]}.`);
+                return true;
+            } else {
+                console.warn(`AuraGameSDK.resources.spend: Insufficient ${resourceType}. Current: ${this._resources[resourceType] || 0}, tried to spend: ${amount}.`);
+                return false;
+            }
+        },
+
+        /**
+         * Adds a specified amount to a resource.
+         * If the resource type does not exist, it will be initialized with 0 before adding.
+         * @param {string} resourceType - The type of resource to add to.
+         * @param {number} amount - The amount to add. Must be a positive number.
+         */
+        add(resourceType, amount) {
+            if (typeof amount !== 'number' || amount < 0) {
+                console.error(`AuraGameSDK.resources.add: Invalid amount. Amount must be a non-negative number. Attempted to add ${amount} to ${resourceType}.`);
+                return; // Or return false if a return value is preferred for chaining/error checking
+            }
+            if (this._resources[resourceType] === undefined) {
+                this._resources[resourceType] = 0;
+                console.log(`AuraGameSDK.resources.add: Initialized new resource type ${resourceType}.`);
+            }
+            this._resources[resourceType] += amount;
+            console.log(`AuraGameSDK.resources.add: Added ${amount} to ${resourceType}. New total: ${this._resources[resourceType]}.`);
+            // return true; // if a return value is preferred
+        },
+
+        /**
+         * Gets a deep copy of the current state of all resources.
+         * Useful for saving the resource state.
+         * @returns {object} A deep copy of the internal resources object.
+         */
+        getState() {
+            try {
+                return JSON.parse(JSON.stringify(this._resources));
+            } catch (e) {
+                console.error('AuraGameSDK.resources.getState: Error deep copying resources state.', e);
+                return {}; // Fallback to empty if copy fails
+            }
+        }
+    },
+
     /**
      * Provides direct access to the game's canvas element.
      * @returns {HTMLCanvasElement|null} The canvas element, or null if not initialized.
@@ -681,3 +996,5 @@ const AuraGameSDK = {
 
 // Make it globally accessible (optional, depending on module system)
 // window.AuraGameSDK = AuraGameSDK;
+
+[end of AuraGameSDK.js]
