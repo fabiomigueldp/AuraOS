@@ -46,6 +46,12 @@ const AuraGameSDK = {
             }
             try {
                 await AuraGameSDK._dbManager.initializationPromise;
+                console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' saveState]: DB init promise resolved. Verifying _dbManager.db state...');
+                if (AuraGameSDK._dbManager) {
+                    console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' saveState]: typeof _dbManager.db:', typeof AuraGameSDK._dbManager.db, ', Is IDBDatabase:', (AuraGameSDK._dbManager.db instanceof IDBDatabase), ', DB Name:', AuraGameSDK._dbManager.db ? AuraGameSDK._dbManager.db.name : 'N/A');
+                } else {
+                    console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' saveState]: _dbManager itself is null/undefined immediately after its initializationPromise supposedly resolved!');
+                }
             } catch (dbError) {
                 console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
                 return Promise.reject('AuraGameSDK: DB initialization failed.');
@@ -82,6 +88,12 @@ const AuraGameSDK = {
             }
             try {
                 await AuraGameSDK._dbManager.initializationPromise;
+                console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' loadState]: DB init promise resolved. Verifying _dbManager.db state...');
+                if (AuraGameSDK._dbManager) {
+                    console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' loadState]: typeof _dbManager.db:', typeof AuraGameSDK._dbManager.db, ', Is IDBDatabase:', (AuraGameSDK._dbManager.db instanceof IDBDatabase), ', DB Name:', AuraGameSDK._dbManager.db ? AuraGameSDK._dbManager.db.name : 'N/A');
+                } else {
+                    console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' loadState]: _dbManager itself is null/undefined immediately after its initializationPromise supposedly resolved!');
+                }
             } catch (dbError) {
                 console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
                 return Promise.reject('AuraGameSDK: DB initialization failed.');
@@ -125,6 +137,12 @@ const AuraGameSDK = {
             }
             try {
                 await AuraGameSDK._dbManager.initializationPromise;
+                console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' submitScore]: DB init promise resolved. Verifying _dbManager.db state...');
+                if (AuraGameSDK._dbManager) {
+                    console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' submitScore]: typeof _dbManager.db:', typeof AuraGameSDK._dbManager.db, ', Is IDBDatabase:', (AuraGameSDK._dbManager.db instanceof IDBDatabase), ', DB Name:', AuraGameSDK._dbManager.db ? AuraGameSDK._dbManager.db.name : 'N/A');
+                } else {
+                    console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' submitScore]: _dbManager itself is null/undefined immediately after its initializationPromise supposedly resolved!');
+                }
             } catch (dbError) {
                 console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
                 return Promise.reject('AuraGameSDK: DB initialization failed.');
@@ -174,6 +192,12 @@ const AuraGameSDK = {
             }
             try {
                 await AuraGameSDK._dbManager.initializationPromise;
+                console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' getHighScores]: DB init promise resolved. Verifying _dbManager.db state...');
+                if (AuraGameSDK._dbManager) {
+                    console.log('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' getHighScores]: typeof _dbManager.db:', typeof AuraGameSDK._dbManager.db, ', Is IDBDatabase:', (AuraGameSDK._dbManager.db instanceof IDBDatabase), ', DB Name:', AuraGameSDK._dbManager.db ? AuraGameSDK._dbManager.db.name : 'N/A');
+                } else {
+                    console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'N/A') + ' getHighScores]: _dbManager itself is null/undefined immediately after its initializationPromise supposedly resolved!');
+                }
             } catch (dbError) {
                 console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
                 return Promise.reject('AuraGameSDK: DB initialization failed.');

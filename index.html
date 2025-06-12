@@ -3201,6 +3201,7 @@
     let isLoggedIn = false;
     let isLocked = false;
     let zIndexCounter = 1000;
+    let auraOSSystemReady = false; // <<<< NEW GLOBAL FLAG
       // Global DOM elements - will be initialized in DOMContentLoaded
     let desktop, dock, root, lockScreen, lockScreenClock, lockPasswordInput, unlockButton;
 
@@ -3213,6 +3214,9 @@
             console.log("Starting localStorage migration (if any)...");
             await dbManager.migrateFromLocalStorage();
             console.log("LocalStorage migration complete.");
+
+            auraOSSystemReady = true; // <<<< SET FLAG TO TRUE
+            console.log("AuraOS System Ready (DB Initialized)."); // <<<< LOG SYSTEM READY
 
             // Initialize global DOM elements first
             desktop = document.getElementById('desktop');
@@ -7287,6 +7291,14 @@
                                 canvas.width = Math.floor(canvasWidth);
                                 canvas.height = Math.floor(canvasHeight);
 
+                                if (!auraOSSystemReady) {
+                                    AuraOS.showNotification({ title: 'System Not Ready', message: 'AuraOS is still starting up. Please wait a moment and try again.', type: 'warning' });
+                                    console.warn('Game launch aborted: AuraOS system not ready (DB might not be initialized).');
+                                    // Optionally, revert to the game details view or show a placeholder
+                                    const gameToReDetail = games.find(g => g.id === gameData.id);
+                                    if (gameToReDetail) showGameDetails(gameToReDetail);
+                                    return;
+                                }
 
                                 if (typeof AuraBreakerGame === 'function' && gameData.id === 'aura-breaker') {
                                     currentGameInstance = new AuraBreakerGame(canvas);

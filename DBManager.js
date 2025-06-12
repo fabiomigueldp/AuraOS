@@ -51,6 +51,7 @@ class DBManager {
 
             request.onsuccess = (event) => {
                 this.db = event.target.result;
+                console.log('DBManager.init onsuccess: this.db set. Type:', typeof this.db, 'Instance of IDBDatabase:', this.db instanceof IDBDatabase, 'DB Name:', this.db ? this.db.name : 'N/A');
                 console.log('Database initialized successfully.');
                 resolve(this.db);
             };
