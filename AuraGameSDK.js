@@ -46,7 +46,7 @@ const AuraGameSDK = {
                 return new Promise((resolve, reject) => {
                     const checkReady = () => {
                         if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
-                            this.saveState(data).then(resolve).catch(reject);
+                            AuraGameSDK.storage.saveState(data).then(resolve).catch(reject);
                         } else {
                             setTimeout(checkReady, 100);
                         }
@@ -111,7 +111,7 @@ const AuraGameSDK = {
                 return new Promise((resolve) => {
                     const checkReady = () => {
                         if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
-                            this.loadState().then(resolve).catch(() => resolve(null));
+                            AuraGameSDK.storage.loadState().then(resolve).catch(() => resolve(null));
                         } else {
                             setTimeout(checkReady, 100);
                         }
@@ -183,7 +183,7 @@ const AuraGameSDK = {
                 return new Promise((resolve, reject) => {
                     const checkReady = () => {
                         if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
-                            this.submitScore(playerName, score).then(resolve).catch(reject);
+                            AuraGameSDK.leaderboard.submitScore(playerName, score).then(resolve).catch(reject);
                         } else {
                             setTimeout(checkReady, 100);
                         }
@@ -261,7 +261,7 @@ const AuraGameSDK = {
                 return new Promise((resolve) => {
                     const checkReady = () => {
                         if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
-                            this.getHighScores(gameId, limit).then(resolve).catch(() => resolve([]));
+                            AuraGameSDK.leaderboard.getHighScores(gameId, limit).then(resolve).catch(() => resolve([]));
                         } else {
                             setTimeout(checkReady, 100);
                         }
