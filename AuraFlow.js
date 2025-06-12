@@ -114,6 +114,9 @@ class AuraFlowApp {
         this.visibilityObserver = null;
         this.resizeObserver = null; // For canvas resize
 
+        this.voronoiLoadRetries = 0;
+        this.maxVoronoiLoadRetries = 30; // Approx 3 seconds if delay is 100ms
+
 
         // --- Particle Flow Settings ---
         this.noiseScale = 0.01; // User configurable, persisted
@@ -1241,14 +1244,36 @@ class AuraFlowApp {
         } else if (this.currentMode === 'connectedFibers') {
             this.animateConnectedFibers();
         } else if (this.currentMode === 'voronoi') {
-            if (typeof d3 !== 'undefined' && d3.Delaunay) {
+            if (typeof d3 !== 'undefined' && typeof d3.Delaunay !== 'undefined') {
+                this.voronoiLoadRetries = 0; // Reset retries on successful load
                 this.animateVoronoi();
             } else {
-                this.ctx.fillStyle = 'white';
-                this.ctx.font = '16px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText("Voronoi library (d3-delaunay) not loaded.", this.canvas.width / 2, this.canvas.height / 2);
-                console.error("d3-delaunay library not found. Voronoi mode cannot start.");
+                if (this.voronoiLoadRetries < this.maxVoronoiLoadRetries) {
+                    this.voronoiLoadRetries++;
+                    console.warn(`AuraFlow: d3-delaunay not yet loaded. Retry ${this.voronoiLoadRetries}/${this.maxVoronoiLoadRetries}. Retrying in 100ms...`);
+                    // Clear any previous error message from canvas
+                    if (this.canvas && this.ctx) {
+                         const windowEl = this.windowBody.closest('.window');
+                         // Check if the current AuraFlow instance is still active and visible for this window
+                         if (windowEl && windowEl.id === this.appData.windowId && this.isVisible) {
+                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Clear previous message
+                         }
+                    }
+                    setTimeout(() => {
+                        this.startAnimation();
+                    }, 100);
+                } else {
+                    console.error(`AuraFlow: d3-delaunay failed to load after ${this.maxVoronoiLoadRetries} retries.`);
+                    if (this.canvas && this.ctx) {
+                        this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+                        this.ctx.fillStyle = 'white';
+                        this.ctx.font = '16px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText("Voronoi library (d3-delaunay) could not be loaded.", this.canvas.width / 2, this.canvas.height / 2 - 10);
+                        this.ctx.fillText("Please check internet or refresh.", this.canvas.width/2, this.canvas.height/2 + 10);
+                    }
+                }
             }
         } else {
             console.warn(`Animation mode "${this.currentMode}" not recognized.`);
