@@ -12,8 +12,8 @@ class AuraNotesApp {
         this.windowEl.addEventListener('aura:close', this.boundDestroy);
 
         this._initUI();       // Existing
-        this._initEditor();   // Existing
-        this._loadNotesList(); // Add this call
+        this._initEditor();   // Modified in this step
+        this._loadNotesList(); // Existing
     }
 
     async _loadNoteIntoEditor(filePath) {
@@ -25,8 +25,7 @@ class AuraNotesApp {
             console.warn('AuraNotesApp: loadNoteIntoEditor called with no filePath.');
             this.editor.setValue('');
             this.currentNotePath = null;
-            // Update UI to show no note selected
-            if (this.notesListDiv) { // Check if notesListDiv exists
+            if (this.notesListDiv) {
                 this.notesListDiv.querySelectorAll('.note-item.active').forEach(item => item.classList.remove('active'));
             }
             return;
@@ -39,10 +38,9 @@ class AuraNotesApp {
                 this.editor.setValue(noteFileObject.content);
                 this.currentNotePath = filePath;
 
-                // Update active state in sidebar
-                if (this.notesListDiv) { // Check if notesListDiv exists
+                if (this.notesListDiv) {
                     this.notesListDiv.querySelectorAll('.note-item.active').forEach(item => item.classList.remove('active'));
-                    const activeListItem = this.notesListDiv.querySelector(`.note-item[data-note-path="${CSS.escape(filePath)}"]`); // CSS.escape for safety
+                    const activeListItem = this.notesListDiv.querySelector(`.note-item[data-note-path="${CSS.escape(filePath)}"]`);
                     if (activeListItem) {
                         activeListItem.classList.add('active');
                     }
@@ -70,27 +68,22 @@ class AuraNotesApp {
 
         AuraOS.dialog.confirm(
             `Tem certeza que deseja excluir "${noteTitle}"? Esta ação não pode ser desfeita.`,
-            async () => { // onConfirm
+            async () => {
                 try {
                     await dbManager.deleteFile(filePath);
                     console.log(`AuraNotesApp: Note ${filePath} deleted from DB.`);
-
-                    // Remove from cache
                     this.notesCache = this.notesCache.filter(note => note.path !== filePath);
 
                     if (this.currentNotePath === filePath) {
                         this.currentNotePath = null;
                         if (this.editor) this.editor.setValue('');
-                        // Try to load the next available note or clear editor
                         if (this.notesCache.length > 0) {
-                            // Sort again to be sure, then pick the first (newest)
                             this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
                             await this._loadNoteIntoEditor(this.notesCache[0].path);
                         } else {
                              if (this.editor) this.editor.setValue('Nenhuma anotação. Crie uma nova!');
                         }
                     }
-                    // Refresh the list even if the deleted note wasn't the current one
                     await this._loadNotesList();
                     AuraOS.showNotification({ title: 'Anotação Excluída', message: `"${noteTitle}" foi excluída.`, type: 'info' });
                 } catch (error) {
@@ -105,18 +98,14 @@ class AuraNotesApp {
         if (!this.currentNotePath || !this.editor) {
             return;
         }
-
         const newContent = this.editor.getValue();
         const noteInCache = this.notesCache.find(n => n.path === this.currentNotePath);
         const oldContent = noteInCache ? noteInCache.content : '';
-
         if (newContent === oldContent) {
             return;
         }
-
         const oldTitle = oldContent.split('\n')[0] || '';
         const newTitle = newContent.split('\n')[0] || '';
-
         try {
             const newLastModified = Date.now();
             await dbManager.saveFile({
@@ -124,18 +113,14 @@ class AuraNotesApp {
                 type: 'file',
                 lastModified: newLastModified,
             }, newContent);
-
             console.log(`AuraNotesApp: Note ${this.currentNotePath} auto-saved to DB.`);
-
             if (noteInCache) {
                 noteInCache.content = newContent;
                 noteInCache.lastModified = newLastModified;
             } else {
                 this.notesCache.push({ id: this.currentNotePath, path: this.currentNotePath, content: newContent, lastModified: newLastModified });
             }
-
             this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
-
             if (oldTitle !== newTitle) {
                 await this._loadNotesList();
             } else {
@@ -162,12 +147,10 @@ class AuraNotesApp {
     async _handleNewNote() {
         console.log('AuraNotesApp: Handling new note creation.');
         await this._ensureNotesDirectory();
-
         let newNoteName = 'Nova Anotação.txt';
         let counter = 1;
         const baseName = 'Nova Anotação';
         let newFilePath = `/Notes/${newNoteName}`;
-
         try {
             while (true) {
                 try {
@@ -179,16 +162,13 @@ class AuraNotesApp {
                     break;
                 }
             }
-
             const initialContent = `# ${newNoteName.replace('.txt', '')}\n\n`;
             await dbManager.saveFile({
                 path: newFilePath,
                 type: 'file',
                 lastModified: Date.now()
             }, initialContent);
-
             console.log(`AuraNotesApp: New note created at ${newFilePath}`);
-
             const newNoteForCache = {
                 id: newFilePath,
                 path: newFilePath,
@@ -197,7 +177,6 @@ class AuraNotesApp {
             };
             this.notesCache.unshift(newNoteForCache);
             this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
-
             await this._loadNotesList();
             await this._loadNoteIntoEditor(newFilePath);
             if (this.editor) {
@@ -212,23 +191,68 @@ class AuraNotesApp {
     async _ensureNotesDirectory() {
         const notesDirPath = '/Notes/';
         try {
-            await dbManager.getDirectory(notesDirPath);
-            console.log('AuraNotesApp: /Notes/ directory already exists.');
-        } catch (error) {
-            console.log('AuraNotesApp: /Notes/ directory not found. Attempting to create it.');
-            try {
-                await dbManager.createDirectory(notesDirPath);
-                console.log('AuraNotesApp: /Notes/ directory created successfully.');
+            const notesDirObject = await dbManager.loadFile(notesDirPath);
+            if (notesDirObject && notesDirObject.type === 'folder') {
+                console.log('AuraNotesApp: /Notes/ directory exists.');
+            } else if (notesDirObject && notesDirObject.type !== 'folder') {
+                console.error('AuraNotesApp: A file exists at /Notes/ path, cannot create directory.');
+                AuraOS.showNotification({ title: 'Notes App Error', message: 'File system conflict at /Notes/.', type: 'error' });
+                throw new Error('File system conflict at /Notes/.');
+            } else { // This else block might not be reached if loadFile throws for non-existence
+                console.log('AuraNotesApp: /Notes/ directory not found (or not a folder). Attempting to create it.');
+                await dbManager.saveFile({
+                    path: notesDirPath,
+                    type: 'folder',
+                    lastModified: Date.now()
+                }, null);
+                console.log('AuraNotesApp: /Notes/ directory marker created successfully.');
                 if (window.fileSystem && window.fileSystem['/'] && !window.fileSystem['/'].children['Notes']) {
                     window.fileSystem['/'].children['Notes'] = { type: 'folder', children: {}, lastModified: Date.now() };
                 }
-            } catch (createError) {
-                console.error('AuraNotesApp: Failed to create /Notes/ directory:', createError);
-                AuraOS.showNotification({ title: 'Notes App Error', message: 'Failed to create /Notes/ directory.', type: 'error' });
-                throw createError;
+            }
+        } catch (error) {
+            // This catch block handles errors from dbManager.loadFile (e.g., if item doesn't exist)
+            // OR errors from dbManager.saveFile if creation fails.
+            let dirExists = false; // Re-check specifically if it was a "not found" error for loadFile
+            try {
+                const notesDirObjectCheck = await dbManager.loadFile(notesDirPath);
+                if (notesDirObjectCheck && notesDirObjectCheck.type === 'folder') {
+                    dirExists = true;
+                } else if (notesDirObjectCheck) { // Exists but not a folder
+                     console.error('AuraNotesApp: Path /Notes/ exists but is not a folder (checked in catch).');
+                     AuraOS.showNotification({ title: 'Notes App Error', message: 'File system conflict for /Notes/.', type: 'error' });
+                     throw new Error('Path /Notes/ exists but is not a folder.');
+                }
+            } catch (nestedLoadError) {
+                 // This means it truly doesn't exist
+                 console.log('AuraNotesApp: /Notes/ directory confirmed not to exist (load error in catch).');
+            }
+
+            if (!dirExists) {
+                try {
+                    console.log('AuraNotesApp: Creating /Notes/ directory marker (in catch).');
+                    await dbManager.saveFile({
+                        path: notesDirPath,
+                        type: 'folder',
+                        lastModified: Date.now()
+                    }, null);
+                    console.log('AuraNotesApp: /Notes/ directory marker created successfully (in catch).');
+                    if (window.fileSystem && window.fileSystem['/'] && !window.fileSystem['/'].children['Notes']) {
+                         window.fileSystem['/'].children['Notes'] = { type: 'folder', children: {}, lastModified: Date.now() };
+                    }
+                } catch (createError) {
+                    console.error('AuraNotesApp: Failed to create /Notes/ directory marker (in catch):', createError);
+                    AuraOS.showNotification({ title: 'Notes App Error', message: 'Failed to create /Notes/ directory.', type: 'error' });
+                    throw createError;
+                }
+            } else if (error && dirExists) { // Original error was not "not found" but something else
+                 console.error('AuraNotesApp: Error ensuring /Notes/ directory (exists but other error occurred):', error);
+                 AuraOS.showNotification({ title: 'Notes App Error', message: 'Error with /Notes/ directory.', type: 'error' });
+                 throw error;
             }
         }
     }
+
 
     async _loadNotesList() {
         if (!this.notesListDiv) {
@@ -236,13 +260,10 @@ class AuraNotesApp {
             return;
         }
         this.notesListDiv.innerHTML = '<p style="text-align:center; color:var(--subtle-text-color); padding-top:20px;">Carregando anotações...</p>';
-
         try {
             await this._ensureNotesDirectory();
             const notesFiles = await dbManager.listFiles('/Notes/');
-
             this.notesCache = [];
-
             for (const fileInfo of notesFiles) {
                 if (fileInfo.path.endsWith('.txt') && fileInfo.type === 'file') {
                     try {
@@ -258,23 +279,20 @@ class AuraNotesApp {
                     }
                 }
             }
-
             this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
             this._renderFilteredNotes(this.notesCache);
-
             let noteToSelect = null;
             if (this.currentNotePath && this.notesCache.find(n => n.path === this.currentNotePath)) {
                 noteToSelect = this.currentNotePath;
             } else if (this.notesCache.length > 0) {
                 noteToSelect = this.notesCache[0].path;
             }
-
             if (noteToSelect) {
                 await this._loadNoteIntoEditor(noteToSelect);
             } else {
                 if (this.editor) this.editor.setValue('Nenhuma anotação. Crie uma nova!');
                 this.currentNotePath = null;
-                if (this.notesListDiv) { // Check if notesListDiv exists
+                if (this.notesListDiv) {
                     const activeItem = this.notesListDiv.querySelector('.note-item.active');
                     if (activeItem) activeItem.classList.remove('active');
                 }
@@ -288,7 +306,6 @@ class AuraNotesApp {
     _renderFilteredNotes(notesToRender) {
         if (!this.notesListDiv) return;
         this.notesListDiv.innerHTML = '';
-
         if (notesToRender.length === 0) {
             const query = this.searchInput.value.trim();
             if (query) {
@@ -298,28 +315,23 @@ class AuraNotesApp {
             }
             return;
         }
-
         notesToRender.forEach(note => {
             const listItem = document.createElement('div');
             listItem.className = 'note-item';
             listItem.dataset.notePath = note.path;
-
             if (note.path === this.currentNotePath) {
                 listItem.classList.add('active');
             }
-
             const title = (note.content.split('\n')[0] || 'Nova Anotação').substring(0, 50);
             const preview = (note.content.split('\n').slice(1).join(' ') || 'Sem conteúdo adicional').substring(0, 100) + '...';
             const timestamp = new Date(note.lastModified).toLocaleString('pt-BR', {
                 day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
             });
-
             listItem.innerHTML = `
                 <div class="note-title" style="font-weight: 600; font-size: 14px; color: var(--text-color); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title}</div>
                 <div class="note-timestamp" style="font-size: 11px; color: var(--subtle-text-color); opacity: 0.8; margin-bottom: 4px;">${timestamp}</div>
                 <div class="note-preview" style="font-size: 12px; color: var(--subtle-text-color); opacity: 0.7; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">${preview}</div>
             `;
-
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-note-btn';
             deleteBtn.innerHTML = '<svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg>';
@@ -332,7 +344,6 @@ class AuraNotesApp {
                 this._deleteNote(note.path);
             };
             listItem.appendChild(deleteBtn);
-
             listItem.addEventListener('click', () => {
                 this._loadNoteIntoEditor(note.path);
             });
@@ -342,20 +353,16 @@ class AuraNotesApp {
 
     _handleSearch() {
         if (!this.searchInput || !this.notesListDiv) return;
-
         const query = this.searchInput.value.toLowerCase().trim();
-
         if (!query) {
             this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
             this._renderFilteredNotes(this.notesCache);
             return;
         }
-
         const filteredNotes = this.notesCache.filter(note => {
             const contentLower = note.content ? note.content.toLowerCase() : '';
             return contentLower.includes(query);
         });
-
         filteredNotes.sort((a, b) => b.lastModified - a.lastModified);
         this._renderFilteredNotes(filteredNotes);
     }
@@ -363,17 +370,31 @@ class AuraNotesApp {
     _initEditor() {
         if (!this.editorContainerDiv) {
             console.error('AuraNotesApp: editorContainerDiv is not defined. UI not initialized properly?');
+            this.windowEl.querySelector('.window-body').innerHTML = '<p style="color:red;padding:10px;">Error: Editor container missing.</p>';
             return;
         }
-        this.editorContainerDiv.innerHTML = '';
+        this.editorContainerDiv.innerHTML = ''; // Clear placeholder
 
-        if (typeof require !== 'undefined' && typeof require.config === 'function') {
-            require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }});
-        } else {
-            console.error('AuraNotesApp: Monaco Editor loader (require) not available.');
-            this.editorContainerDiv.innerHTML = '<p style="color:red;padding:10px;">Error: Monaco Editor loader not found.</p>';
+        if (typeof require === 'undefined' || typeof monaco === 'undefined') {
+            console.error('AuraNotesApp: Monaco Editor (require or monaco global) not available. Ensure loader.js is loaded globally.');
+            this.editorContainerDiv.innerHTML = '<p style="color:red;padding:10px;">Error: Monaco Editor components not found. Check console.</p>';
+            // Attempt to load it dynamically as a fallback - might be too late if app expects it synchronously
+            const loaderScript = document.createElement('script');
+            loaderScript.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs/loader.js';
+            loaderScript.onload = () => {
+                console.log('AuraNotesApp: Fallback Monaco loader.js loaded. Attempting re-init (manual refresh might be needed).');
+                // Potentially re-call _initEditor or notify user to retry
+            };
+            document.head.appendChild(loaderScript);
             return;
         }
+
+        // Path configuration for Monaco's assets.
+        // This is crucial when the loader is separate from where editor/editor.main is.
+        // The CDN structure usually handles this, but explicitly setting it can resolve issues.
+        require.config({
+            paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.44.0/min/vs' }
+        });
 
         require(['vs/editor/editor.main'], () => {
             const isDarkTheme = document.documentElement.classList.contains('dark-theme');
@@ -421,7 +442,7 @@ class AuraNotesApp {
                     if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
                         const isNowDarkTheme = document.documentElement.classList.contains('dark-theme');
                         const newEditorTheme = isNowDarkTheme ? 'vs-dark' : 'vs';
-                        if (this.editor) {
+                        if (this.editor && monaco.editor) { // Ensure monaco.editor is also available
                             monaco.editor.setTheme(newEditorTheme);
                             console.log('AuraNotesApp: Monaco Editor theme updated to', newEditorTheme);
                         }
