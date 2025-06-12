@@ -1,4 +1,3 @@
-
 class PerlinNoise {
     constructor() {
         this.p = new Uint8Array(512);
@@ -85,6 +84,10 @@ class PerlinNoise {
 
 class AuraFlowApp {
     constructor(windowBody, appData) {
+        console.log('AuraFlowApp constructor: Check 1: typeof window.d3 =', typeof window.d3);
+        if (typeof window.d3 !== 'undefined') {
+            console.log('AuraFlowApp constructor: Check 1: typeof window.d3.Delaunay =', typeof window.d3.Delaunay);
+        }
         this.windowBody = windowBody;
         this.appData = appData;
 
@@ -115,7 +118,7 @@ class AuraFlowApp {
         this.resizeObserver = null; // For canvas resize
 
         this.voronoiLoadRetries = 0;
-        this.maxVoronoiLoadRetries = 30; // Approx 3 seconds if delay is 100ms
+        this.maxVoronoiLoadRetries = 100; // Approx 10 seconds if delay is 100ms
 
 
         // --- Particle Flow Settings ---
@@ -159,6 +162,10 @@ class AuraFlowApp {
         
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
+            console.log('AuraFlowApp rAF before initUI: typeof window.d3 =', typeof window.d3);
+            if (typeof window.d3 !== 'undefined') {
+                console.log('AuraFlowApp rAF before initUI: typeof window.d3.Delaunay =', typeof window.d3.Delaunay);
+            }
             this.initUI();
             
             this._loadAppSettings().then(() => {
@@ -1270,13 +1277,17 @@ class AuraFlowApp {
                 } else {
                     console.error(`AuraFlow: d3-delaunay failed to load after ${this.maxVoronoiLoadRetries} retries.`);
                     if (this.canvas && this.ctx) {
-                        this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                        this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
-                        this.ctx.fillStyle = 'white';
-                        this.ctx.font = '16px Arial';
-                        this.ctx.textAlign = 'center';
-                        this.ctx.fillText("Voronoi library (d3-delaunay) could not be loaded.", this.canvas.width / 2, this.canvas.height / 2 - 10);
-                        this.ctx.fillText("Please check internet or refresh.", this.canvas.width/2, this.canvas.height/2 + 10);
+                        // Ensure this part only executes if the window is still the active AuraFlow window
+                        const windowEl = this.windowBody.closest('.window');
+                        if (windowEl && windowEl.id === this.appData.windowId && this.isVisible) {
+                            this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                            this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+                            this.ctx.fillStyle = 'white';
+                            this.ctx.font = '16px Arial';
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText("Voronoi library (d3-delaunay) could not be loaded.", this.canvas.width / 2, this.canvas.height / 2 - 10);
+                            this.ctx.fillText("Please check internet or refresh.", this.canvas.width/2, this.canvas.height/2 + 10);
+                        }
                     }
                 }
             }
