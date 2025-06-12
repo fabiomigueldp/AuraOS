@@ -35,8 +35,8 @@ function AuraTetrisGame(canvas) {
     const BLOCK_SIZE = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight);
     
     // Ensure minimum playable size
-    const finalBlockSize = Math.max(BLOCK_SIZE, 12); // Minimum 12px blocks
-    const BLOCK_PADDING = Math.max(1, Math.floor(finalBlockSize * 0.05)); // Small proportional padding
+    let finalBlockSize = Math.max(BLOCK_SIZE, 12); // Minimum 12px blocks
+    let BLOCK_PADDING = Math.max(1, Math.floor(finalBlockSize * 0.05)); // Small proportional padding
     
     console.log(`AuraTetris: Canvas ${canvas.width}x${canvas.height}, Block size: ${finalBlockSize}px`);
     
@@ -54,8 +54,8 @@ function AuraTetrisGame(canvas) {
     const gameAreaUsedWidth = gameAreaWidth;
     const gameAreaUsedHeight = totalGameHeight;
     
-    const BOARD_OFFSET_X = gameAreaX + Math.max(0, (gameAreaUsedWidth - totalGameWidth) / 2);
-    const BOARD_OFFSET_Y = gameAreaY + Math.max(0, (canvas.height - totalGameHeight) / 2);
+    let BOARD_OFFSET_X = gameAreaX + Math.max(0, (gameAreaUsedWidth - totalGameWidth) / 2);
+    let BOARD_OFFSET_Y = gameAreaY + Math.max(0, (canvas.height - totalGameHeight) / 2);
 
     let gameBoard = [];
     let currentPiece = null;
@@ -232,60 +232,131 @@ function AuraTetrisGame(canvas) {
                 if(gameBoard[r][c]!==0)
                     drawBlock(c*finalBlockSize,r*finalBlockSize,gameBoard[r][c]);
     }
-    function drawPiece(pDI,pOX,pOY,iS=false){if(!pDI||!pDI.shape)return;const M=pDI.shape;const C=pDI.color;for(let r=0;r<M.length;r++)for(let c=0;c<M[r].length;c++)if(M[r][c])drawBlock((pOX+c)*BLOCK_SIZE,(pOY+r)*BLOCK_SIZE,C,iS);}
+    function drawPiece(pDI,pOX,pOY,iS=false){if(!pDI||!pDI.shape)return;const M=pDI.shape;const C=pDI.color;for(let r=0;r<M.length;r++)for(let c=0;c<M[r].length;c++)if(M[r][c])drawBlock((pOX+c)*finalBlockSize,(pOY+r)*finalBlockSize,C,iS);}
     function drawGhostPiece(){if(!currentPiece||!gameRunning)return;let gY=currentPiece.y;while(isValidMove(currentPiece,currentPiece.x,gY+1,currentPiece.shape))gY++;drawPiece(currentPiece,currentPiece.x,gY,true);}
     function drawUI(){
-        const boardPixelWidth = gameBoardWidth * BLOCK_SIZE;
-        const uXO = BOARD_OFFSET_X + boardPixelWidth + Math.max(10, BLOCK_SIZE * 0.33); // Responsive margin
-        let uYO = BOARD_OFFSET_Y + Math.max(20, BLOCK_SIZE * 0.67);
+        const boardPixelWidth = gameBoardWidth * finalBlockSize;
+        const uiStartX = BOARD_OFFSET_X + boardPixelWidth + Math.max(10, finalBlockSize * 0.4);
+        let uiY = BOARD_OFFSET_Y + Math.max(10, finalBlockSize * 0.5);
+        
+        // Responsive font sizes based on block size
+        const titleFontSize = Math.max(14, Math.floor(finalBlockSize * 0.7));
+        const textFontSize = Math.max(12, Math.floor(finalBlockSize * 0.55));
         
         ctx.fillStyle='white';
-        ctx.font=`bold ${Math.max(14, Math.floor(BLOCK_SIZE * 0.6))}px Inter,sans-serif`;
+        ctx.font=`bold ${titleFontSize}px Inter,sans-serif`;
         
-        ctx.fillText('Next:',uXO,uYO);
-        uYO += Math.max(10, BLOCK_SIZE * 0.33);
+        // Next piece section
+        ctx.fillText('Next:',uiStartX,uiY);
+        uiY += Math.max(8, finalBlockSize * 0.3);
         
-        const nPBS = Math.max(80, BLOCK_SIZE * 2.67); // Responsive next piece box size
+        // Next piece preview box - responsive size
+        const previewBoxSize = Math.max(80, finalBlockSize * 3.2);
         ctx.strokeStyle=GRID_COLOR;
         ctx.lineWidth=1;
-        ctx.strokeRect(uXO,uYO,nPBS,nPBS);
+        ctx.strokeRect(uiStartX, uiY, previewBoxSize, previewBoxSize);
         
         if(nextPiece){
-            const m=nextPiece.shape;
-            const mW=m[0].length;
-            const mH=m.length;
+            const m = nextPiece.shape;
+            const mW = m[0].length;
+            const mH = m.length;
             let minR=mH,maxR=-1,minC=mW,maxC=-1;
             
+            // Find piece bounds
             for(let r=0;r<mH;++r)for(let c=0;c<mW;++c)if(m[r][c]){
                 if(r<minR)minR=r;if(r>maxR)maxR=r;if(c<minC)minC=c;if(c>maxC)maxC=c;
             }
             
             const pAW=(maxC-minC+1);
             const pAH=(maxR-minR+1);
-            const previewBlockSize = Math.min(BLOCK_SIZE * 0.75, nPBS / Math.max(pAW, pAH) * 0.8);
-            const pOX=uXO+(nPBS-pAW*previewBlockSize)/2;
-            const pOY=uYO+(nPBS-pAH*previewBlockSize)/2;
             
+            // Calculate preview block size to fit nicely in the box
+            const maxPreviewSize = previewBoxSize * 0.8;
+            const previewBlockSize = Math.min(
+                finalBlockSize * 0.8, 
+                maxPreviewSize / Math.max(pAW, pAH)
+            );
+            
+            const pOX = uiStartX + (previewBoxSize - pAW*previewBlockSize)/2;
+            const pOY = uiY + (previewBoxSize - pAH*previewBlockSize)/2;
+            
+            // Draw preview piece
             for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++)if(m[r][c]){
-                const x = pOX-(minC*previewBlockSize)+(c*previewBlockSize);
-                const y = pOY-(minR*previewBlockSize)+(r*previewBlockSize);
-                
-                // Draw preview piece block
-                ctx.globalAlpha=0.6;
-                ctx.fillStyle=nextPiece.color;
-                ctx.fillRect(x+1, y+1, previewBlockSize-2, previewBlockSize-2);
-                ctx.globalAlpha=1.0;
+                if(r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                    const x = pOX + (c-minC)*previewBlockSize;
+                    const y = pOY + (r-minR)*previewBlockSize;
+                    
+                    ctx.globalAlpha=0.7;
+                    ctx.fillStyle=nextPiece.color;
+                    ctx.fillRect(x+1, y+1, previewBlockSize-2, previewBlockSize-2);
+                    
+                    // Add small highlight
+                    ctx.globalAlpha=0.3;
+                    ctx.fillStyle='rgba(255,255,255,0.5)';
+                    ctx.fillRect(x+2, y+2, previewBlockSize-4, previewBlockSize-4);
+                    ctx.globalAlpha=1.0;
+                }
             }
         }
         
-        uYO += nPBS + Math.max(20, BLOCK_SIZE * 0.67);
-        ctx.font=`${Math.max(12, Math.floor(BLOCK_SIZE * 0.53))}px Inter,sans-serif`;
-        ctx.fillText(`Score: ${score}`,uXO,uYO);
-        uYO += Math.max(18, BLOCK_SIZE * 0.6);
-        ctx.fillText(`Level: ${level}`,uXO,uYO);
-        uYO += Math.max(18, BLOCK_SIZE * 0.6);
-        ctx.fillText(`Lines: ${linesCleared}`,uXO,uYO);
+        // Game stats section
+        uiY += previewBoxSize + Math.max(15, finalBlockSize * 0.6);
+        ctx.font=`${textFontSize}px Inter,sans-serif`;
+        
+        const lineHeight = Math.max(20, finalBlockSize * 0.8);
+        ctx.fillText(`Score: ${score}`, uiStartX, uiY);
+        uiY += lineHeight;
+        ctx.fillText(`Level: ${level}`, uiStartX, uiY);
+        uiY += lineHeight;
+        ctx.fillText(`Lines: ${linesCleared}`, uiStartX, uiY);
+        
+        // Add controls hint if there's space
+        if (uiY + lineHeight * 3 < canvas.height - 20) {
+            uiY += lineHeight * 1.5;
+            ctx.font=`${Math.max(10, textFontSize * 0.8)}px Inter,sans-serif`;
+            ctx.fillStyle='rgba(255,255,255,0.6)';
+            ctx.fillText('← → Move', uiStartX, uiY);
+            uiY += lineHeight * 0.8;
+            ctx.fillText('↑ Rotate', uiStartX, uiY);
+            uiY += lineHeight * 0.8;
+            ctx.fillText('↓ Soft Drop', uiStartX, uiY);
+            uiY += lineHeight * 0.8;
+            ctx.fillText('Space: Hard Drop', uiStartX, uiY);
+        }
     }
+
+    // Function to recalculate dimensions when canvas size changes  
+    function recalculateDimensions() {
+        const newUiWidthRatio = 0.28;
+        const newGameAreaWidth = canvas.width * (1 - newUiWidthRatio);
+        const newGameAreaHeight = canvas.height * 0.95;
+        
+        const newMaxBlockSizeByWidth = Math.floor(newGameAreaWidth / gameBoardWidth);
+        const newMaxBlockSizeByHeight = Math.floor(newGameAreaHeight / gameBoardHeight);
+        const newBlockSize = Math.max(Math.min(newMaxBlockSizeByWidth, newMaxBlockSizeByHeight), 12);
+        
+        // Update block size and related calculations
+        finalBlockSize = newBlockSize;
+        BLOCK_PADDING = Math.max(1, Math.floor(finalBlockSize * 0.05));
+        
+        // Recalculate positioning
+        const newTotalGameWidth = gameBoardWidth * finalBlockSize;
+        const newTotalGameHeight = gameBoardHeight * finalBlockSize;
+        
+        BOARD_OFFSET_X = Math.max(0, (newGameAreaWidth - newTotalGameWidth) / 2);
+        BOARD_OFFSET_Y = Math.max(0, (canvas.height - newTotalGameHeight) / 2);
+        
+        console.log(`Tetris recalculated: Block size ${finalBlockSize}px, Canvas ${canvas.width}x${canvas.height}`);
+        return newBlockSize;
+    }
+
+    // Public method to handle canvas resize
+    this.onCanvasResize = function() {
+        if (gameRunning) {
+            recalculateDimensions();
+            draw(); // Redraw with new dimensions
+        }
+    };
     function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);drawGameBoard();if(gameRunning)drawGhostPiece();if(currentPiece&&gameRunning)drawPiece(currentPiece,currentPiece.x,currentPiece.y);drawUI();}
     draw();
 
@@ -390,6 +461,12 @@ if (isMusicPlaying) {
         if (this._visibilityChangeHandler) {
             document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
             this._visibilityChangeHandler = null;
+        }
+        
+        // Clean up resize observer if it exists
+        if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+            this._resizeObserver = null;
         }
     };
 

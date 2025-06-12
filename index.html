@@ -7363,6 +7363,10 @@
                                 }
                                 canvas.width = Math.floor(canvasWidth);
                                 canvas.height = Math.floor(canvasHeight);
+                                
+                                // Set canvas style for better rendering
+                                canvas.style.width = `${canvasWidth}px`;
+                                canvas.style.height = `${canvasHeight}px`;
 
                                 if (!auraOSSystemReady) {
                                     AuraOS.showNotification({ title: 'System Not Ready', message: 'AuraOS is still starting up. Please wait a moment and try again.', type: 'warning' });
@@ -7388,6 +7392,60 @@
 } else if (typeof AuraTetrisGame === 'function' && gameData.id === 'aura-tetris') {
     currentGameInstance = new AuraTetrisGame(canvas);
     currentGameInstance.start();
+    
+    // Add resize observer for Tetris to handle window resizing
+    if (window.ResizeObserver) {
+        const tetrisResizeObserver = new ResizeObserver((entries) => {
+            if (!currentGameInstance || !currentGameInstance.isRunning()) return;
+            
+            const entry = entries[0];
+            if (!entry) return;
+            
+            const newContainerWidth = entry.contentRect.width;
+            const newContainerHeight = entry.contentRect.height - 60; // Space for exit button
+            
+            // Recalculate optimal canvas size
+            const margin = 20;
+            const availableWidth = newContainerWidth - margin;
+            const availableHeight = newContainerHeight - margin;
+            
+            const gameBoardRatio = 10 / 20;
+            const totalWidthRatio = gameBoardRatio / 0.7;
+            
+            let optimalWidth = availableWidth;
+            let optimalHeight = optimalWidth / totalWidthRatio;
+            
+            if (optimalHeight > availableHeight) {
+                optimalHeight = availableHeight;
+                optimalWidth = optimalHeight * totalWidthRatio;
+            }
+            
+            const minGameWidth = 350;
+            const minGameHeight = minGameWidth / totalWidthRatio;
+            
+            const newCanvasWidth = Math.max(optimalWidth, minGameWidth);
+            const newCanvasHeight = Math.max(optimalHeight, minGameHeight);
+            
+            // Update canvas size if significantly different
+            if (Math.abs(canvas.width - newCanvasWidth) > 10 || Math.abs(canvas.height - newCanvasHeight) > 10) {
+                canvas.width = Math.floor(newCanvasWidth);
+                canvas.height = Math.floor(newCanvasHeight);
+                canvas.style.width = `${newCanvasWidth}px`;
+                canvas.style.height = `${newCanvasHeight}px`;
+                
+                // Trigger resize in game instance if method exists
+                if (typeof currentGameInstance.onCanvasResize === 'function') {
+                    currentGameInstance.onCanvasResize();
+                }
+            }
+        });
+        
+        // Observe the game content area for size changes
+        tetrisResizeObserver.observe(gameContentArea);
+        
+        // Store observer reference for cleanup
+        currentGameInstance._resizeObserver = tetrisResizeObserver;
+    }
                                 } else {
                                     console.error("Game function not found or ID mismatch for:", gameData.id);
                                     gameContentArea.innerHTML = "<p>Error: Could not load game.</p>";
@@ -7403,6 +7461,12 @@
                                         // Call cleanup method if available
                                         if (currentGameInstance && typeof currentGameInstance.cleanup === 'function') {
                                             currentGameInstance.cleanup();
+                                        }
+                                        
+                                        // Clean up resize observer for Tetris
+                                        if (currentGameInstance && currentGameInstance._resizeObserver) {
+                                            currentGameInstance._resizeObserver.disconnect();
+                                            currentGameInstance._resizeObserver = null;
                                         }
                                         
                                         currentGameInstance = null;
