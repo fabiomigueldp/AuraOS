@@ -40,6 +40,21 @@ const AuraGameSDK = {
          * @returns {Promise<void>} A Promise that resolves on successful save, or rejects on error.
          */
         async saveState(data) {
+            // Wait for AuraOS system to be ready
+            if (typeof window.auraOSSystemReady !== 'undefined' && !window.auraOSSystemReady) {
+                console.warn('AuraGameSDK.saveState: System not ready yet, waiting...');
+                return new Promise((resolve, reject) => {
+                    const checkReady = () => {
+                        if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
+                            this.saveState(data).then(resolve).catch(reject);
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+            }
+
             if (!AuraGameSDK._dbManager) {
                 console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' saveState]: FATAL - window.dbManager instance not found.');
                 return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
@@ -90,6 +105,21 @@ const AuraGameSDK = {
          * @returns {Promise<object|null>} A Promise that resolves with the saved data object, or null if no save state is found or an error occurs.
          */
         async loadState() {
+            // Wait for AuraOS system to be ready
+            if (typeof window.auraOSSystemReady !== 'undefined' && !window.auraOSSystemReady) {
+                console.warn('AuraGameSDK.loadState: System not ready yet, waiting...');
+                return new Promise((resolve) => {
+                    const checkReady = () => {
+                        if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
+                            this.loadState().then(resolve).catch(() => resolve(null));
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+            }
+
             if (!AuraGameSDK._dbManager) {
                 console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' loadState]: FATAL - window.dbManager instance not found.');
                 return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
@@ -147,6 +177,21 @@ const AuraGameSDK = {
          * @returns {Promise<void>} A Promise that resolves on successful submission, or rejects on error.
          */
         async submitScore(playerName, score) {
+            // Wait for AuraOS system to be ready
+            if (typeof window.auraOSSystemReady !== 'undefined' && !window.auraOSSystemReady) {
+                console.warn('AuraGameSDK.submitScore: System not ready yet, waiting...');
+                return new Promise((resolve, reject) => {
+                    const checkReady = () => {
+                        if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
+                            this.submitScore(playerName, score).then(resolve).catch(reject);
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+            }
+
             if (!AuraGameSDK._dbManager) {
                 console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' submitScore]: FATAL - window.dbManager instance not found.');
                 return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
@@ -210,6 +255,21 @@ const AuraGameSDK = {
          * @returns {Promise<Array<object>>} A Promise that resolves with an array of score objects, or an empty array if none are found or an error occurs.
          */
         async getHighScores(gameId, limit = 10) {
+            // Wait for AuraOS system to be ready
+            if (typeof window.auraOSSystemReady !== 'undefined' && !window.auraOSSystemReady) {
+                console.warn('AuraGameSDK.getHighScores: System not ready yet, waiting...');
+                return new Promise((resolve) => {
+                    const checkReady = () => {
+                        if (window.auraOSSystemReady && AuraGameSDK._dbManager && AuraGameSDK._dbManager.initializationPromise) {
+                            this.getHighScores(gameId, limit).then(resolve).catch(() => resolve([]));
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+            }
+
             if (!AuraGameSDK._dbManager) {
                 console.error('AuraGameSDK method [' + (AuraGameSDK._gameId || 'SDK') + ' getHighScores]: FATAL - window.dbManager instance not found.');
                 return Promise.reject('AuraGameSDK: FATAL - window.dbManager instance not found.');
