@@ -2777,9 +2777,14 @@
         // Function to scan music directory and build song database automatically
         async function scanMusicLibrary() {
             try {
+                console.log('Starting scanMusicLibrary...');
+                
                 // Use DBManager to scan for music files in the music directories
                 const trackFiles = await scanDirectoryForFiles(MUSIC_PATHS.tracks, ['.mp3', '.m4a', '.wav', '.flac', '.ogg']);
                 const coverFiles = await scanDirectoryForFiles(MUSIC_PATHS.covers, ['.png', '.jpg', '.jpeg', '.webp']);
+                
+                console.log('Found track files:', trackFiles);
+                console.log('Found cover files:', coverFiles);
                 
                 const scannedSongs = [];
                 const coverMap = new Map();
@@ -2822,11 +2827,14 @@
         // Function to scan a directory for files with specific extensions
         async function scanDirectoryForFiles(directoryPath, allowedExtensions) {
             try {
+                console.log(`Scanning directory: ${directoryPath}`);
+                
                 // First, ensure the directory exists in our virtual file system
                 await ensureMusicDirectoriesExist();
                 
                 // Get files from DBManager
                 const files = await dbManager.listFiles(directoryPath);
+                console.log(`Files found in ${directoryPath}:`, files);
                 
                 return files
                     .filter(file => {
