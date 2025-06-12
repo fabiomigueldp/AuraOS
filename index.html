@@ -7291,49 +7291,64 @@
                                 const canvasId = gameData.id + 'Canvas'; // e.g., auraSnakeCanvas
                                 gameContentArea.innerHTML = `
                                     <div class="game-canvas-view" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content: center;">
-                                        <canvas id="${canvasId}" style="background-color: #111; border-radius: var(--ui-corner-radius-small); max-width: 100%; aspect-ratio: 4/3;"></canvas>
+                                        <canvas id="${canvasId}" style="background-color: #111; border-radius: var(--ui-corner-radius-small); display: block; box-shadow: 0 0 15px rgba(0,0,0,0.5);"></canvas>
                                         <button class="exit-game-button" style="margin-top: 15px;">Exit Game</button>
                                     </div>
                                 `;
-                                const containerWidth = gameContentArea.clientWidth * 0.95;
-                                const containerHeight = gameContentArea.clientHeight * 0.80;
+                                
+                                // Get real available space for the game
+                                const containerWidth = gameContentArea.clientWidth;
+                                const containerHeight = gameContentArea.clientHeight - 60; // Space for exit button
                                 let canvasWidth, canvasHeight;
 
                                 if (gameData.id === 'aura-breaker') {
-                                    canvasWidth = containerWidth;
-                                    canvasHeight = containerWidth * (3/4); // 4:3 aspect ratio
+                                    canvasWidth = containerWidth * 0.95;
+                                    canvasHeight = canvasWidth * (3/4); // 4:3 aspect ratio
                                     if (canvasHeight > containerHeight) {
                                         canvasHeight = containerHeight;
                                         canvasWidth = canvasHeight * (4/3);
                                     }
                                 } else if (gameData.id === 'aura-snake') {
                                     // For snake, let's try to make it more square-ish, fitting within container
-                                    const smallerDim = Math.min(containerWidth, containerHeight);
+                                    const smallerDim = Math.min(containerWidth * 0.9, containerHeight);
                                     canvasWidth = smallerDim;
                                     canvasHeight = smallerDim;
                                 } else if (gameData.id === 'aura-tetris') {
-                                    // Tetris needs space for game board (300px) + UI (140px) = ~440px minimum width
-                                    // Game board is 10x20 blocks, ideally 30px per block = 300x600
-                                    const minWidth = 440; // Game board + UI space
-                                    const idealRatio = minWidth / 600; // width/height ratio for Tetris
+                                    // Tetris optimization: maximize space usage while keeping good proportions
+                                    const margin = 20;
+                                    const availableWidth = containerWidth - margin;
+                                    const availableHeight = containerHeight - margin;
                                     
-                                    if (containerWidth >= minWidth) {
-                                        canvasWidth = containerWidth;
-                                        canvasHeight = canvasWidth / idealRatio;
-                                        if (canvasHeight > containerHeight) {
-                                            canvasHeight = containerHeight;
-                                            canvasWidth = canvasHeight * idealRatio;
-                                        }
-                                    } else {
-                                        // Scale down proportionally if container is too small
-                                        canvasWidth = containerWidth;
-                                        canvasHeight = containerWidth / idealRatio;
+                                    // Tetris ideal proportions: game board is 10x20, plus UI space
+                                    // UI needs about 30% of total width for next piece + stats
+                                    const gameBoardRatio = 10 / 20; // 0.5 (width/height of game board)
+                                    const totalWidthRatio = gameBoardRatio / 0.7; // Account for UI space (70% for game, 30% for UI)
+                                    
+                                    // Try to fit based on width constraint
+                                    let optimalWidth = availableWidth;
+                                    let optimalHeight = optimalWidth / totalWidthRatio;
+                                    
+                                    // If height is too big, constrain by height instead
+                                    if (optimalHeight > availableHeight) {
+                                        optimalHeight = availableHeight;
+                                        optimalWidth = optimalHeight * totalWidthRatio;
                                     }
+                                    
+                                    // Ensure minimum playable size
+                                    const minGameWidth = 350; // Minimum for good gameplay
+                                    const minGameHeight = minGameWidth / totalWidthRatio;
+                                    
+                                    canvasWidth = Math.max(optimalWidth, minGameWidth);
+                                    canvasHeight = Math.max(optimalHeight, minGameHeight);
+                                    
+                                    // Final bounds check
+                                    if (canvasWidth > availableWidth) canvasWidth = availableWidth;
+                                    if (canvasHeight > availableHeight) canvasHeight = availableHeight;
                                 }
-                                // Fallback for other games or if ID not matched (though should be handled by if/else if below)
+                                // Fallback for other games
                                 else {
-                                    canvasWidth = containerWidth;
-                                    canvasHeight = containerWidth * (3/4);
+                                    canvasWidth = containerWidth * 0.9;
+                                    canvasHeight = canvasWidth * (3/4);
                                      if (canvasHeight > containerHeight) {
                                         canvasHeight = containerHeight;
                                         canvasWidth = canvasHeight * (4/3);

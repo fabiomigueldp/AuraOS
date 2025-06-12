@@ -24,24 +24,38 @@ function AuraTetrisGame(canvas) {
     const gameBoardWidth = 10;
     const gameBoardHeight = 20;
 
-    // Calculate block size based on canvas dimensions to fit everything
-    const uiWidth = 140; // Space needed for UI (next piece + text)
-    const availableGameWidth = canvas.width - uiWidth;
-    const availableGameHeight = canvas.height - 20; // Small margin
+    // Optimized block size calculation for maximum space usage
+    const uiWidthRatio = 0.28; // UI takes about 28% of total width
+    const gameAreaWidth = canvas.width * (1 - uiWidthRatio);
+    const gameAreaHeight = canvas.height * 0.95; // Leave small margin
     
-    const maxBlockSizeByWidth = Math.floor(availableGameWidth / gameBoardWidth);
-    const maxBlockSizeByHeight = Math.floor(availableGameHeight / gameBoardHeight);
-    const BLOCK_SIZE = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight, 30); // Max 30px per block
+    // Calculate block size based on available space
+    const maxBlockSizeByWidth = Math.floor(gameAreaWidth / gameBoardWidth);
+    const maxBlockSizeByHeight = Math.floor(gameAreaHeight / gameBoardHeight);
+    const BLOCK_SIZE = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight);
     
-    const BLOCK_PADDING = Math.max(1, Math.floor(BLOCK_SIZE * 0.067)); // Proportional padding
+    // Ensure minimum playable size
+    const finalBlockSize = Math.max(BLOCK_SIZE, 12); // Minimum 12px blocks
+    const BLOCK_PADDING = Math.max(1, Math.floor(finalBlockSize * 0.05)); // Small proportional padding
+    
+    console.log(`AuraTetris: Canvas ${canvas.width}x${canvas.height}, Block size: ${finalBlockSize}px`);
+    
     const BOARD_BORDER_COLOR = 'rgba(100, 100, 100, 0.5)';
     const GRID_COLOR = 'rgba(50, 50, 70, 0.5)';
 
-    // Calculate game board offset to center it in available space
-    const totalGameWidth = gameBoardWidth * BLOCK_SIZE;
-    const availableSpaceForBoard = canvas.width - uiWidth;
-    const BOARD_OFFSET_X = Math.max(0, (availableSpaceForBoard - totalGameWidth) / 2);
-    const BOARD_OFFSET_Y = Math.max(0, (canvas.height - gameBoardHeight * BLOCK_SIZE) / 2);
+    // Calculate optimal positioning for game board and UI
+    const totalGameWidth = gameBoardWidth * finalBlockSize;
+    const totalGameHeight = gameBoardHeight * finalBlockSize;
+    const uiWidth = canvas.width * uiWidthRatio;
+    
+    // Center the game board in its allocated space
+    const gameAreaX = 0;
+    const gameAreaY = 0;
+    const gameAreaUsedWidth = gameAreaWidth;
+    const gameAreaUsedHeight = totalGameHeight;
+    
+    const BOARD_OFFSET_X = gameAreaX + Math.max(0, (gameAreaUsedWidth - totalGameWidth) / 2);
+    const BOARD_OFFSET_Y = gameAreaY + Math.max(0, (canvas.height - totalGameHeight) / 2);
 
     let gameBoard = [];
     let currentPiece = null;
@@ -173,26 +187,26 @@ function AuraTetrisGame(canvas) {
             ctx.globalAlpha=0.3;
             ctx.strokeStyle=c;
             ctx.lineWidth=2;
-            ctx.strokeRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
+            ctx.strokeRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,finalBlockSize-2*BLOCK_PADDING,finalBlockSize-2*BLOCK_PADDING);
             ctx.globalAlpha=1.0;
             return;
         }
         ctx.globalAlpha=0.6;
         ctx.fillStyle=c;
-        ctx.fillRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
+        ctx.fillRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,finalBlockSize-2*BLOCK_PADDING,finalBlockSize-2*BLOCK_PADDING);
         ctx.globalAlpha=0.3;
         ctx.fillStyle='rgba(255,255,255,0.5)';
         const gI=BLOCK_PADDING*2;
-        ctx.fillRect(drawX+gI,drawY+gI,BLOCK_SIZE-2*gI,BLOCK_SIZE-2*gI);
+        ctx.fillRect(drawX+gI,drawY+gI,finalBlockSize-2*gI,finalBlockSize-2*gI);
         ctx.globalAlpha=0.8;
         ctx.strokeStyle='rgba(255,255,255,0.3)';
         ctx.lineWidth=1;
-        ctx.strokeRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
+        ctx.strokeRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,finalBlockSize-2*BLOCK_PADDING,finalBlockSize-2*BLOCK_PADDING);
         ctx.globalAlpha=1.0;
     }
     function drawGameBoard(){
-        const boardPixelWidth = gameBoardWidth * BLOCK_SIZE;
-        const boardPixelHeight = gameBoardHeight * BLOCK_SIZE;
+        const boardPixelWidth = gameBoardWidth * finalBlockSize;
+        const boardPixelHeight = gameBoardHeight * finalBlockSize;
         
         ctx.strokeStyle=BOARD_BORDER_COLOR;
         ctx.lineWidth=2;
@@ -202,21 +216,21 @@ function AuraTetrisGame(canvas) {
         ctx.lineWidth=0.5;
         for(let x=0;x<=gameBoardWidth;x++){
             ctx.beginPath();
-            ctx.moveTo(BOARD_OFFSET_X + x*BLOCK_SIZE, BOARD_OFFSET_Y);
-            ctx.lineTo(BOARD_OFFSET_X + x*BLOCK_SIZE, BOARD_OFFSET_Y + boardPixelHeight);
+            ctx.moveTo(BOARD_OFFSET_X + x*finalBlockSize, BOARD_OFFSET_Y);
+            ctx.lineTo(BOARD_OFFSET_X + x*finalBlockSize, BOARD_OFFSET_Y + boardPixelHeight);
             ctx.stroke();
         }
         for(let y=0;y<=gameBoardHeight;y++){
             ctx.beginPath();
-            ctx.moveTo(BOARD_OFFSET_X, BOARD_OFFSET_Y + y*BLOCK_SIZE);
-            ctx.lineTo(BOARD_OFFSET_X + boardPixelWidth, BOARD_OFFSET_Y + y*BLOCK_SIZE);
+            ctx.moveTo(BOARD_OFFSET_X, BOARD_OFFSET_Y + y*finalBlockSize);
+            ctx.lineTo(BOARD_OFFSET_X + boardPixelWidth, BOARD_OFFSET_Y + y*finalBlockSize);
             ctx.stroke();
         }
         
         for(let r=0;r<gameBoardHeight;r++)
             for(let c=0;c<gameBoardWidth;c++)
                 if(gameBoard[r][c]!==0)
-                    drawBlock(c*BLOCK_SIZE,r*BLOCK_SIZE,gameBoard[r][c]);
+                    drawBlock(c*finalBlockSize,r*finalBlockSize,gameBoard[r][c]);
     }
     function drawPiece(pDI,pOX,pOY,iS=false){if(!pDI||!pDI.shape)return;const M=pDI.shape;const C=pDI.color;for(let r=0;r<M.length;r++)for(let c=0;c<M[r].length;c++)if(M[r][c])drawBlock((pOX+c)*BLOCK_SIZE,(pOY+r)*BLOCK_SIZE,C,iS);}
     function drawGhostPiece(){if(!currentPiece||!gameRunning)return;let gY=currentPiece.y;while(isValidMove(currentPiece,currentPiece.x,gY+1,currentPiece.shape))gY++;drawPiece(currentPiece,currentPiece.x,gY,true);}
