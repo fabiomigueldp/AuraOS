@@ -402,3 +402,5 @@ function AuraInvadersGame(canvas) {
   this.isRunning = function() {
     return gameRunning; // Accesses the local 'gameRunning' variable
   };
+
+} // End of AuraInvadersGame constructor
