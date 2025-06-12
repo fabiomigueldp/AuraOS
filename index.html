@@ -2847,7 +2847,7 @@
                     })
                     .map(file => ({
                         name: file.path.split('/').pop(),
-                        url: file.data || file.path, // Use data URL if available, fallback to path
+                        url: file.content || file.data || file.path, // Prefer content/data over path
                         size: file.size || 0,
                         lastModified: file.lastModified || Date.now(),
                         path: file.path
@@ -2878,7 +2878,7 @@
                     }
                 }
                 
-                // Check if we need to populate with existing example files
+                // Force refresh example files to ensure they load properly
                 await populateWithExampleFiles();
                 
             } catch (error) {
@@ -2910,14 +2910,37 @@
                         await dbManager.loadFile(file.path);
                         console.log(`File ${file.path} already exists in DBManager`);
                     } catch (error) {
-                        // File doesn't exist, add it
+                        // File doesn't exist, try to load it as blob and convert to data URL
                         console.log(`Adding example file to DBManager: ${file.path}`);
-                        await dbManager.saveFile({
-                            path: file.path,
-                            type: file.type,
-                            lastModified: Date.now(),
-                            mimeType: file.mimeType
-                        }, file.url); // Store the URL as the data for now
+                        
+                        try {
+                            // Try to fetch the file and convert to data URL
+                            const response = await fetch(file.url);
+                            if (response.ok) {
+                                const blob = await response.blob();
+                                const reader = new FileReader();
+                                
+                                const dataUrl = await new Promise((resolve, reject) => {
+                                    reader.onload = () => resolve(reader.result);
+                                    reader.onerror = reject;
+                                    reader.readAsDataURL(blob);
+                                });
+                                
+                                await dbManager.saveFile({
+                                    path: file.path,
+                                    type: file.type,
+                                    lastModified: Date.now(),
+                                    mimeType: file.mimeType,
+                                    size: blob.size
+                                }, dataUrl);
+                                
+                                console.log(`Successfully added ${file.path} to DBManager with ${blob.size} bytes`);
+                            } else {
+                                console.log(`Could not fetch ${file.url}: ${response.status}`);
+                            }
+                        } catch (fetchError) {
+                            console.log(`Could not load example file ${file.path}:`, fetchError);
+                        }
                     }
                 }
             } catch (error) {
