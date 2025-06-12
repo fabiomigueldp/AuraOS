@@ -67,9 +67,9 @@ function AuraPongGame(canvas) {
   const wallHitSoundUrl = 'https://www.soundjay.com/button/sounds/button-09.mp3'; // Example generic wall hit
 
   try {
-    this.hitSound = new Audio(hitSoundUrl);
-    this.scoreSound = new Audio(scoreSoundUrl);
-    this.wallHitSound = new Audio(wallHitSoundUrl);
+    // this.hitSound = new Audio(hitSoundUrl);
+    // this.scoreSound = new Audio(scoreSoundUrl);
+    // this.wallHitSound = new Audio(wallHitSoundUrl);
 
     // Optional: Set volume
     // this.hitSound.volume = 0.5;

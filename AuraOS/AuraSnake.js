@@ -37,8 +37,8 @@ function AuraSnakeGame(canvas) {
     let lastTickTime = 0;
 
     // Sound assets
-    const eatSound = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
-    const gameOverSound = new Audio('https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3');
+    // const eatSound = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
+    // const gameOverSound = new Audio('https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3');
 
     // --- Event Listener Function ---
     function handleInput(event) {
@@ -209,7 +209,7 @@ function AuraSnakeGame(canvas) {
         if (newHead.x === food.x && newHead.y === food.y) {
             score += 10; // Increment score
             spawnFood(); // Generate new food
-            eatSound.play();
+            // eatSound.play();
             // Snake grows, so we don't pop the tail
         } else {
             snake.pop(); // Remove tail if no food eaten
@@ -224,7 +224,7 @@ function AuraSnakeGame(canvas) {
         gameRunning = false; // Primary flag to stop game logic in updateGame/gameLoop
 
         console.log("Game Over! Final Score:", score);
-        gameOverSound.play(); // Placeholder sound
+        // gameOverSound.play(); // Placeholder sound
 
         self.stop(); // Calls the public stop method for cleanup (cancels animation frame, removes input listeners)
 

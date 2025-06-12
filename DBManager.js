@@ -3,10 +3,15 @@ class DBManager {
         this.dbName = 'AURA_OS_DB';
         this.dbVersion = 2;
         this.db = null;
+        this.initializationPromise = null;
     }
 
     init() {
-        return new Promise((resolve, reject) => {
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
+
+        this.initializationPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, this.dbVersion);
 
             request.onupgradeneeded = (event) => {
@@ -55,6 +60,8 @@ class DBManager {
                 reject(event.target.error);
             };
         });
+
+        return this.initializationPromise;
     }
 
     // Generic CRUD operations
