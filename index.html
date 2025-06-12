@@ -16,6 +16,9 @@
     <script src="AuraGameSDK.js"></script>
     <script src="AuraBreaker.js"></script> <!-- Add this line -->
     <script src="AuraOS/AuraSnake.js"></script> <!-- DEV 4: ADD YOUR SCRIPT HERE -->
+    <script src="AuraOS/AuraPong.js"></script>
+    <script src="AuraOS/AuraTetris.js"></script>
+    <script src="AuraInvaders.js"></script>
     <script src="AuraPaint.js"></script>
 
     <style>
@@ -4990,7 +4993,22 @@
 
                     const games = [
                         { id: 'aura-breaker', title: 'Aura Breaker', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM6 16H4v-2h2v2zm0-3H4v-2h2v2zm0-3H4V8h2v2zm10 6h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm4 6h-2v-2h2v2zm0-3h-2v-2h2v2zM8 9H6V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"/></svg>' },
-                        { id: 'aura-snake', title: 'Aura Snake', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M14 6c0-2.21-1.79-4-4-4S6 3.79 6 6s1.79 4 4 4 4-1.79 4-4zm-4 5c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm6.17-5.59L18 7.27l2.45-2.45c.49-.49 1.28-.49 1.77 0 .49.49.49 1.28 0 1.77L19.77 9l2.45 2.45c.49.49.49 1.28 0 1.77-.49.49-1.28.49-1.77 0L18 10.73l-1.83 1.83c-.49.49-1.28.49-1.77 0s-.49-1.28 0-1.77L16.23 9l-1.83-1.83c-.49-.49-.49-1.28 0-1.77s1.28-.49 1.77 0z"/></svg>' } // DEV 4: ADD YOUR GAME METADATA HERE
+                        { id: 'aura-snake', title: 'Aura Snake', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M14 6c0-2.21-1.79-4-4-4S6 3.79 6 6s1.79 4 4 4 4-1.79 4-4zm-4 5c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm6.17-5.59L18 7.27l2.45-2.45c.49-.49 1.28-.49 1.77 0 .49.49.49 1.28 0 1.77L19.77 9l2.45 2.45c.49.49.49 1.28 0 1.77-.49.49-1.28.49-1.77 0L18 10.73l-1.83 1.83c-.49.49-1.28.49-1.77 0s-.49-1.28 0-1.77L16.23 9l-1.83-1.83c-.49-.49-.49-1.28 0-1.77s1.28-.49 1.77 0z"/></svg>' }, // DEV 4: ADD YOUR GAME METADATA HERE
+                        {
+                            id: 'aura-pong',
+                            title: 'Aura Pong',
+                            iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><rect x="2" y="14" width="4" height="10"/><rect x="26" y="10" width="4" height="10"/><circle cx="16" cy="16" r="2"/></svg>'
+                        },
+                        {
+                            id: 'aura-tetris',
+                            title: 'Aura Tetris',
+                            iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><rect x="10" y="2" width="12" height="4"/><rect x="6" y="6" width="4" height="4"/><rect x="10" y="6" width="4" height="4"/><rect x="14" y="6" width="4" height="4"/><rect x="18" y="6" width="4" height="4"/><rect x="10" y="10" width="12" height="4"/></svg>'
+                        },
+                        {
+                            id: 'aura-invaders',
+                            title: 'Aura Invaders',
+                            iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><path d="M16 4l-4 8h8zm-6 10h12v2H10zm-4 4h20v2H6zm2 4h16v2H8zM4 28h24v2H4z"/></svg>'
+                        }
                         // { id: 'space-shooter', title: 'Space Shooter', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M12 2L2.5 6.5V17.5L12 22L21.5 17.5V6.5L12 2ZM4.5 7.65L12 11.54V19.5L4.5 15.35V7.65ZM13.5 11.54L20.5 7.65V15.35L13.5 19.5V11.54Z"/></svg>' }
                         // OTHER DEVS' METADATA WILL BE HERE
                     ];
@@ -5020,19 +5038,18 @@
                                 if (currentGameInstance && currentGameInstance.isRunning()) {
                                     currentGameInstance.stop();
                                 }
+                                const canvasId = gameData.id + 'Canvas'; // e.g., auraSnakeCanvas
                                 gameContentArea.innerHTML = `
                                     <div class="game-canvas-view" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content: center;">
-                                        <canvas id="auraBreakerCanvas" style="background-color: #111; border-radius: var(--ui-corner-radius-small); max-width: 100%; aspect-ratio: 4/3;"></canvas>
+                                        <canvas id="${canvasId}" style="background-color: #111; border-radius: var(--ui-corner-radius-small); max-width: 100%; aspect-ratio: 4/3;"></canvas>
                                         <button class="exit-game-button" style="margin-top: 15px;">Exit Game</button>
                                     </div>
                                 `;
                                 const containerWidth = gameContentArea.clientWidth * 0.95;
                                 const containerHeight = gameContentArea.clientHeight * 0.80;
                                 let canvasWidth, canvasHeight;
-                                let canvasId = 'auraGenericCanvas'; // Default, should be replaced
 
                                 if (gameData.id === 'aura-breaker') {
-                                    canvasId = 'auraBreakerCanvas';
                                     canvasWidth = containerWidth;
                                     canvasHeight = containerWidth * (3/4); // 4:3 aspect ratio
                                     if (canvasHeight > containerHeight) {
@@ -5040,7 +5057,6 @@
                                         canvasWidth = canvasHeight * (4/3);
                                     }
                                 } else if (gameData.id === 'aura-snake') {
-                                    canvasId = 'auraSnakeCanvas';
                                     // For snake, let's try to make it more square-ish, fitting within container
                                     const smallerDim = Math.min(containerWidth, containerHeight);
                                     canvasWidth = smallerDim;
