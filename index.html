@@ -4672,8 +4672,7 @@
             // --- End of Event Listener Cleanup ---
 
             windowEl.style.opacity = '0';
-            windowEl.style.transform = 'scale(0.9)';
-            setTimeout(() => {
+            windowEl.style.transform = 'scale(0.9)';            setTimeout(async () => {
                 if (windowEl.parentNode === document.body) { // Check if still a child before removing
                     document.body.removeChild(windowEl);
                 }
