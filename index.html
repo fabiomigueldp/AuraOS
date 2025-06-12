@@ -15,9 +15,7 @@
     <script src="DBManager.js"></script> <!-- DBManager.js linked -->
     <script src="AuraGameSDK.js"></script>
     <script src="AuraBreaker.js"></script> <!-- Add this line -->
-    <script src="AuraInvaders.js"></script>
-    <script src="AuraOS/AuraPong.js"></script>
-    <script src="AuraOS/AuraTetris.js"></script>
+    <script src="AuraPaint.js"></script>
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
         :root {
@@ -2189,6 +2187,12 @@
                         <svg viewBox="0 0 24 24" fill="var(--icon-fill)"><path d="M16.5 9.5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6.75 3.25c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zm-4.5 0c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-13c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
                         <p>Game Center</p>
                     </div>
+                    <div class="desktop-icon" data-app-id="aura-paint" title="AuraPaint">
+                        <svg viewBox="0 0 24 24" fill="var(--icon-fill)">
+                            <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16v-2h-1.5c-.83 0-1.5-.67-1.5-1.5S13.67 12 14.5 12H16V9h-1.5C13.67 9 13 8.33 13 7.5S13.67 6 14.5 6H16V4h-1.5C13.67 4 13 3.33 13 2.5 13 2.22 12.78 2 12.5 2c-.05 0-.09.01-.14.02C12.27 2.01 12.13 2 12 2zm-1 14H5.5c-.83 0-1.5-.67-1.5-1.5S4.67 13 5.5 13H11v3zm0-5H7.5c-.83 0-1.5-.67-1.5-1.5S6.67 9 7.5 9H11v2zm0-4H9.5C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4H11v2z"/>
+                        </svg>
+                        <p>AuraPaint</p>
+                    </div>
                 </div>
                 
                 <!-- Divisor visual -->
@@ -2629,6 +2633,7 @@
             'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
             'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
             'game-center': { title: 'Game Center', width: 800, height: 600 },
+            'aura-paint': { title: 'AuraPaint', width: 700, height: 550 },
         };
         
         // --- NOVO: AURA MUSIC SONG DATABASE ---
@@ -2671,6 +2676,8 @@
         '.png': 'image-viewer',
         '.gif': 'image-viewer',
         // Future: '.mp3': 'music-player-app' (if music player can play individual files)
+        // DEV 5: ADD YOUR FILE ASSOCIATION HERE
+        '.aura': 'aura-paint'
     };
 
     function openFile(filePath) {
@@ -4947,6 +4954,14 @@
                         clearInterval(taskManagerIntervalId);
                     });
                     break;
+                case 'aura-paint': // Added case for AuraPaint
+                    if (typeof AuraPaintApp === 'function') {
+                        new AuraPaintApp(body, data);
+                    } else {
+                        console.error('AuraPaintApp class not found. Ensure AuraPaint.js is loaded.');
+                        body.innerHTML = '<p style="color: red; padding: 10px;">Error: AuraPaint application module not loaded.</p>';
+                    }
+                    break;
                 case 'game-center':
                     body.innerHTML = `
                         <div class="game-center-container" style="display: flex; height: 100%; background: transparent;">
@@ -4972,38 +4987,7 @@
                     gameListDiv.innerHTML = '';
 
                     const games = [
-                        {
-                            id: 'aura-breaker',
-                            title: 'Aura Breaker',
-                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM6 16H4v-2h2v2zm0-3H4v-2h2v2zm0-3H4V8h2v2zm10 6h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm4 6h-2v-2h2v2zm0-3h-2v-2h2v2zM8 9H6V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"/></svg>',
-                            description: "An intense brick-breaking game with an AuraOS twist. Use the paddle to bounce the ball and destroy all bricks. Features power-ups, multiple levels, and tracks your high score.",
-                            longDescription: "Dive into Aura Breaker, a modern take on the classic arcade game. Control the paddle with your mouse or keyboard, break through waves of bricks, and collect power-ups to enhance your gameplay. Compete for the highest score and unlock achievements. This game is integrated with AuraOS Game Center for leaderboard tracking and a seamless gaming experience.",
-                            controls: "Mouse to move paddle, Click or Space to launch ball. Keyboard left/right arrows to move paddle."
-                        },
-                        {
-                            id: 'aura-invaders',
-                            title: 'Aura Invaders',
-                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M18 4H6v2h12V4zm-3 14H9v-2h6v2zm5-10L13.5 2h-3L4 8v6h16V8h-2zM6 12v-2h2v2H6zm10 0h-2v-2h2v2z"/></svg>',
-                            description: "Defend AuraOS from waves of alien invaders in this classic arcade shooter. Control your ship, dodge enemy fire, and clear the screen of invaders.",
-                            longDescription: "Aura Invaders brings the timeless space shooter experience to AuraOS. Pilot your advanced fighter ship, strategically eliminate descending alien formations, and watch out for their retaliatory fire. Features include scoring, lives, and increasing difficulty. Integrated with AuraOS Game Center for score tracking.",
-                            controls: "Left/Right arrow keys to move. Spacebar or Up arrow key to shoot."
-                        },
-                        {
-                            id: 'aura-pong',
-                            title: 'Aura Pong',
-                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><rect x="3" y="11" width="2" height="4"/><rect x="19" y="11" width="2" height="4"/><circle cx="12" cy="12" r="1.5"/></svg>', // Simple placeholder icon
-                            description: 'Classic Pong game with an Aura twist.',
-                            longDescription: 'Experience the timeless arcade classic Pong. Control your paddle and try to outscore your opponent in this fast-paced game. Features simple controls and endless fun. Can you become the Aura Pong champion?',
-                            controls: 'Player 1: W (up), S (down). Player 2: Up Arrow (up), Down Arrow (down).'
-                        },
-                        {
-                            id: 'aura-tetris',
-                            title: 'Aura Tetris',
-                            iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><rect x="8" y="4" width="4" height="4"/><rect x="12" y="8" width="4" height="4"/><rect x="8" y="12" width="4" height="4"/><rect x="4" y="8" width="4" height="4"/></svg>', // Simple placeholder icon
-                            description: 'Fit the falling blocks and clear lines.',
-                            longDescription: 'Challenge your spatial reasoning with Aura Tetris. Manipulate the falling tetrominoes to create complete horizontal lines. As you clear lines, the speed increases. Plan your moves carefully to avoid a stack-up!',
-                            controls: 'Left/Right Arrows: Move block. Up Arrow: Rotate block. Down Arrow: Soft drop. Spacebar: Hard drop.'
-                        }
+                        { id: 'aura-breaker', title: 'Aura Breaker', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM6 16H4v-2h2v2zm0-3H4v-2h2v2zm0-3H4V8h2v2zm10 6h-2v-2h2v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm4 6h-2v-2h2v2zm0-3h-2v-2h2v2zM8 9H6V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"/></svg>' }
                         // { id: 'space-shooter', title: 'Space Shooter', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M12 2L2.5 6.5V17.5L12 22L21.5 17.5V6.5L12 2ZM4.5 7.65L12 11.54V19.5L4.5 15.35V7.65ZM13.5 11.54L20.5 7.65V15.35L13.5 19.5V11.54Z"/></svg>' }
                     ];
 
@@ -5052,39 +5036,12 @@
                                 canvas.width = Math.floor(canvasWidth);
                                 canvas.height = Math.floor(canvasHeight);
 
-                                if (typeof AuraBreakerGame === 'function' && gameData.id === 'aura-breaker') {
+                                if (typeof AuraBreakerGame === 'function') {
                                     currentGameInstance = new AuraBreakerGame(canvas);
                                     currentGameInstance.start();
-                                } else if (typeof AuraInvadersGame === 'function' && gameData.id === 'aura-invaders') {
-                                    currentGameInstance = new AuraInvadersGame(canvas);
-                                    currentGameInstance.start();
-                                } else if (gameData.id === 'aura-pong') {
-                                    if (typeof AuraPongGame === 'function') {
-                                        currentGameInstance = new AuraPongGame(canvas);
-                                        currentGameInstance.start();
-                                    } else {
-                                        console.error('AuraPongGame constructor not found!');
-                                        AuraGameSDK.ui.showNotification('Error', 'Could not load Aura Pong.', 'error');
-                                        // Revert to detail view if game fails to load
-                                        const gameToReDetail = games.find(g => g.id === gameData.id);
-                                        if (gameToReDetail) showGameDetails(gameToReDetail);
-                                    }
-                                } else if (gameData.id === 'aura-tetris') {
-                                    if (typeof AuraTetrisGame === 'function') {
-                                        currentGameInstance = new AuraTetrisGame(canvas);
-                                        currentGameInstance.start();
-                                    } else {
-                                        console.error('AuraTetrisGame constructor not found!');
-                                        AuraGameSDK.ui.showNotification('Error', 'Could not load Aura Tetris.', 'error');
-                                        // Revert to detail view if game fails to load
-                                        const gameToReDetail = games.find(g => g.id === gameData.id);
-                                        if (gameToReDetail) showGameDetails(gameToReDetail);
-                                    }
                                 } else {
-                                    console.error('Game constructor not found for ' + gameData.id);
-                                    AuraGameSDK.ui.showNotification('Error', 'Could not load game: ' + gameData.title, 'error');
-                                    // Optionally, revert to game details or show error in canvas area
-                                    // For now, it will show a blank canvas area if constructor is missing.
+                                    console.error("AuraBreakerGame function not found!");
+                                    gameContentArea.innerHTML = "<p>Error: Game module not loaded.</p>";
                                 }
 
                                 const exitButton = gameContentArea.querySelector('.exit-game-button');
