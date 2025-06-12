@@ -317,17 +317,243 @@
         #control-panel .window-body { padding: 20px 30px; }
         .settings-category { margin-bottom: 30px; }
         .settings-category h3 { margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; }
+        .settings-category h4 { margin-top: 0; margin-bottom: 15px; color: var(--highlight-primary); font-size: 1.1rem; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .setting-row label { display: flex; align-items: center; gap: 10px; font-size: 0.9rem;}
         .setting-row svg { width: 20px; height: 20px; fill: var(--icon-fill); }
         .setting-row .control { width: 45%; }
-        select, input[type="range"], input[type="color"], .button-group button { width: 100%; box-sizing: border-box; }
+        
+        /* Control Panel Form Elements - Native AuraOS Style */
+        .setting-row select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--glass-background);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            color: var(--text-color);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .setting-row select:hover {
+            border-color: var(--glass-border-focus);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .setting-row select:focus {
+            outline: none;
+            border-color: var(--highlight-primary);
+            box-shadow: 0 0 0 3px rgba(var(--highlight-primary-rgb), 0.2);
+        }
+        
+        .setting-row input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        
+        .setting-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--highlight-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .setting-row input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 4px rgba(var(--highlight-primary-rgb), 0.3);
+        }
+        
+        .setting-row input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--highlight-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .setting-row input[type="color"] {
+            width: 100%;
+            height: 40px;
+            background: var(--glass-background);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        
+        .setting-row input[type="color"]:hover {
+            border-color: var(--glass-border-focus);
+            transform: scale(1.02);
+        }
+        
+        .setting-row input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: calc(var(--ui-corner-radius-small) - 2px);
+        }
+        
+        .setting-row input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: calc(var(--ui-corner-radius-small) - 2px);
+        }
+        
         .button-group { display: flex; gap: 5px; }
-        .button-group button { background: rgba(128,128,128,0.2); color: var(--text-color); border: 1px solid transparent; padding: 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-        .button-group button:hover { border-color: var(--glass-border-focus); }
-        .button-group button.active { background-color: var(--highlight-primary); color: white; border-color: var(--highlight-primary); }
-        #about-os { text-align: center; padding: 20px; background: rgba(0,0,0,0.1); border-radius: var(--ui-corner-radius-small); }
-        #about-os h4 { margin-top: 0; color: var(--highlight-secondary); }
+        .button-group button { 
+            background: var(--glass-background); 
+            color: var(--text-color); 
+            border: 1px solid var(--glass-border); 
+            padding: 10px 12px; 
+            border-radius: var(--ui-corner-radius-small); 
+            cursor: pointer; 
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            flex: 1;
+        }
+        .button-group button:hover { 
+            border-color: var(--glass-border-focus); 
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        .button-group button.active { 
+            background: var(--highlight-primary); 
+            color: white; 
+            border-color: var(--highlight-primary);
+            box-shadow: 0 4px 12px rgba(var(--highlight-primary-rgb), 0.3);
+        }
+        
+        /* System Reset Button */
+        .reset-button {
+            width: 100%;
+            background: linear-gradient(135deg, #ff3b30, #ff6b6b);
+            color: white;
+            font-weight: 600;
+            border: 1px solid #ff3b30;
+            padding: 12px 16px;
+            border-radius: var(--ui-corner-radius-small);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .reset-button:hover {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 59, 48, 0.4);
+        }
+        
+        .reset-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(255, 59, 48, 0.3);
+        }
+        
+        /* System Information Styling */
+        .system-info-category {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius);
+            padding: 20px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .system-info-category .setting-row {
+            margin-bottom: 12px;
+        }
+        
+        .system-info-category .setting-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .system-info-category label {
+            font-weight: 500;
+            color: var(--subtle-text-color);
+        }
+        
+        .system-info-category span {
+            color: var(--text-color);
+            font-weight: 400;
+        }
+        
+        #sys-info-processes {
+            list-style-type: none;
+            padding-left: 0;
+            max-height: 100px;
+            overflow-y: auto;
+            text-align: right;
+            width: 45%;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: var(--ui-corner-radius-small);
+            padding: 8px;
+            border: 1px solid var(--glass-border);
+        }
+        
+        #sys-info-processes li {
+            padding: 2px 0;
+            font-size: 0.8rem;
+            color: var(--subtle-text-color);
+        }
+        
+        #sys-info-processes::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        #sys-info-processes::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #sys-info-processes::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+        
+        #about-os { 
+            text-align: center; 
+            padding: 25px; 
+            background: linear-gradient(135deg, rgba(var(--highlight-primary-rgb), 0.1), rgba(var(--highlight-secondary-rgb), 0.1));
+            border: 1px solid rgba(var(--highlight-primary-rgb), 0.2);
+            border-radius: var(--ui-corner-radius);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            margin-top: 20px;
+        }
+        #about-os h4 { 
+            margin-top: 0; 
+            color: var(--highlight-primary);
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        #about-os p {
+            color: var(--subtle-text-color);
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
         
         /* Terminal (Avançado) */
         #terminal-app .window-body { background: rgba(0,0,0,0.8); padding: 10px; font-family: 'Fira Code', monospace; line-height: 1.6; }
@@ -4495,10 +4721,10 @@
                             <div class="setting-row">
                                 <label><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg><span>Reset to Factory Settings</span></label>
                                 <div class="control">
-                                    <button id="reset-settings-button" style="width: 100%; background-color: #ff3b30; color: white; font-weight: 600; border: none; padding: 10px; border-radius: 8px; cursor: pointer;">Reset to Factory Settings</button>
+                                    <button id="reset-settings-button" class="reset-button">Reset to Factory Settings</button>
                                 </div>
                             </div>
-                            <div class="settings-category" id="system-info-category">
+                            <div class="system-info-category" id="system-info-category">
                                 <h4>Informações do Sistema</h4>
                                 <div class="setting-row">
                                     <label>Usuário Logado:</label>
@@ -4510,7 +4736,7 @@
                                 </div>
                                 <div class="setting-row">
                                     <label>Processos em Execução:</label>
-                                    <ul id="sys-info-processes" style="list-style-type: none; padding-left: 0; max-height: 100px; overflow-y: auto; text-align: right; width: 45%;">
+                                    <ul id="sys-info-processes">
                                         <!-- Processos serão listados aqui -->
                                     </ul>
                                 </div>
