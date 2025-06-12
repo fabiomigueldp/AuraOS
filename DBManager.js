@@ -411,6 +411,9 @@ class DBManager {
 // Create a global instance for immediate use
 const dbManager = new DBManager();
 
+// Make the dbManager instance globally accessible
+window.dbManager = dbManager;
+
 // Export an instance or the class depending on usage preference
 // For now, let's export the class so it can be instantiated.
 // If a singleton is preferred, instantiate here and export the instance.
@@ -423,4 +426,4 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 // For ES6 modules in the browser
 // export default DBManager; // This line would be used if the environment supports ES6 modules natively or via a bundler.
-console.log('DBManager.js loaded. Note: IndexedDB is a browser feature.');
+console.log('DBManager.js loaded. Note: IndexedDB is a browser feature. Global instance available at window.dbManager');
