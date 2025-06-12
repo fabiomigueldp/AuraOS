@@ -8049,10 +8049,18 @@
                         menuItems.push({
                             label: "Renomear",
                             action: () => {
-                                const newNamePrompt = prompt("Digite o novo nome:", name);
-                                if (newNamePrompt && newNamePrompt.trim() !== name) {
-                                    renameItem(itemPath, newNamePrompt.trim());
-                                }
+                                AuraOS.dialog.prompt(
+                                    "Digite o novo nome:",
+                                    name,
+                                    (newNamePrompt) => {
+                                        if (newNamePrompt && newNamePrompt.trim() !== name) {
+                                            renameItem(itemPath, newNamePrompt.trim());
+                                        }
+                                    },
+                                    () => {
+                                        // onCancel - no action needed
+                                    }
+                                );
                             }
                         });
                         
