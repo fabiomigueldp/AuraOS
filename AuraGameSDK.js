@@ -40,6 +40,21 @@ const AuraGameSDK = {
          * @returns {Promise<void>} A Promise that resolves on successful save, or rejects on error.
          */
         async saveState(data) {
+            if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
+                console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
+                return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
+            }
+            try {
+                await AuraGameSDK._dbManager.initializationPromise;
+            } catch (dbError) {
+                console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
+                return Promise.reject('AuraGameSDK: DB initialization failed.');
+            }
+            if (!AuraGameSDK._dbManager.db) {
+                console.error('AuraGameSDK: DB connection is not available after initialization.');
+                return Promise.reject('AuraGameSDK: DB connection failed after awaiting promise.');
+            }
+
             if (!AuraGameSDK._gameId) {
                 return Promise.reject('AuraGameSDK not initialized. Call init() first.');
             }
@@ -61,6 +76,21 @@ const AuraGameSDK = {
          * @returns {Promise<object|null>} A Promise that resolves with the saved data object, or null if no save state is found or an error occurs.
          */
         async loadState() {
+            if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
+                console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
+                return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
+            }
+            try {
+                await AuraGameSDK._dbManager.initializationPromise;
+            } catch (dbError) {
+                console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
+                return Promise.reject('AuraGameSDK: DB initialization failed.');
+            }
+            if (!AuraGameSDK._dbManager.db) {
+                console.error('AuraGameSDK: DB connection is not available after initialization.');
+                return Promise.reject('AuraGameSDK: DB connection failed after awaiting promise.');
+            }
+
             if (!AuraGameSDK._gameId) {
                 console.error('AuraGameSDK not initialized. Call init() first.');
                 return Promise.resolve(null); // Resolve with null on error to simplify game logic
@@ -89,6 +119,21 @@ const AuraGameSDK = {
          * @returns {Promise<void>} A Promise that resolves on successful submission, or rejects on error.
          */
         async submitScore(playerName, score) {
+            if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
+                console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
+                return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
+            }
+            try {
+                await AuraGameSDK._dbManager.initializationPromise;
+            } catch (dbError) {
+                console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
+                return Promise.reject('AuraGameSDK: DB initialization failed.');
+            }
+            if (!AuraGameSDK._dbManager.db) {
+                console.error('AuraGameSDK: DB connection is not available after initialization.');
+                return Promise.reject('AuraGameSDK: DB connection failed after awaiting promise.');
+            }
+
             if (!AuraGameSDK._gameId) {
                 return Promise.reject('AuraGameSDK not initialized. Call init() first.');
             }
@@ -123,9 +168,19 @@ const AuraGameSDK = {
          * @returns {Promise<Array<object>>} A Promise that resolves with an array of score objects, or an empty array if none are found or an error occurs.
          */
         async getHighScores(gameId, limit = 10) {
-            if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.db) {
-                 console.error('AuraGameSDK: dbManager or db instance not available for getHighScores.');
-                 return Promise.resolve([]);
+            if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.initializationPromise) {
+                console.error('AuraGameSDK: DBManager not available or initialization promise missing.');
+                return Promise.reject('AuraGameSDK: DBManager not available or initialization promise missing.');
+            }
+            try {
+                await AuraGameSDK._dbManager.initializationPromise;
+            } catch (dbError) {
+                console.error('AuraGameSDK: Error awaiting DB initialization:', dbError);
+                return Promise.reject('AuraGameSDK: DB initialization failed.');
+            }
+            if (!AuraGameSDK._dbManager.db) {
+                console.error('AuraGameSDK: DB connection is not available after initialization.');
+                return Promise.reject('AuraGameSDK: DB connection failed after awaiting promise.');
             }
 
             return new Promise((resolve, reject) => {
