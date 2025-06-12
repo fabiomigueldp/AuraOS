@@ -7286,7 +7286,6 @@
                             banner: 'gameassets/aurainvaders.png',
                             description: 'Defend Earth from alien invaders! Shoot down waves of enemies before they reach the ground. How many waves can you survive in this retro space shooter?'
                         }
-                        // { id: 'space-shooter', title: 'Space Shooter', iconSvg: '<svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)"><path d="M12 2L2.5 6.5V17.5L12 22L21.5 17.5V6.5L12 2ZM4.5 7.65L12 11.54V19.5L4.5 15.35V7.65ZM13.5 11.54L20.5 7.65V15.35L13.5 19.5V11.54Z"/></svg>' }
                         // OTHER DEVS' METADATA WILL BE HERE
                     ];
 
@@ -7294,11 +7293,11 @@
                         detailedGameId = gameData.id;
                         gameContentArea.innerHTML = `
                             <div class="game-detail-view">
-                                <div class="game-banner" style="background-color: var(--glass-background);"></div>
+                                <div class="game-banner" style="background-image: url('${gameData.banner}'); background-size: cover; background-position: center; background-color: var(--glass-background);"></div>
                                 <div class="game-info-debajo-banner">
                                     <h2 class="game-title-detail">${gameData.title}</h2>
                                     <p class="game-description">
-                                        A classic brick-breaking adventure! Use your paddle to bounce the ball and destroy all the bricks to advance through levels. Aim for the high score!
+                                        ${gameData.description}
                                     </p>
                                     <button class="play-button" data-game-id="${gameData.id}">Play Game</button>
                                     <div class="leaderboard-section">
