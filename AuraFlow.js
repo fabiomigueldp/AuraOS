@@ -1244,20 +1244,25 @@ class AuraFlowApp {
         } else if (this.currentMode === 'connectedFibers') {
             this.animateConnectedFibers();
         } else if (this.currentMode === 'voronoi') {
-            if (typeof d3 !== 'undefined' && typeof d3.Delaunay !== 'undefined') {
+            console.log('Voronoi Mode: Checking for d3 library. typeof window.d3:', typeof window.d3, 'd3.Delaunay:', (typeof window.d3 !== 'undefined' && window.d3 ? typeof window.d3.Delaunay : 'd3 or d3.Delaunay undefined'));
+            if (typeof window.d3 !== 'undefined' && typeof window.d3.Delaunay !== 'undefined') {
                 this.voronoiLoadRetries = 0; // Reset retries on successful load
                 this.animateVoronoi();
             } else {
                 if (this.voronoiLoadRetries < this.maxVoronoiLoadRetries) {
                     this.voronoiLoadRetries++;
                     console.warn(`AuraFlow: d3-delaunay not yet loaded. Retry ${this.voronoiLoadRetries}/${this.maxVoronoiLoadRetries}. Retrying in 100ms...`);
-                    // Clear any previous error message from canvas
                     if (this.canvas && this.ctx) {
-                         const windowEl = this.windowBody.closest('.window');
-                         // Check if the current AuraFlow instance is still active and visible for this window
-                         if (windowEl && windowEl.id === this.appData.windowId && this.isVisible) {
-                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Clear previous message
-                         }
+                        const windowEl = this.windowBody.closest('.window');
+                        if (windowEl && windowEl.id === this.appData.windowId && this.isVisible) { // Check if AuraFlow is active for this window
+                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Clear previous frame/message
+                            this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                            this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
+                            this.ctx.fillStyle = 'white';
+                            this.ctx.font = '16px Arial';
+                            this.ctx.textAlign = 'center';
+                            this.ctx.fillText(`Voronoi: Waiting for library... (Attempt ${this.voronoiLoadRetries}/${this.maxVoronoiLoadRetries})`, this.canvas.width / 2, this.canvas.height / 2);
+                        }
                     }
                     setTimeout(() => {
                         this.startAnimation();
