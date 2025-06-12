@@ -78,15 +78,17 @@ class AuraNotesApp {
             this.editor.setValue('// Carregando...'); // Temporary loading message
             try {
                 const noteFileObject = await dbManager.loadFile(filePath);
-                if (noteFileObject && typeof noteFileObject.content === 'string') {
-                    noteInCache.content = noteFileObject.content; // Cache the loaded content
-                    this.editor.setValue(noteFileObject.content);
+                // dbManager.saveFile stores content in 'data' field, not 'content'
+                const content = noteFileObject?.data || noteFileObject?.content;
+                if (noteFileObject && typeof content === 'string') {
+                    noteInCache.content = content; // Cache the loaded content
+                    this.editor.setValue(content);
                     this.currentNotePath = filePath;
                     this.editor.focus();
                     console.log(`AuraNotesApp: Successfully loaded and cached content for ${filePath}.`);
                 } else {
                     // This case should ideally not be reached if dbManager.loadFile throws an error for missing files/content
-                    console.error(`AuraNotesApp: Fetched object for ${filePath} is invalid or content missing.`);
+                    console.error(`AuraNotesApp: Fetched object for ${filePath} is invalid or content missing.`, noteFileObject);
                     this.editor.setValue(`// Erro: Não foi possível carregar o conteúdo da anotação ${filePath}.`);
                     AuraOS.showNotification({ title: 'Erro ao Carregar', message: `Conteúdo inválido para ${filePath}.`, type: 'error' });
                     // noteInCache.content remains null, so next attempt will retry loading
