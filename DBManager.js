@@ -165,18 +165,46 @@ class DBManager {
 
             request.onsuccess = (event) => {
                 const allFiles = event.target.result;
-                // Ensure directoryPath ends with a '/' for proper prefix matching, unless it's the root ""
-                const normalizedDirPath = directoryPath === "" || directoryPath.endsWith('/') ? directoryPath : directoryPath + '/';
+                // Normalize directoryPath: ensure it ends with a '/' if it's not root, and handle root case.
+                // Root path is expected to be '/' for this new logic.
+                // The terminal passes '/' for root. An empty string "" might also be considered root by some old logic,
+                // but the new filter explicitly checks for '/'.
+                let normalizedDirPath = directoryPath;
+                if (normalizedDirPath !== '/' && !normalizedDirPath.endsWith('/')) {
+                    normalizedDirPath += '/';
+                }
+                // If original directoryPath was empty string (potentially old root representation), treat as '/'
+                if (directoryPath === "") {
+                    normalizedDirPath = '/';
+                }
+
 
                 const filesInDir = allFiles.filter(file => {
-                    if (normalizedDirPath === "") { // Root directory, list all files not in subdirectories
-                        return !file.path.includes('/');
+                    // Ensure file.path exists and is a string
+                    if (typeof file.path !== 'string') {
+                        return false;
                     }
-                    // Check if file.path starts with normalizedDirPath and is not in a deeper subdirectory
-                    // e.g. for /apps/, /apps/app.js is a match, but /apps/utils/util.js is not (it is for /apps/utils/)
-                    if (file.path.startsWith(normalizedDirPath)) {
-                        const remainingPath = file.path.substring(normalizedDirPath.length);
-                        return !remainingPath.includes('/'); // no more slashes means it's directly in this dir
+
+                    if (normalizedDirPath === '/') {
+                        // For root directory:
+                        // 1. Item must not be the root path itself.
+                        // 2. Item path must start with '/' (implicitly true if it's an absolute path).
+                        // 3. The path part after the initial '/' must not contain any more slashes.
+                        if (file.path === '/') {
+                            return false;
+                        }
+                        // Check if it's a top-level item, e.g., /Desktop, /Documents
+                        // Path should start with '/' and the rest should not contain '/'
+                        return file.path.startsWith('/') && !file.path.substring(1).includes('/');
+                    } else {
+                        // For non-root directories:
+                        // Item path must start with the normalized directory path.
+                        // The remaining part of the path must not contain any slashes.
+                        // And the item path must not be the directory path itself (e.g. when listing /A, /A/B is a child, but /A is not its own child)
+                        if (file.path.startsWith(normalizedDirPath) && file.path !== normalizedDirPath) {
+                            const remainingPath = file.path.substring(normalizedDirPath.length);
+                            return !remainingPath.includes('/');
+                        }
                     }
                     return false;
                 });
