@@ -31,7 +31,7 @@ class AuraTerminalApp {
         this.commands = {};
 
         // Load command history
-        dbManager.getSetting('terminalHistory').then(history => {
+        dbManager.loadSetting('terminalHistory').then(history => {
             if (history && Array.isArray(history)) { this.commandHistory = history; this.historyIndex = history.length; }
             else { this.commandHistory = []; this.historyIndex = 0; }
         }).catch(err => {
