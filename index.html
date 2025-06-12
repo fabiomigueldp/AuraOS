@@ -678,6 +678,51 @@
             transition: all 0.3s ease;
             outline: none;
         }
+        
+        .music-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            padding-bottom: 5px;
+        }
+        
+        .music-header #music-search {
+            flex: 1;
+            margin: 0;
+        }
+        
+        .music-header-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .add-music-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--ui-corner-radius-small);
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+        
+        .add-music-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--highlight-primary);
+            transform: scale(1.05);
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
         #music-search:focus {
             border-color: var(--glass-border-focus);
             background: rgba(0,0,0,0.25);
@@ -2669,7 +2714,8 @@
         };
         
         // --- NOVO: AURA MUSIC SONG DATABASE ---
-        const songDatabase = [
+        // Static songs (can be kept for demo purposes)
+        const staticSongs = [
             { title: 'Starlight', artist: 'Aura Collective', audioUrl: 'https://assets.codepen.io/285131/sample-audio.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e0454529111979d39b0337f4' },
             { title: 'Morning Mist', artist: 'Synthwave Dreams', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273d0a31b1c7c16263590480373' },
             { title: 'City Lights', artist: 'Lo-Fi Beats', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b27381252fab2d4a55c65a78248c' },
@@ -2694,11 +2740,618 @@
             { title: 'Deep Focus', artist: 'Study Beats', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-21.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273b8c1f4e7a2d5c9f6e3a9b6d4' },
             { title: 'Cosmic Dance', artist: 'Space Groove', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-22.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273f1e4c7b5a8d2c6f9e5a2b7d6' },
             { title: 'Zen Garden', artist: 'Meditation Sounds', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-23.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273c7f2e5b8a1d4c8f2e6a3b8d1' },
-            { title: 'Binary Dreams', artist: 'Tech House', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-24.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e6c3f8b1a4d7c2f5e9a6b3d8' },
-            { title: 'Gape Noster', artist: 'Local Artist', audioUrl: 'Gape Noster.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273a5b3c8d9e2f4c7b6a1d8e5f2' }
+            { title: 'Binary Dreams', artist: 'Tech House', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-24.mp3', artworkUrl: 'https://i.scdn.co/image/ab67616d0000b273e6c3f8b1a4d7c2f5e9a6b3d8' }
         ];
 
-    const fileAssociations = {
+        // Dynamic song database that will be populated
+        let songDatabase = [];
+
+        // Music library paths
+        const MUSIC_PATHS = {
+            tracks: 'music/tracks/',
+            covers: 'music/covers/'
+        };
+
+        // Function to parse filename and extract artist/title
+        function parseFilename(filename) {
+            // Remove extension
+            const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+            
+            // Split by separator '_-_'
+            const parts = nameWithoutExt.split('_-_');
+            
+            if (parts.length >= 2) {
+                return {
+                    artist: parts[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    title: parts[1].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                };
+            }
+            
+            // Fallback if naming convention not followed
+            return {
+                artist: 'Unknown Artist',
+                title: nameWithoutExt.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            };
+        }
+
+        // Function to scan music directory and build song database automatically
+        async function scanMusicLibrary() {
+            try {
+                // Use DBManager to scan for music files in the music directories
+                const trackFiles = await scanDirectoryForFiles(MUSIC_PATHS.tracks, ['.mp3', '.m4a', '.wav', '.flac', '.ogg']);
+                const coverFiles = await scanDirectoryForFiles(MUSIC_PATHS.covers, ['.png', '.jpg', '.jpeg', '.webp']);
+                
+                const scannedSongs = [];
+                const coverMap = new Map();
+                
+                // Create a map of covers for quick lookup
+                coverFiles.forEach(cover => {
+                    const baseName = cover.name.replace(/\.[^/.]+$/, ""); // Remove extension
+                    coverMap.set(baseName, cover.url);
+                });
+
+                for (const trackFile of trackFiles) {
+                    const filename = trackFile.name;
+                    const { artist, title } = parseFilename(filename);
+                    
+                    // Check for corresponding cover
+                    const baseName = filename.replace(/\.[^/.]+$/, "");
+                    const coverUrl = coverMap.get(baseName);
+
+                    const song = {
+                        title,
+                        artist,
+                        audioUrl: trackFile.url,
+                        artworkUrl: coverUrl || 'https://i.scdn.co/image/ab67616d0000b273a5b3c8d9e2f4c7b6a1d8e5f2', // fallback
+                        isLocal: true,
+                        filename,
+                        fileSize: trackFile.size,
+                        lastModified: trackFile.lastModified
+                    };
+
+                    scannedSongs.push(song);
+                }
+
+                return scannedSongs;
+            } catch (error) {
+                console.error('Error scanning music library:', error);
+                return [];
+            }
+        }
+
+        // Function to scan a directory for files with specific extensions
+        async function scanDirectoryForFiles(directoryPath, allowedExtensions) {
+            try {
+                // First, ensure the directory exists in our virtual file system
+                await ensureMusicDirectoriesExist();
+                
+                // Get files from DBManager
+                const files = await dbManager.listFiles(directoryPath);
+                
+                return files
+                    .filter(file => {
+                        // Only include files (not folders) with allowed extensions
+                        if (file.type !== 'file') return false;
+                        
+                        const filename = file.path.split('/').pop();
+                        const extension = '.' + filename.split('.').pop().toLowerCase();
+                        return allowedExtensions.includes(extension);
+                    })
+                    .map(file => ({
+                        name: file.path.split('/').pop(),
+                        url: file.data || file.path, // Use data URL if available, fallback to path
+                        size: file.size || 0,
+                        lastModified: file.lastModified || Date.now(),
+                        path: file.path
+                    }));
+            } catch (error) {
+                console.error(`Error scanning directory ${directoryPath}:`, error);
+                return [];
+            }
+        }
+
+        // Function to ensure music directories exist and populate with existing files
+        async function ensureMusicDirectoriesExist() {
+            try {
+                // Check if music directories exist, create them if they don't
+                const musicDirs = ['music', 'music/tracks', 'music/covers'];
+                
+                for (const dir of musicDirs) {
+                    try {
+                        await dbManager.loadFile(dir);
+                    } catch (error) {
+                        // Directory doesn't exist, create it
+                        console.log(`Creating directory: ${dir}`);
+                        await dbManager.saveFile({
+                            path: dir,
+                            type: 'folder',
+                            lastModified: Date.now()
+                        }, null);
+                    }
+                }
+                
+                // Check if we need to populate with existing example files
+                await populateWithExampleFiles();
+                
+            } catch (error) {
+                console.error('Error ensuring music directories exist:', error);
+            }
+        }
+        
+        // Function to populate DBManager with existing example music files
+        async function populateWithExampleFiles() {
+            try {
+                const exampleFiles = [
+                    {
+                        path: 'music/tracks/local_artist_-_gape_noster.mp3',
+                        url: 'music/tracks/local_artist_-_gape_noster.mp3',
+                        type: 'file',
+                        mimeType: 'audio/mpeg'
+                    },
+                    {
+                        path: 'music/covers/local_artist_-_gape_noster.png',
+                        url: 'music/covers/local_artist_-_gape_noster.png',
+                        type: 'file',
+                        mimeType: 'image/png'
+                    }
+                ];
+                
+                for (const file of exampleFiles) {
+                    try {
+                        // Check if file already exists in DBManager
+                        await dbManager.loadFile(file.path);
+                        console.log(`File ${file.path} already exists in DBManager`);
+                    } catch (error) {
+                        // File doesn't exist, add it
+                        console.log(`Adding example file to DBManager: ${file.path}`);
+                        await dbManager.saveFile({
+                            path: file.path,
+                            type: file.type,
+                            lastModified: Date.now(),
+                            mimeType: file.mimeType
+                        }, file.url); // Store the URL as the data for now
+                    }
+                }
+            } catch (error) {
+                console.error('Error populating with example files:', error);
+            }
+        }
+
+        // Function to initialize music database
+        async function initializeMusicDatabase() {
+            const localSongs = await scanMusicLibrary();
+            songDatabase = [...staticSongs, ...localSongs];
+            
+            console.log(`Music database initialized with ${songDatabase.length} songs (${localSongs.length} local)`);
+            
+            // Show detailed notification about library status
+            if (localSongs.length > 0) {
+                const tracks = localSongs.length;
+                const hasCovers = localSongs.filter(song => song.artworkUrl && !song.artworkUrl.startsWith('https://i.scdn.co')).length;
+                
+                AuraOS.showNotification({
+                    title: 'Biblioteca de Música',
+                    message: `✨ ${tracks} música(s) encontrada(s) • ${hasCovers} com capa personalizada`,
+                    type: 'success',
+                    duration: 4000
+                });
+            } else {
+                AuraOS.showNotification({
+                    title: 'Biblioteca de Música',
+                    message: '📁 Nenhuma música local encontrada. Use o botão + para adicionar músicas!',
+                    type: 'info',
+                    duration: 5000
+                });
+            }
+            
+            return songDatabase;
+        }
+
+        // Function to show add music dialog
+        function showAddMusicDialog() {
+            const dialogHTML = `
+                <div class="add-music-dialog" style="
+                    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: var(--glass-background); backdrop-filter: blur(20px);
+                    border: 1px solid var(--glass-border); border-radius: var(--ui-corner-radius);
+                    padding: 30px; min-width: 400px; z-index: 1000000; color: var(--text-color);
+                ">
+                    <h3 style="margin: 0 0 20px 0; text-align: center;">Adicionar Nova Música</h3>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Arquivo de Música:</label>
+                        <input type="file" id="music-file-input" accept=".mp3,.m4a,.wav,.flac,.ogg" style="
+                            width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
+                            border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
+                        ">
+                        <small style="opacity: 0.7; font-size: 0.8rem;">Formatos suportados: MP3, M4A, WAV, FLAC, OGG</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Capa (PNG - opcional):</label>
+                        <input type="file" id="cover-file-input" accept=".png,.jpg,.jpeg" style="
+                            width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
+                            border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
+                        ">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Nome do Artista:</label>
+                        <input type="text" id="artist-input" placeholder="Ex: Nome do Artista" style="
+                            width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
+                            border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
+                        ">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 500;">Título da Música:</label>
+                        <input type="text" id="title-input" placeholder="Ex: Nome da Música" style="
+                            width: 100%; padding: 10px; background: rgba(255,255,255,0.1); 
+                            border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-color);
+                        ">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button id="cancel-add-music" style="
+                            padding: 10px 20px; background: rgba(255,255,255,0.1); 
+                            border: 1px solid var(--glass-border); border-radius: 8px; 
+                            color: var(--text-color); cursor: pointer;
+                        ">Cancelar</button>
+                        <button id="confirm-add-music" style="
+                            padding: 10px 20px; background: var(--highlight-primary); 
+                            border: 1px solid var(--highlight-primary); border-radius: 8px; 
+                            color: white; cursor: pointer;
+                        ">Adicionar</button>
+                    </div>
+                </div>
+                <div class="dialog-overlay" style="
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                    background: rgba(0,0,0,0.5); z-index: 999999;
+                "></div>
+            `;
+            
+            const dialogContainer = document.createElement('div');
+            dialogContainer.innerHTML = dialogHTML;
+            document.body.appendChild(dialogContainer);
+            
+            // Event listeners
+            const cancelBtn = dialogContainer.querySelector('#cancel-add-music');
+            const confirmBtn = dialogContainer.querySelector('#confirm-add-music');
+            const overlay = dialogContainer.querySelector('.dialog-overlay');
+            
+            const closeDialog = () => {
+                document.body.removeChild(dialogContainer);
+            };
+            
+            cancelBtn.addEventListener('click', closeDialog);
+            overlay.addEventListener('click', closeDialog);
+            
+            confirmBtn.addEventListener('click', () => {
+                handleAddMusic(dialogContainer);
+            });
+        }
+
+        // Function to handle adding music with real file upload and storage
+        async function handleAddMusic(dialogContainer) {
+            const musicFile = dialogContainer.querySelector('#music-file-input').files[0];
+            const coverFile = dialogContainer.querySelector('#cover-file-input').files[0];
+            const artist = dialogContainer.querySelector('#artist-input').value.trim();
+            const title = dialogContainer.querySelector('#title-input').value.trim();
+            
+            if (!musicFile || !artist || !title) {
+                AuraOS.showNotification({
+                    title: 'Erro de Validação',
+                    message: '📝 Por favor, preencha todos os campos obrigatórios.',
+                    type: 'error'
+                });
+                return;
+            }
+            
+            // Validate file formats
+            const allowedAudioFormats = ['mp3', 'm4a', 'wav', 'flac', 'ogg'];
+            const allowedImageFormats = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+            
+            const musicExtension = getFileExtension(musicFile.name);
+            if (!allowedAudioFormats.includes(musicExtension)) {
+                AuraOS.showNotification({
+                    title: 'Formato Inválido',
+                    message: `🎵 Formato de música "${musicExtension}" não suportado. Use: ${allowedAudioFormats.join(', ')}`,
+                    type: 'error'
+                });
+                return;
+            }
+            
+            if (coverFile) {
+                const coverExtension = getFileExtension(coverFile.name);
+                if (!allowedImageFormats.includes(coverExtension)) {
+                    AuraOS.showNotification({
+                        title: 'Formato Inválido',
+                        message: `🖼️ Formato de imagem "${coverExtension}" não suportado. Use: ${allowedImageFormats.join(', ')}`,
+                        type: 'error'
+                    });
+                    return;
+                }
+            }
+            
+            try {
+                // Show upload progress notification
+                AuraOS.showNotification({
+                    title: 'Upload em Progresso',
+                    message: '⬆️ Salvando música na biblioteca...',
+                    type: 'info',
+                    duration: 2000
+                });
+                
+                // Generate filename based on convention
+                const artistSlug = artist.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                const titleSlug = title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                const musicFilename = `${artistSlug}_-_${titleSlug}.${musicExtension}`;
+                const coverFilename = coverFile ? `${artistSlug}_-_${titleSlug}.${getFileExtension(coverFile.name)}` : null;
+                
+                // Convert files to data URLs for storage
+                const musicDataUrl = await fileToDataUrl(musicFile);
+                const coverDataUrl = coverFile ? await fileToDataUrl(coverFile) : null;
+                
+                // Try to extract metadata from the music file
+                let extractedMetadata = null;
+                try {
+                    extractedMetadata = await extractMp3MetadataFromFile(musicFile);
+                    console.log('Extracted metadata:', extractedMetadata);
+                } catch (metadataError) {
+                    console.log('Could not extract metadata:', metadataError);
+                }
+                
+                // Use extracted metadata if available, otherwise use user input
+                const finalArtist = extractedMetadata?.artist || artist;
+                const finalTitle = extractedMetadata?.title || title;
+                const finalArtwork = extractedMetadata?.artworkUrl || coverDataUrl;
+                
+                // Ensure music directories exist
+                await ensureMusicDirectoriesExist();
+                
+                // Save music file to DBManager
+                const musicPath = `${MUSIC_PATHS.tracks}${musicFilename}`;
+                await dbManager.saveFile({
+                    path: musicPath,
+                    type: 'file',
+                    lastModified: Date.now(),
+                    size: musicFile.size,
+                    mimeType: musicFile.type
+                }, musicDataUrl);
+                
+                // Save cover file if provided
+                if (coverFile && coverDataUrl) {
+                    const coverPath = `${MUSIC_PATHS.covers}${coverFilename}`;
+                    await dbManager.saveFile({
+                        path: coverPath,
+                        type: 'file',
+                        lastModified: Date.now(),
+                        size: coverFile.size,
+                        mimeType: coverFile.type
+                    }, coverDataUrl);
+                }
+                
+                // Close dialog
+                document.body.removeChild(dialogContainer);
+                
+                // Refresh music library to include new song
+                await refreshMusicLibrary();
+                
+                AuraOS.showNotification({
+                    title: 'Música Adicionada',
+                    message: `🎉 "${title}" por ${artist} foi adicionada à biblioteca!`,
+                    type: 'success',
+                    duration: 4000
+                });
+                
+            } catch (error) {
+                console.error('Error adding music:', error);
+                AuraOS.showNotification({
+                    title: 'Erro no Upload',
+                    message: '❌ Erro ao salvar os arquivos. Tente novamente.',
+                    type: 'error'
+                });
+            }
+        }
+        
+        // Helper function to convert File to data URL
+        function fileToDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // Helper function to extract metadata from File object
+        function extractMp3MetadataFromFile(file) {
+            return new Promise((resolve) => {
+                if (typeof jsmediatags === 'undefined') {
+                    console.log('jsmediatags not available');
+                    resolve({});
+                    return;
+                }
+                
+                try {
+                    jsmediatags.read(file, {
+                        onSuccess: function(tag) {
+                            const tags = tag.tags;
+                            const metadata = {};
+                            
+                            // Extract basic metadata
+                            if (tags.title) metadata.title = tags.title;
+                            if (tags.artist) metadata.artist = tags.artist;
+                            if (tags.album) metadata.album = tags.album;
+                            if (tags.year) metadata.year = tags.year;
+                            if (tags.genre) metadata.genre = tags.genre;
+                            
+                            // Extract artwork
+                            if (tags.picture) {
+                                const picture = tags.picture;
+                                const base64String = btoa(
+                                    picture.data.reduce((data, byte) => data + String.fromCharCode(byte), '')
+                                );
+                                metadata.artworkUrl = `data:${picture.format};base64,${base64String}`;
+                            }
+                            
+                            resolve(metadata);
+                        },
+                        onError: function(error) {
+                            console.log('Error reading metadata from file:', error);
+                            resolve({});
+                        }
+                    });
+                } catch (error) {
+                    console.log('jsmediatags error:', error);
+                    resolve({});
+                }
+            });
+        }
+        
+        // Helper function to get file extension
+        function getFileExtension(filename) {
+            return filename.split('.').pop().toLowerCase();
+        }
+        
+        // Helper function to format file size
+        function formatFileSize(bytes) {
+            if (!bytes) return 'N/A';
+            
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${Math.round(size * 10) / 10} ${units[unitIndex]}`;
+        }
+        
+        // Function to remove a song from the library
+        async function removeSongFromLibrary(song) {
+            if (!song.isLocal) {
+                AuraOS.showNotification({
+                    title: 'Ação Inválida',
+                    message: '🚫 Não é possível remover músicas da biblioteca online.',
+                    type: 'warning'
+                });
+                return;
+            }
+            
+            try {
+                // Confirm deletion
+                if (!confirm(`Tem certeza que deseja remover "${song.title}" por ${song.artist} da biblioteca?`)) {
+                    return;
+                }
+                
+                // Remove files from DBManager
+                const musicPath = `${MUSIC_PATHS.tracks}${song.filename}`;
+                await dbManager.deleteFile(musicPath);
+                
+                // Remove cover if exists
+                if (song.artworkUrl && !song.artworkUrl.startsWith('https://')) {
+                    const coverFilename = song.filename.replace(/\.[^/.]+$/, '') + '.' + 
+                        (song.artworkUrl.includes('data:image/png') ? 'png' : 
+                         song.artworkUrl.includes('data:image/jpeg') ? 'jpg' : 'png');
+                    const coverPath = `${MUSIC_PATHS.covers}${coverFilename}`;
+                    
+                    try {
+                        await dbManager.deleteFile(coverPath);
+                    } catch (error) {
+                        console.log('Cover file not found or already deleted');
+                    }
+                }
+                
+                // Refresh library
+                await refreshMusicLibrary();
+                
+                AuraOS.showNotification({
+                    title: 'Música Removida',
+                    message: `🗑️ "${song.title}" foi removida da biblioteca.`,
+                    type: 'info',
+                    duration: 3000
+                });
+                
+            } catch (error) {
+                console.error('Error removing song:', error);
+                AuraOS.showNotification({
+                    title: 'Erro',
+                    message: '❌ Erro ao remover a música. Tente novamente.',
+                    type: 'error'
+                });
+            }
+        }
+        
+        // Function to refresh music library dynamically
+        async function refreshMusicLibrary() {
+            try {
+                console.log('Refreshing music library...');
+                
+                const previousCount = songDatabase.filter(song => song.isLocal).length;
+                
+                // Re-scan the music library
+                const localSongs = await scanMusicLibrary();
+                songDatabase = [...staticSongs, ...localSongs];
+                
+                console.log(`Music library refreshed: ${songDatabase.length} total songs (${localSongs.length} local)`);
+                
+                // Update the displayed playlist
+                originalPlaylist = [...songDatabase];
+                
+                // Re-shuffle if shuffle is on
+                if (isShuffleOn) {
+                    shufflePlaylist();
+                } else {
+                    renderPlaylist(originalPlaylist);
+                }
+                
+                // Enhance with metadata
+                enhancePlaylistWithMetadata();
+                
+                // Show refresh notification
+                const newCount = localSongs.length;
+                const added = newCount - previousCount;
+                
+                if (added > 0) {
+                    AuraOS.showNotification({
+                        title: 'Biblioteca Atualizada',
+                        message: `🎵 ${added} nova(s) música(s) encontrada(s)! Total: ${newCount} músicas locais`,
+                        type: 'success',
+                        duration: 4000
+                    });
+                } else if (newCount === 0) {
+                    AuraOS.showNotification({
+                        title: 'Biblioteca Atualizada',
+                        message: '📁 Nenhuma música local encontrada',
+                        type: 'info',
+                        duration: 3000
+                    });
+                } else {
+                    AuraOS.showNotification({
+                        title: 'Biblioteca Atualizada',
+                        message: `✅ ${newCount} música(s) local(is) na biblioteca`,
+                        type: 'info',
+                        duration: 3000
+                    });
+                }
+                
+                return songDatabase;
+            } catch (error) {
+                console.error('Error refreshing music library:', error);
+                AuraOS.showNotification({
+                    title: 'Erro de Atualização',
+                    message: '❌ Falha ao atualizar a biblioteca de música.',
+                    type: 'error'
+                });
+                return songDatabase;
+            }
+        }
+        
+        // File associations for opening files with appropriate apps
+        const fileAssociations = {
         '.txt': 'notes-app',
         '.log': 'notes-app', // Example: .log files also open with notes
         '.md': 'notes-app',  // Example: Markdown files
@@ -4060,7 +4713,21 @@
                 case 'music-player-app':
                     body.innerHTML = `
                         <div class="music-playlist">
-                            <input type="text" id="music-search" placeholder="Buscar na playlist...">
+                            <div class="music-header">
+                                <input type="text" id="music-search" placeholder="Buscar na playlist...">
+                                <div class="music-header-buttons">
+                                    <button id="refresh-library-btn" class="add-music-button" title="Atualizar Biblioteca">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                        </svg>
+                                    </button>
+                                    <button id="add-music-btn" class="add-music-button" title="Adicionar Música">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                             <div id="playlist-container"></div>
                         </div>
                         <div class="music-player-main">
@@ -4094,6 +4761,7 @@
                     
                     const playlistContainer = body.querySelector('#playlist-container');
                     const searchInput = body.querySelector('#music-search');
+                    const addMusicBtn = body.querySelector('#add-music-btn');
                     const albumArt = body.querySelector('.album-art');
                     const trackTitle = body.querySelector('.track-title');
                     const trackArtist = body.querySelector('.track-artist');
@@ -4131,8 +4799,61 @@
                     const repeatBtn = body.querySelector('#repeat-btn');
                     let currentRepeatState = 0;
                     let isShuffleOn = false;
-                    let originalPlaylist = [...songDatabase];
+                    let originalPlaylist = [];
                     let shuffledPlaylist = [];
+                    
+                    // Initialize music database and playlist
+                    initializeMusicDatabase().then(database => {
+                        originalPlaylist = [...database];
+                        renderPlaylist(originalPlaylist);
+                        if (currentSongIndex === -1) document.title = originalDocTitle;
+                        
+                        // Enhance playlist with extracted metadata (asynchronously)
+                        enhancePlaylistWithMetadata();
+                    });
+
+                    // Add music button functionality
+                    addMusicBtn.addEventListener('click', () => {
+                        showAddMusicDialog();
+                    });
+                    
+                    // Refresh library button functionality
+                    const refreshLibraryBtn = body.querySelector('#refresh-library-btn');
+                    refreshLibraryBtn.addEventListener('click', async () => {
+                        refreshLibraryBtn.disabled = true;
+                        refreshLibraryBtn.style.opacity = '0.5';
+                        
+                        // Add spinning animation
+                        const svg = refreshLibraryBtn.querySelector('svg');
+                        svg.style.animation = 'spin 1s linear infinite';
+                        
+                        try {
+                            await refreshMusicLibrary();
+                        } finally {
+                            refreshLibraryBtn.disabled = false;
+                            refreshLibraryBtn.style.opacity = '1';
+                            svg.style.animation = '';
+                        }
+                    });
+                    
+                    // Function to shuffle the playlist
+                    function shufflePlaylist() {
+                        if (originalPlaylist.length <= 1) {
+                            shuffledPlaylist = [...originalPlaylist];
+                            return;
+                        }
+                        
+                        shuffledPlaylist = [...originalPlaylist];
+                        
+                        // Fisher-Yates shuffle algorithm
+                        for (let i = shuffledPlaylist.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [shuffledPlaylist[i], shuffledPlaylist[j]] = [shuffledPlaylist[j], shuffledPlaylist[i]];
+                        }
+                        
+                        // Re-render with shuffled playlist
+                        renderPlaylist(shuffledPlaylist);
+                    }
                     
                     // Function to enhance playlist with extracted metadata
                     async function enhancePlaylistWithMetadata() {
@@ -4345,6 +5066,56 @@
                                     loadSong(indexInActivePlaylist);
                                 }
                             });
+                            
+                            // Add context menu for playlist items
+                            item.addEventListener('contextmenu', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                const menuItems = [];
+                                
+                                // Play song option
+                                menuItems.push({
+                                    label: "▶️ Tocar",
+                                    action: () => {
+                                        let indexInActivePlaylist = (isShuffleOn ? shuffledPlaylist : originalPlaylist).indexOf(song);
+                                        if (indexInActivePlaylist !== -1) {
+                                            if (searchInput.value !== '') searchInput.value = '';
+                                            loadSong(indexInActivePlaylist);
+                                        }
+                                    }
+                                });
+                                
+                                // View details option
+                                menuItems.push({
+                                    label: "ℹ️ Detalhes",
+                                    action: () => {
+                                        const details = [
+                                            `🎵 Título: ${song.title}`,
+                                            `🎤 Artista: ${song.artist}`,
+                                            song.album ? `💿 Álbum: ${song.album}` : null,
+                                            song.filename ? `📁 Arquivo: ${song.filename}` : null,
+                                            song.fileSize ? `📏 Tamanho: ${formatFileSize(song.fileSize)}` : null,
+                                            song.isLocal ? '📍 Música local' : '🌐 Música online'
+                                        ].filter(Boolean).join('\n');
+                                        
+                                        alert(details);
+                                    }
+                                });
+                                
+                                // Remove option (only for local songs)
+                                if (song.isLocal) {
+                                    menuItems.push({
+                                        label: "🗑️ Remover",
+                                        action: () => {
+                                            removeSongFromLibrary(song);
+                                        }
+                                    });
+                                }
+                                
+                                createContextMenu(e, menuItems);
+                            });
+                            
                             playlistContainer.appendChild(item);
                         });
                     }
@@ -4439,12 +5210,6 @@
                     audio.addEventListener('loadedmetadata', () => { if (!isNaN(audio.duration)) totalTimeLabel.textContent = formatTime(audio.duration); });
                     audio.addEventListener('timeupdate', () => { if (!isNaN(audio.duration)) { progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`; currentTimeLabel.textContent = formatTime(audio.currentTime); } });
                     progressBar.addEventListener('click', (e) => { if (!isNaN(audio.duration)) audio.currentTime = (e.offsetX / progressBar.getBoundingClientRect().width) * audio.duration; });
-                    
-                    renderPlaylist(originalPlaylist);
-                    if (currentSongIndex === -1) document.title = originalDocTitle;
-                    
-                    // Enhance playlist with extracted metadata (asynchronously)
-                    enhancePlaylistWithMetadata();
 
                     volumeSlider.addEventListener('input', () => audio.volume = volumeSlider.value);
                     const volControls = body.querySelector('.volume-controls');
