@@ -115,15 +115,15 @@ class Aura3DViewerApp {
     }
 
     async _scanAndPopulateModels() {
-        const modelsDirectory = '/Models/'; // Define the directory to scan
+        const modelsDir = (typeof AuraOS !== 'undefined' && AuraOS.paths && AuraOS.paths.MODELS) ? AuraOS.paths.MODELS : '/Models';
         this.sidebarDiv.innerHTML = ''; // Clear current list
 
         try {
-            const files = await dbManager.listFiles(modelsDirectory);
+            const files = await dbManager.listFiles(modelsDir);
             const glbFiles = files.filter(file => file.name.toLowerCase().endsWith('.glb') && file.type === 'file');
 
             if (glbFiles.length === 0) {
-                this.sidebarDiv.innerHTML = `<p>No models found in ${modelsDirectory}</p>`;
+                this.sidebarDiv.innerHTML = `<p>No models found in ${modelsDir}</p>`;
                 return;
             }
 
@@ -131,7 +131,9 @@ class Aura3DViewerApp {
                 const listItem = document.createElement('div');
                 listItem.className = 'sidebar-item';
                 listItem.textContent = file.name;
-                const filePath = modelsDirectory + file.name; // Construct full path
+                // file.path from dbManager.listFiles should already be the full path, e.g., /Models/Astronaut.glb
+                // If not, and it's just the name, then: const filePath = `${modelsDir}/${file.name}`;
+                const filePath = file.path; // Assuming file.path is the full path
                 listItem.dataset.filePath = filePath;
 
                 listItem.addEventListener('click', () => {
@@ -146,13 +148,13 @@ class Aura3DViewerApp {
             });
 
         } catch (error) {
-            console.error(`Error scanning models in ${modelsDirectory}:`, error);
+            console.error(`Error scanning models in ${modelsDir}:`, error);
             this.sidebarDiv.innerHTML = `<p>Error loading models.</p>`;
             // Show a notification to the user
              if (window.AuraOS && AuraOS.showNotification) {
                 AuraOS.showNotification({
                     title: 'Error Loading Models',
-                    message: `Could not scan ${modelsDirectory}. Ensure the directory exists.`,
+                    message: `Could not scan ${modelsDir}. Ensure the directory exists.`,
                     type: 'error'
                 });
             }

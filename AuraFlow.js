@@ -596,33 +596,35 @@ class AuraFlowApp {
         const dataURL = this.canvas.toDataURL('image/png');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `AuraFlow-${this.currentMode}-${timestamp}.png`;
-        const picturesPath = '/Pictures/';
+        const picturesDir = (typeof AuraOS !== 'undefined' && AuraOS.paths && AuraOS.paths.PICTURES) ? AuraOS.paths.PICTURES : '/Pictures';
 
         try {
-            let picturesNode = getFileSystemNode(picturesPath);
+            let picturesNode = getFileSystemNode(picturesDir);
             if (!picturesNode) {
-                console.log(`Attempting to create directory: ${picturesPath}`);
-                const created = await createItem(picturesPath, 'folder');
+                console.log(`Attempting to create directory: ${picturesDir}`);
+                // createItem expects the full path for the item to be created, and its type.
+                // If picturesDir is '/Pictures', createItem('/Pictures', 'folder') is correct.
+                const created = await createItem(picturesDir, 'folder');
                 if (created) {
-                    picturesNode = getFileSystemNode(picturesPath);
-                    console.log(`${picturesPath} directory created.`);
+                    picturesNode = getFileSystemNode(picturesDir); // Re-fetch the node after creation
+                    console.log(`${picturesDir} directory created.`);
                 } else {
-                    AuraOS.showNotification({ title: 'Error Saving Image', message: `Failed to create ${picturesPath} directory.`, type: 'error' });
+                    AuraOS.showNotification({ title: 'Error Saving Image', message: `Failed to create ${picturesDir} directory.`, type: 'error' });
                     return;
                 }
             }
 
             if (picturesNode && picturesNode.type === 'folder') {
-                const fullFilePath = picturesPath + filename;
+                const fullFilePath = `${picturesDir}/${filename}`; // Correct path concatenation
                 const saveSuccess = await createItem(fullFilePath, 'file', dataURL);
                 if (saveSuccess) {
                     AuraOS.showNotification({ title: 'Snapshot Saved', message: `Image saved as ${fullFilePath}`, type: 'success' });
-                    if (typeof updateDesktopAndFileExplorer === "function") updateDesktopAndFileExplorer(picturesPath);
+                    if (typeof updateDesktopAndFileExplorer === "function") updateDesktopAndFileExplorer(picturesDir);
                 } else {
                     AuraOS.showNotification({ title: 'Error Saving Image', message: `Failed to save image to ${fullFilePath}.`, type: 'error' });
                 }
             } else {
-                AuraOS.showNotification({ title: 'Error Saving Image', message: `${picturesPath} is not a valid directory.`, type: 'error' });
+                AuraOS.showNotification({ title: 'Error Saving Image', message: `${picturesDir} is not a valid directory.`, type: 'error' });
             }
         } catch (error) {
             console.error("Error saving image:", error);

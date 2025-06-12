@@ -5,6 +5,8 @@ class AuraNotesApp {
         this.data = data;
         this.notesCache = []; // Initialize notes cache
         this.currentNotePath = null; // Initialize currentNotePath
+        this.NOTES_DIR = (typeof AuraOS !== 'undefined' && AuraOS.paths && AuraOS.paths.NOTES) ? AuraOS.paths.NOTES : '/Notes';
+
 
         console.log(`AuraNotesApp constructor: ${appId}`, data);
 
@@ -18,22 +20,25 @@ class AuraNotesApp {
 
     async _initialize() {
         try {
+            await this._ensureNotesDirectory(); // Ensure the notes directory exists before anything else
             await this._initEditor(); // Wait for editor to be ready
             await this._loadNotesList(); // Then load notes metadata
 
-            if (this.data && this.data.filePath) {
+            if (this.data && this.data.filePath && this.data.filePath.startsWith(this.NOTES_DIR + '/')) {
                 console.log(`AuraNotesApp: filePath provided: ${this.data.filePath}. Loading it.`);
-                // Ensure the note list has rendered and this.notesCache is populated
-                // _loadNotesList should handle the initial rendering.
-                // A small delay might be needed if _renderFilteredNotes is not fully synchronous
-                // with DOM updates, but ideally it should be.
-                // For now, assume _loadNotesList completes fully including render.
                 await this._loadNoteIntoEditor(this.data.filePath);
-            } else {
-                // If _loadNotesList already selected a note (e.g. most recent one),
-                // that selection will be active. If not (e.g. no notes),
-                // _loadNoteIntoEditor(null) inside _loadNotesList handles the empty state.
+            } else if (this.data && this.data.filePath) {
+                console.warn(`AuraNotesApp: filePath ${this.data.filePath} is outside the notes directory ${this.NOTES_DIR}. Ignoring.`);
+                // Potentially load default note or empty state
+                 if (this.notesCache.length > 0) {
+                    await this._loadNoteIntoEditor(this.notesCache[0].path);
+                } else {
+                    this._loadNoteIntoEditor(null);
+                }
+            }
+             else {
                 console.log("AuraNotesApp: No specific filePath provided, relying on _loadNotesList's default selection or empty state.");
+                 // _loadNotesList already handles selecting the first note or empty state
             }
         } catch (error) {
             console.error("AuraNotesApp: Error during initialization:", error);
@@ -91,15 +96,15 @@ class AuraNotesApp {
                     console.error(`AuraNotesApp: Fetched object for ${filePath} is invalid or content missing.`, noteFileObject);
                     this.editor.setValue(`// Erro: Não foi possível carregar o conteúdo da anotação ${filePath}.`);
                     AuraOS.showNotification({ title: 'Erro ao Carregar', message: `Conteúdo inválido para ${filePath}.`, type: 'error' });
-                    // noteInCache.content remains null, so next attempt will retry loading
-                    this.currentNotePath = filePath; // Keep path, but content is missing
+                    if (noteInCache) noteInCache.content = `// Error: Invalid content from DB for ${filePath}`; else console.warn("Note not in cache during load error handling");
+                    this.currentNotePath = filePath;
                 }
             } catch (error) {
                 console.error(`AuraNotesApp: Error loading note ${filePath} from DB:`, error);
                 this.editor.setValue(`// Erro ao carregar anotação: ${error.message}`);
                 AuraOS.showNotification({ title: 'Erro ao Carregar Anotação', message: error.message, type: 'error' });
-                // noteInCache.content remains null, ensuring a retry is possible
-                this.currentNotePath = filePath; // Keep path to indicate which note failed
+                if (noteInCache) noteInCache.content = `// Error: DB load failed for ${filePath}. ${error.message}`; else console.warn("Note not in cache during load error handling");
+                this.currentNotePath = filePath;
             }
         } else if (noteInCache && typeof noteInCache.content === 'string') {
             console.log(`AuraNotesApp: Content for ${filePath} already in cache.`);
@@ -199,13 +204,13 @@ class AuraNotesApp {
 
     async _handleNewNote() {
         console.log('AuraNotesApp: Handling new note creation.');
-        await this._ensureNotesDirectory();
+        // _ensureNotesDirectory is called in _initialize, so it should exist.
 
         let newNoteName = 'Nova Anotação.txt';
-        let counter = 0; // Start counter at 0 for "Nova Anotação.txt" first
+        let counter = 0;
         const baseName = 'Nova Anotação';
         let newFilePath;
-        let fileExists = true; // Assume file exists to enter loop
+        let fileExists = true;
 
         try {
             while (fileExists) {
@@ -214,14 +219,12 @@ class AuraNotesApp {
                 } else {
                     newNoteName = `${baseName} (${counter}).txt`;
                 }
-                newFilePath = `/Notes/${newNoteName}`; // Ensure leading slash for absolute path
+                newFilePath = `${this.NOTES_DIR}/${newNoteName}`;
 
-                // Check if file exists
                 let existingFile = null;
                 try {
                     existingFile = await dbManager.loadFile(newFilePath);
                 } catch (loadError) {
-                    // dbManager.loadFile might throw if not found, which is desired for this check
                     existingFile = null;
                 }
 
@@ -230,14 +233,13 @@ class AuraNotesApp {
                     counter++;
                     fileExists = true;
                 } else {
-                    // File does not exist, this name is unique
                     fileExists = false;
                 }
 
-                if (counter > 100) { // Safety break for extreme cases
-                    AuraOS.showNotification({ title: 'Error Creating Note', message: 'Too many notes with similar names. Please try a different name or clean up existing notes.', type: 'error'});
+                if (counter > 100) {
+                    AuraOS.showNotification({ title: 'Error Creating Note', message: 'Too many notes with similar names.', type: 'error'});
                     console.error('AuraNotesApp: Exceeded max attempts to find unique note name.');
-                    return; // Exit if too many attempts
+                    return;
                 }
             }
 
@@ -252,9 +254,8 @@ class AuraNotesApp {
             console.log(`AuraNotesApp: New note created at ${newFilePath}`);
             AuraOS.showNotification({ title: 'Anotação Criada', message: `"${newNoteName.replace('.txt', '')}" foi criada.`, type: 'success' });
 
-            // Refresh notes list from DB & load the new note
-            await this._loadNotesList(); // This will update cache and sidebar
-            await this._loadNoteIntoEditor(newFilePath); // This will load content and set active
+            await this._loadNotesList();
+            await this._loadNoteIntoEditor(newFilePath);
 
             if (this.editor) {
                 this.editor.focus();
@@ -267,63 +268,34 @@ class AuraNotesApp {
     }
 
     async _ensureNotesDirectory() {
-        const notesDirPath = '/Notes/';
         try {
-            const notesDirObject = await dbManager.loadFile(notesDirPath);
+            const notesDirObject = await dbManager.loadFile(this.NOTES_DIR);
             if (notesDirObject && notesDirObject.type === 'folder') {
-                console.log('AuraNotesApp: /Notes/ directory exists.');
+                console.log(`AuraNotesApp: ${this.NOTES_DIR} directory exists.`);
             } else if (notesDirObject && notesDirObject.type !== 'folder') {
-                console.error('AuraNotesApp: A file exists at /Notes/ path, cannot create directory.');
-                AuraOS.showNotification({ title: 'Notes App Error', message: 'File system conflict at /Notes/.', type: 'error' });
-                throw new Error('File system conflict at /Notes/.');
-            } else {
-                console.log('AuraNotesApp: /Notes/ directory not found (or not a folder). Attempting to create it.');
-                await dbManager.saveFile({
-                    path: notesDirPath,
-                    type: 'folder',
-                    lastModified: Date.now()
-                }, null);
-                console.log('AuraNotesApp: /Notes/ directory marker created successfully.');
-                if (window.fileSystem && window.fileSystem['/'] && !window.fileSystem['/'].children['Notes']) {
-                    window.fileSystem['/'].children['Notes'] = { type: 'folder', children: {}, lastModified: Date.now() };
-                }
+                console.error(`AuraNotesApp: A file exists at ${this.NOTES_DIR} path, cannot create directory.`);
+                AuraOS.showNotification({ title: 'Notes App Error', message: `File system conflict at ${this.NOTES_DIR}.`, type: 'error' });
+                throw new Error(`File system conflict at ${this.NOTES_DIR}.`);
             }
-        } catch (error) {
-            let dirExists = false;
+            // If loadFile throws (directory doesn't exist), the catch block will handle creation.
+        } catch (error) { // Catches if loadFile fails (e.g. dir not found)
+            console.log(`AuraNotesApp: ${this.NOTES_DIR} directory not found or error accessing. Attempting to create it.`);
             try {
-                const notesDirObjectCheck = await dbManager.loadFile(notesDirPath);
-                if (notesDirObjectCheck && notesDirObjectCheck.type === 'folder') {
-                    dirExists = true;
-                } else if (notesDirObjectCheck) {
-                     console.error('AuraNotesApp: Path /Notes/ exists but is not a folder (checked in catch).');
-                     AuraOS.showNotification({ title: 'Notes App Error', message: 'File system conflict for /Notes/.', type: 'error' });
-                     throw new Error('Path /Notes/ exists but is not a folder.');
+                await dbManager.saveFile({
+                    path: this.NOTES_DIR,
+                    type: 'folder',
+                    name: this.NOTES_DIR.split('/').pop() || 'Notes', // Extract name
+                    lastModified: Date.now()
+                }, {}); // Content for folder is empty or null data
+                console.log(`AuraNotesApp: ${this.NOTES_DIR} directory created successfully.`);
+                // Update in-memory representation if necessary (depends on global FS management)
+                if (window.fileSystem && window.fileSystem['/'] && !window.fileSystem['/'].children[this.NOTES_DIR.substring(1)]) {
+                     window.fileSystem['/'].children[this.NOTES_DIR.substring(1)] = { type: 'folder', children: {}, lastModified: Date.now() };
                 }
-            } catch (nestedLoadError) {
-                 console.log('AuraNotesApp: /Notes/ directory confirmed not to exist (load error in catch).');
-            }
-
-            if (!dirExists) {
-                try {
-                    console.log('AuraNotesApp: Creating /Notes/ directory marker (in catch).');
-                    await dbManager.saveFile({
-                        path: notesDirPath,
-                        type: 'folder',
-                        lastModified: Date.now()
-                    }, null);
-                    console.log('AuraNotesApp: /Notes/ directory marker created successfully (in catch).');
-                    if (window.fileSystem && window.fileSystem['/'] && !window.fileSystem['/'].children['Notes']) {
-                         window.fileSystem['/'].children['Notes'] = { type: 'folder', children: {}, lastModified: Date.now() };
-                    }
-                } catch (createError) {
-                    console.error('AuraNotesApp: Failed to create /Notes/ directory marker (in catch):', createError);
-                    AuraOS.showNotification({ title: 'Notes App Error', message: 'Failed to create /Notes/ directory.', type: 'error' });
-                    throw createError;
-                }
-            } else if (error && dirExists) {
-                 console.error('AuraNotesApp: Error ensuring /Notes/ directory (exists but other error occurred):', error);
-                 AuraOS.showNotification({ title: 'Notes App Error', message: 'Error with /Notes/ directory.', type: 'error' });
-                 throw error;
+            } catch (createError) {
+                console.error(`AuraNotesApp: Failed to create ${this.NOTES_DIR} directory:`, createError);
+                AuraOS.showNotification({ title: 'Notes App Error', message: `Failed to create ${this.NOTES_DIR} directory.`, type: 'error' });
+                throw createError; // Re-throw to halt initialization if critical
             }
         }
     }
@@ -335,27 +307,26 @@ class AuraNotesApp {
         }
         this.notesListDiv.innerHTML = '<p style="text-align:center; color:var(--subtle-text-color); padding-top:20px;">Carregando anotações...</p>';
         try {
-            await this._ensureNotesDirectory();
-            const files = await dbManager.listFiles('/Notes/'); // Renamed to files for clarity
-            this.notesCache = []; // Clear existing cache
+            // _ensureNotesDirectory is now called in _initialize
+            const filesInNotesDir = await dbManager.listFiles(this.NOTES_DIR);
+            this.notesCache = [];
 
-            for (const fileInfo of files) {
-                if (fileInfo.path.endsWith('.txt') && fileInfo.type === 'file') {
-                    // Extract title from path: "/Notes/My Note.txt" -> "My Note"
-                    const title = fileInfo.path.split('/').pop().replace('.txt', '');
-
+            for (const fileInfo of filesInNotesDir) {
+                // Ensure we are only processing files directly within NOTES_DIR and ending with .txt
+                if (fileInfo.path.startsWith(this.NOTES_DIR + '/') && fileInfo.path.endsWith('.txt') && fileInfo.type === 'file') {
+                    const title = fileInfo.name.replace('.txt', ''); // fileInfo.name should be just the filename
                     this.notesCache.push({
-                        id: fileInfo.path, // Use path as ID
+                        id: fileInfo.path,
                         path: fileInfo.path,
-                        content: null, // Content is not loaded yet
-                        lastModified: fileInfo.lastModified || Date.now(), // Ensure lastModified is present
-                        title: title // Store the extracted title
+                        content: null,
+                        lastModified: fileInfo.lastModified || Date.now(),
+                        title: title
                     });
                 }
             }
 
             this.notesCache.sort((a, b) => b.lastModified - a.lastModified);
-            this._renderFilteredNotes(this.notesCache); // Render with metadata-only notes
+            this._renderFilteredNotes(this.notesCache);
 
             let noteToSelect = null;
             if (this.currentNotePath && this.notesCache.find(n => n.path === this.currentNotePath)) {
@@ -363,16 +334,11 @@ class AuraNotesApp {
             } else if (this.notesCache.length > 0) {
                 noteToSelect = this.notesCache[0].path;
             }
-            if (noteToSelect) {
-                await this._loadNoteIntoEditor(noteToSelect);
-            } else {
-                if (this.editor) this.editor.setValue('Nenhuma anotação. Crie uma nova!');
-                this.currentNotePath = null;
-                if (this.notesListDiv) {
-                    const activeItem = this.notesListDiv.querySelector('.note-item.active');
-                    if (activeItem) activeItem.classList.remove('active');
-                }
-            }
+
+            // Call _loadNoteIntoEditor regardless of whether a note is selected or not
+            // to handle the empty state correctly.
+            await this._loadNoteIntoEditor(noteToSelect);
+
         } catch (error) {
             console.error('AuraNotesApp: Error loading notes list:', error);
             this.notesListDiv.innerHTML = '<p style="color:red;text-align:center;padding-top:20px;">Erro ao carregar anotações.</p>';

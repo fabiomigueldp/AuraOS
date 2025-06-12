@@ -234,17 +234,21 @@ class AuraTerminalApp {
                 const targetPathArg = args[0];
 
                 if (!targetPathArg || targetPathArg === '~') {
-                    const homeDirectory = '/Documents'; // Define a default home directory
+                    const homeDirectory = (typeof AuraOS !== 'undefined' && AuraOS.paths && AuraOS.paths.HOME) ? AuraOS.paths.HOME : '/Documents';
                     try {
                         const node = await dbManager.loadFile(homeDirectory);
                         if (node && node.type === 'folder') {
                             this.previousPath = this.currentPath;
                             this.currentPath = homeDirectory;
                         } else {
-                            this._termLog(`cd: home directory '${homeDirectory}' not found or not a folder.`, 'output-error');
+                            this._termLog(`cd: home directory '${homeDirectory}' not found or not a folder. Defaulting to root.`, 'output-error');
+                            this.previousPath = this.currentPath;
+                            this.currentPath = '/'; // Fallback to root if home is invalid
                         }
                     } catch (error) {
-                        this._termLog(`cd: error accessing home directory '${homeDirectory}': ${error.message}`, 'output-error');
+                        this._termLog(`cd: error accessing home directory '${homeDirectory}': ${error.message}. Defaulting to root.`, 'output-error');
+                        this.previousPath = this.currentPath;
+                        this.currentPath = '/'; // Fallback to root on error
                     }
                     return;
                 }
@@ -323,63 +327,6 @@ class AuraTerminalApp {
                 }
 
                 const targetPath = this.resolvePath(this.currentPath, pathArg);
-                const dirName = targetPath.split('/').pop();
-
-                // Helper function to create a single directory
-                const createSingleDirectory = async (dirPath, name) => {
-                    try {
-                        // Check if parent exists and is a folder
-                        const parentPath = this.resolvePath(dirPath, '..');
-                        if (parentPath !== '/') { // Root has no parent to check this way
-                            try {
-                                const parentNode = await dbManager.loadFile(parentPath);
-                                if (parentNode.type !== 'folder') {
-                                    this._termLog(`mkdir: cannot create directory '${dirPath}': Parent '${parentPath}' is not a directory.`, 'output-error');
-                                    return false;
-                                }
-                            } catch (e) {
-                                // Parent doesn't exist, and -p was not specified for this segment
-                                this._termLog(`mkdir: cannot create directory '${dirPath}': Parent directory '${parentPath}' does not exist.`, 'output-error');
-                                return false;
-                            }
-                        }
-
-                        // Check if the item already exists
-                        let existingNode;
-                        try {
-                            existingNode = await dbManager.loadFile(dirPath);
-                        } catch (e) {
-                            // Doesn't exist, which is good in this case
-                        }
-
-                        if (existingNode) {
-                            if (existingNode.type === 'folder') {
-                                // If -p is used, existing folder is fine. If not, it's an error.
-                                if (!createParents) {
-                                     this._termLog(`mkdir: cannot create directory '${name}': File or directory exists`, 'output-error');
-                                     return false;
-                                }
-                                return true; // Folder already exists, and that's okay with -p or if it's the final target.
-                            } else {
-                                this._termLog(`mkdir: cannot create directory '${dirPath}': A file with the same name already exists.`, 'output-error');
-                                return false;
-                            }
-                        }
-
-                        // Create the directory
-                        await dbManager.saveFile({ path: dirPath, type: 'folder', name: name, lastModified: Date.now(), content: {} }, {}); // content for folder is empty obj
-                        const parentDirToUpdate = this.resolvePath(dirPath, '..');
-                        if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                            window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                        } else {
-                            console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
-                        }
-                        return true;
-                    } catch (error) {
-                        this._termLog(`mkdir: failed to create directory '${dirPath}': ${error.message}`, 'output-error');
-                        return false;
-                    }
-                };
 
                 if (createParents) {
                     const parts = targetPath.split('/').filter(p => p);
@@ -387,32 +334,36 @@ class AuraTerminalApp {
                     for (let i = 0; i < parts.length; i++) {
                         const part = parts[i];
                         currentPathToCreate += '/' + part;
-                        // Normalize path in case of multiple slashes like /Documents///Music -> /Documents/Music
-                        currentPathToCreate = currentPathToCreate.replace(/\/\//g, '/');
+                        currentPathToCreate = currentPathToCreate.replace(/\/\//g, '/'); // Normalize
 
-
-                        let node;
                         try {
-                            node = await dbManager.loadFile(currentPathToCreate);
-                        } catch (e) {
-                            // Node doesn't exist, attempt to create it
-                        }
-
-                        if (node) {
-                            if (node.type !== 'folder') {
+                            // Check if it exists in-memory first (fast check)
+                            let node = getFileSystemNode(currentPathToCreate);
+                            if (node && node.type !== 'folder') {
                                 this._termLog(`mkdir: cannot create directory '${targetPath}': Part of path '${currentPathToCreate}' is not a directory.`, 'output-error');
-                                return; // Stop if a part of the path is a file
+                                return;
                             }
-                            // If it is a folder, continue to the next part
-                        } else {
-                            // Node doesn't exist, create it
-                            const success = await createSingleDirectory(currentPathToCreate, part);
-                            if (!success) return; // Stop if creation of an intermediate directory fails
+                            if (!node) { // If not in memory, try to create it (global createItem handles DB and memory)
+                                const success = await createItem(currentPathToCreate, 'folder');
+                                if (!success && i < parts.length -1) { // If an intermediate path failed and it wasn't the last part
+                                     this._termLog(`mkdir: failed to create intermediate directory '${currentPathToCreate}'.`, 'output-error');
+                                     return;
+                                } else if (!success && i === parts.length -1) { // If the final part failed
+                                    // Error already shown by createItem
+                                    return;
+                                }
+                            }
+                        } catch (error) { // Should be caught by createItem, but as a fallback
+                            this._termLog(`mkdir: error creating directory '${currentPathToCreate}': ${error.message}`, 'output-error');
+                            return;
                         }
                     }
                 } else {
                     // No -p, just create the target directory
-                    await createSingleDirectory(targetPath, dirName);
+                    const success = await createItem(targetPath, 'folder');
+                    if (!success) {
+                        // Error message is already handled by createItem
+                    }
                 }
             },
             touch: async (args) => {
@@ -421,60 +372,37 @@ class AuraTerminalApp {
                     return;
                 }
                 const filePath = this.resolvePath(this.currentPath, args[0]);
-                const fileName = filePath.split('/').pop();
-                const parentPath = this.resolvePath(filePath, '..');
 
                 try {
-                    // Check parent directory
-                    if (parentPath !== '/') { // Root doesn't need this check
-                        const parentNode = await dbManager.loadFile(parentPath);
-                        if (parentNode.type !== 'folder') {
-                            this._termLog(`touch: cannot create file '${filePath}': Parent '${parentPath}' is not a directory.`, 'output-error');
-                            return;
-                        }
-                    }
-
                     let existingNode;
                     try {
-                        existingNode = await dbManager.loadFile(filePath);
-                    } catch (e) {
-                        // File doesn't exist, which is fine, we'll create it.
-                    }
+                        existingNode = await dbManager.loadFile(filePath); // Check DB directly
+                    } catch (e) { /* Doesn't exist, will be created */ }
 
                     if (existingNode) {
-                        // File exists
                         if (existingNode.type === 'file') {
-                            // Update lastModified timestamp
+                            // Update lastModified timestamp in DB
                             await dbManager.saveFile({
-                                path: filePath,
-                                type: 'file',
-                                name: fileName,
-                                content: existingNode.content, // Preserve content
+                                ...existingNode, // Spread existing metadata
                                 lastModified: Date.now()
-                            }, existingNode.content);
-                            const parentDirToUpdate = this.resolvePath(filePath, '..');
-                            if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                                window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                            } else {
-                                console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                            }, existingNode.content || existingNode.data); // Pass existing content
+
+                            // Update in-memory FS
+                            const inMemoryFileNode = getFileSystemNode(filePath);
+                            if (inMemoryFileNode) {
+                                inMemoryFileNode.lastModified = Date.now();
+                            } else { // Should ideally be in memory if in DB
+                                await loadFileSystem(); // Resync
                             }
+                            updateDesktopAndFileExplorer(this.resolvePath(filePath, '..'));
                         } else {
                             this._termLog(`touch: cannot touch '${filePath}': It exists and is not a file (it's a ${existingNode.type}).`, 'output-error');
                         }
                     } else {
-                        // File does not exist, create it
-                        await dbManager.saveFile({
-                            path: filePath,
-                            type: 'file',
-                            name: fileName,
-                            content: '',
-                            lastModified: Date.now()
-                        }, '');
-                        const parentDirToUpdate = this.resolvePath(filePath, '..');
-                        if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                            window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                        } else {
-                            console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                        // File does not exist, create it using global createItem
+                        const success = await createItem(filePath, 'file', '');
+                        if (!success) {
+                            // Error message handled by createItem
                         }
                     }
                 } catch (error) {
@@ -482,99 +410,43 @@ class AuraTerminalApp {
                 }
             },
             rm: async (args) => {
-                const recursive = args.includes('-r') || args.includes('--recursive');
+                const recursive = args.includes('-r') || args.includes('--recursive'); // deleteItem handles recursion based on item type if not told otherwise
                 const targetNameArg = args.find(arg => !arg.startsWith('-'));
 
                 if (!targetNameArg) {
                     this._termLog('Usage: rm [-r] <file/directory>', 'output-error');
                     return;
                 }
-
                 const path = this.resolvePath(this.currentPath, targetNameArg);
+                const itemInMemory = getFileSystemNode(path);
 
-                let nodeToDelete;
-                try {
-                    nodeToDelete = await dbManager.loadFile(path);
-                } catch (error) {
-                    this._termLog(`rm: cannot remove '${targetNameArg}': No such file or directory. ${error.message}`, 'output-error');
-                    return;
+                if (!itemInMemory && path !== '/') { // Check memory first; if not found, it likely isn't in DB either or FS is out of sync
+                     try {
+                        await dbManager.loadFile(path); // Check DB to be sure
+                     } catch(e) {
+                        this._termLog(`rm: cannot remove '${targetNameArg}': No such file or directory.`, 'output-error');
+                        return;
+                     }
+                     // If it exists in DB but not memory, FS is out of sync. deleteItem will handle DB, then memory.
                 }
 
-                if (nodeToDelete.type === 'folder') {
-                    if (!recursive) {
-                        // Check if directory is empty
-                        try {
-                            const children = await dbManager.listFiles(path);
-                            if (children && children.length > 0) {
-                                this._termLog(`rm: cannot remove '${targetNameArg}': Directory is not empty. Use -r to remove recursively.`, 'output-error');
-                                return;
-                            }
-                        } catch (error) {
-                            this._termLog(`rm: error checking if directory '${targetNameArg}' is empty: ${error.message}`, 'output-error');
-                            return;
-                        }
-                    } else {
-                        // Recursive deletion
-                        const deleteRecursive = async (currentPath) => {
-                            let children;
-                            try {
-                                children = await dbManager.listFiles(currentPath);
-                            } catch (e) {
-                                // If listing fails for a subdirectory, maybe it was already deleted or an error occurred
-                                console.warn(`rm: Could not list files in ${currentPath} during recursive delete: ${e.message}`);
-                                children = []; // Assume empty or inaccessible
-                            }
 
-                            for (const child of children) {
-                                if (child.type === 'folder') {
-                                    await deleteRecursive(child.path); // child.path should be the full path
-                                } else {
-                                    try {
-                                        await dbManager.deleteFile(child.path);
-                                    const parentDirToUpdate = this.resolvePath(child.path, '..');
-                                    if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                                        window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                                    } else {
-                                        console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
-                                    }
-                                    } catch (error) {
-                                        this._termLog(`rm: failed to remove file '${child.path}' during recursive delete: ${error.message}`, 'output-error');
-                                        // Optionally, re-throw or collect errors to stop the whole process
-                                    }
-                                }
-                            }
-                            // After deleting all children, delete the folder itself
-                            try {
-                                await dbManager.deleteFile(currentPath);
-                                const parentDirToUpdate = this.resolvePath(currentPath, '..');
-                                if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                                    window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                                } else {
-                                    console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
-                                }
-                            } catch (error) {
-                                this._termLog(`rm: failed to remove folder '${currentPath}' during recursive delete: ${error.message}`, 'output-error');
-                                // Optionally, re-throw or collect errors
-                            }
-                        };
-                        await deleteRecursive(path);
-                        this._termLog(`Recursively removed '${targetNameArg}'`, 'output-text');
-                        return; // Exit after recursive delete logic
+                if (itemInMemory && itemInMemory.type === 'folder' && !recursive) {
+                    // Check if directory is empty (from in-memory perspective, which should be sync if all ops are good)
+                    if (Object.keys(itemInMemory.children || {}).length > 0) {
+                        this._termLog(`rm: cannot remove '${targetNameArg}': Directory is not empty. Use -r to remove recursively.`, 'output-error');
+                        return;
                     }
                 }
 
-                // Non-recursive deletion for files or empty folders
-                try {
-                    await dbManager.deleteFile(path);
-                    this._termLog(`Removed '${targetNameArg}'`, 'output-text');
-                    const parentDirToUpdate = this.resolvePath(path, '..');
-                    if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                        window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                    } else {
-                        console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
-                    }
-                } catch (error) {
-                    this._termLog(`rm: failed to remove '${targetNameArg}': ${error.message}`, 'output-error');
+                // Call global deleteItem. It handles DB first, then memory.
+                // It also handles recursive deletion for folders internally based on DB state.
+                const success = await deleteItem(path);
+                if (!success && path !== '/') { // deleteItem shows its own errors.
+                    // If deletion failed and it wasn't root, log generic failure.
+                    // this._termLog(`rm: failed to remove '${targetNameArg}'.`, 'output-error');
+                } else if (success){
+                     this._termLog(`Removed '${targetNameArg}'`, 'output-text');
                 }
             },
             neofetch: (args) => {
@@ -776,147 +648,35 @@ Ping statistics for ${hostname}:
                 });
             },
             cp: async (args) => {
-                const recursive = args.includes('-r') || args.includes('-R');
-                const paths = args.filter(arg => !arg.startsWith('-'));
+                // The global copyItem function infers recursion if source is a folder.
+                // The -r flag is not strictly needed for the global function but can be kept for user familiarity.
+                const paths = args.filter(arg => !arg.startsWith('-r') && !arg.startsWith('-R'));
 
                 if (paths.length !== 2) {
-                    this._termLog('Usage: cp [-r | -R] <source> <destination>', 'output-error');
+                    this._termLog('Usage: cp [-r] <source_path> <destination_path_or_file>', 'output-error');
                     return;
                 }
-
                 const sourcePath = this.resolvePath(this.currentPath, paths[0]);
                 const destPath = this.resolvePath(this.currentPath, paths[1]);
 
-                const getFileName = (path) => path.substring(path.lastIndexOf('/') + 1);
-
-
-                const copyItemRecursive = async (src, dest) => {
-                    let sourceNode;
-                    try {
-                        sourceNode = await dbManager.loadFile(src);
-                    } catch (error) {
-                        this._termLog(`cp: cannot stat '${src}': No such file or directory`, 'output-error');
-                        throw error; // Propagate error to stop further processing if a source is missing
-                    }
-
-                    if (sourceNode.type === 'folder') {
-                        if (!recursive) {
-                            this._termLog(`cp: -r not specified; omitting directory '${src}'`, 'output-error');
-                            return; // Do not throw, just skip this directory
-                        }
-
-                        // Create destination directory
-                        try {
-                            // Check if dest itself exists and is a file
-                            let destNodeCheck;
-                            try { destNodeCheck = await dbManager.loadFile(dest); } catch(e) {/*ok*/}
-                            if(destNodeCheck && destNodeCheck.type === 'file'){
-                                this._termLog(`cp: cannot overwrite non-directory '${dest}' with directory '${src}'`, 'output-error');
-                                throw new Error("Destination is a file");
-                            }
-                            // Ensure parent of dest exists if dest is a new subdir
-                            const destParentPath = this.resolvePath(dest, '..');
-                            if (destParentPath !== '/' && destParentPath !== dest) {
-                                try {
-                                    const destParentNode = await dbManager.loadFile(destParentPath);
-                                    if (destParentNode.type !== 'folder') {
-                                        this._termLog(`cp: cannot create directory '${dest}': Parent '${destParentPath}' is not a directory.`, 'output-error');
-                                        throw new Error("Destination parent not a folder");
-                                    }
-                                } catch (e) {
-                                    this._termLog(`cp: cannot create directory '${dest}': Parent directory '${destParentPath}' does not exist.`, 'output-error');
-                                    throw new Error("Destination parent does not exist");
-                                }
-                            }
-
-
-                            await dbManager.saveFile({ path: dest, type: 'folder', name: getFileName(dest), lastModified: Date.now(), content: {} }, {});
-                            const parentDirToUpdate = this.resolvePath(dest, '..');
-                            if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                                window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                            } else {
-                                console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
-                            }
-                        } catch (error) {
-                            this._termLog(`cp: failed to create directory '${dest}': ${error.message}`, 'output-error');
-                            throw error; // Propagate
-                        }
-
-                        let items;
-                        try {
-                            items = await dbManager.listFiles(src);
-                        } catch (error) {
-                            this._termLog(`cp: cannot list items in '${src}': ${error.message}`, 'output-error');
-                            throw error; // Propagate
-                        }
-
-                        for (const item of items) {
-                            // item.path is full path of source item, item.name is just the name
-                            await copyItemRecursive(item.path, this.resolvePath(dest, item.name));
-                        }
-                    } else { // It's a file
-                        let destNodeForFile;
-                        try {
-                            destNodeForFile = await dbManager.loadFile(dest);
-                        } catch (e) {
-                            // Destination does not exist, which is fine for file copy to a new name.
-                            // Or, it could be that `dest` is a directory.
-                        }
-
-                        let finalDestPath = dest;
-                        if (destNodeForFile && destNodeForFile.type === 'folder') {
-                            // If dest is an existing directory, copy source file *into* it
-                            finalDestPath = this.resolvePath(dest, getFileName(src));
-                        }
-
-                        // Ensure parent of finalDestPath exists if it's a new file in a non-root directory
-                         const finalDestParentPath = this.resolvePath(finalDestPath, '..');
-                         if (finalDestParentPath !== '/' && finalDestParentPath !== finalDestPath) {
-                             try {
-                                 const finalDestParentNode = await dbManager.loadFile(finalDestParentPath);
-                                 if (finalDestParentNode.type !== 'folder') {
-                                     this._termLog(`cp: cannot create file '${finalDestPath}': Parent '${finalDestParentPath}' is not a directory.`, 'output-error');
-                                     throw new Error("Destination parent for file not a folder");
-                                 }
-                             } catch (e) {
-                                 this._termLog(`cp: cannot create file '${finalDestPath}': Parent directory '${finalDestParentPath}' does not exist.`, 'output-error');
-                                 throw new Error("Destination parent for file does not exist");
-                             }
-                         }
-
-
-                        try {
-                            await dbManager.saveFile({
-                                path: finalDestPath,
-                                type: 'file',
-                                name: getFileName(finalDestPath),
-                                content: sourceNode.content || sourceNode.data || '',
-                                lastModified: Date.now()
-                            }, sourceNode.content || sourceNode.data || '');
-                            const parentDirToUpdate = this.resolvePath(finalDestPath, '..');
-                            if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
-                                window.AuraOS.updateFileSystemUI(parentDirToUpdate);
-                            } else {
-                                console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
-                            }
-                        } catch (error) {
-                            this._termLog(`cp: failed to copy file '${src}' to '${finalDestPath}': ${error.message}`, 'output-error');
-                            throw error; // Propagate
-                        }
-                    }
-                };
+                if (typeof copyItem !== 'function') {
+                    this._termLog('cp: Global copyItem function is not available.', 'output-error');
+                    return;
+                }
 
                 try {
-                    await copyItemRecursive(sourcePath, destPath);
+                    const success = await copyItem(sourcePath, destPath);
+                    if (success) {
+                        this._termLog(`'${paths[0]}' copied to '${paths[1]}'`, 'output-text');
+                    }
+                    // Errors are handled by the global copyItem and should show notifications.
+                    // The terminal might log additional context if needed, but primary error display is by copyItem.
                 } catch (error) {
-                    // Error messages are already logged by copyItemRecursive or initial checks
-                    // console.error("cp operation failed:", error); // Optional additional logging
-                    throw error; // Re-throw the error so mv can catch it
+                     this._termLog(`cp: operation failed: ${error.message || 'Unknown error'}`, 'output-error');
                 }
             },
             mv: async (args) => {
-                // mv command will use the same recursive copy logic and then remove source
-                const paths = args.filter(arg => !arg.startsWith('-')); // mv doesn't typically use -r, recursion is default for dirs
+                const paths = args.filter(arg => !arg.startsWith('-'));
 
                 if (paths.length !== 2) {
                     this._termLog('Usage: mv <source> <destination>', 'output-error');
@@ -924,76 +684,41 @@ Ping statistics for ${hostname}:
                 }
 
                 const sourcePath = this.resolvePath(this.currentPath, paths[0]);
-                const destPath = this.resolvePath(this.currentPath, paths[1]);
+                // The second argument to renameItem should be the new name if in the same directory,
+                // or the full new path if moving to a different directory or renaming to a different path.
+                // The global renameItem is designed to handle this: it takes (oldPath, newNameOrFullPath)
+                // If newNameOrFullPath is a simple name, it assumes rename in same parent.
+                // If newNameOrFullPath is a path, it attempts to move/rename to that path.
+                const newNameOrPath = paths[1];
 
-                if (sourcePath === destPath) {
-                    this._termLog('mv: source and destination are the same.', 'output-error');
-                    return;
+                if (sourcePath === this.resolvePath(this.currentPath, newNameOrPath)) {
+                     this._termLog('mv: source and destination are the same.', 'output-error');
+                     return;
                 }
 
                 // Prevent moving a directory into itself or a subdirectory of itself.
-                if (destPath.startsWith(sourcePath + '/')) {
-                    this._termLog(`mv: cannot move '${sourcePath}' to a subdirectory of itself, '${destPath}'`, 'output-error');
+                // The global renameItem should also have similar checks, but good to have here too.
+                const resolvedDestPath = this.resolvePath(this.currentPath, newNameOrPath);
+                if (resolvedDestPath.startsWith(sourcePath + '/')) {
+                    this._termLog(`mv: cannot move '${sourcePath}' to a subdirectory of itself, '${resolvedDestPath}'`, 'output-error');
                     return;
                 }
 
-                let sourceNodeInitial;
-                try {
-                    sourceNodeInitial = await dbManager.loadFile(sourcePath);
-                } catch (error) {
-                    this._termLog(`mv: cannot stat '${sourcePath}': No such file or directory`, 'output-error');
+                if (typeof renameItem !== 'function') {
+                    this._termLog('mv: Global renameItem function is not available.', 'output-error');
                     return;
                 }
 
-                const isRecursiveMove = sourceNodeInitial.type === 'folder';
-
                 try {
-                    // 1. Perform the copy operation
-                    // Re-using the cp logic by calling it directly.
-                    // Need to pass appropriate args for cp.
-                    // cp expects args like ['-r', source, dest] or [source, dest]
-                    const cpArgs = [];
-                    if (isRecursiveMove) cpArgs.push('-r'); // cp needs -r for directories
-                    cpArgs.push(sourcePath); // cp needs absolute paths here
-                    cpArgs.push(destPath);
-
-                    // Directly call the cp command's function
-                    await this.commands.cp.call(this, cpArgs); // Pass `this` context
-
-                    // Check if any error was logged by cp by inspecting the last terminal output
-                    // This is a bit of a hack. Ideally, cp would throw an error or return a status.
-                    const lastLogEntry = this.output.lastChild;
-                    let cpFailed = false;
-                    if (lastLogEntry && lastLogEntry.classList.contains('output-error')) {
-                         // Heuristic: if last log was an error, assume cp failed.
-                         // This is not perfectly reliable as other async operations could log.
-                         // A better way would be for cp to throw an exception on failure.
-                         // For now, we assume copyItemRecursive in cp throws and is caught by cp's try/catch.
-                         // If cp's main try/catch re-throws, this outer mv try/catch will catch it.
-                         // The current cp implementation logs errors but doesn't always re-throw.
-                         // Let's assume for now if an error occurred, it was logged and we should not proceed with rm.
-                         // A more robust solution is needed here. For this iteration, if no specific error thrown from cp,
-                         // we check if source still exists. If it does, we proceed with rm.
-                         // This means if partial copy happened, source is still deleted.
+                    // Pass the user's intended new name or path directly.
+                    // The global renameItem will resolve it and handle parent path determination.
+                    const success = await renameItem(sourcePath, newNameOrPath);
+                    if (success) {
+                        this._termLog(`Moved '${paths[0]}' to '${paths[1]}'`, 'output-text');
                     }
-
-
-                    // 2. Perform the remove operation on the source
-                    // rm command expects args like ['-r', path] or [path]
-                    const rmArgs = [];
-                    if (isRecursiveMove) { // rm also needs -r for directories
-                        rmArgs.push('-r');
-                    }
-                    rmArgs.push(sourcePath); // rm needs an absolute path
-
-                    await this.commands.rm.call(this, rmArgs); // Pass `this` context
-
-                    this._termLog(`Moved '${sourcePath}' to '${destPath}'`, 'output-text');
-                    // UI updates are logged by cp and rm individually
+                    // Errors are handled by global renameItem and should show notifications.
                 } catch (error) {
-                    this._termLog(`mv: operation failed: ${error.message}`, 'output-error');
-                    // If copy succeeded but rm failed, user has a copy.
-                    // If copy failed, this catch handles it.
+                     this._termLog(`mv: operation failed: ${error.message || 'Unknown error'}`, 'output-error');
                 }
             }
         };
