@@ -3265,6 +3265,19 @@
                     }
                 }
                 
+                // Check if the song being removed is currently playing
+                const activePlaylist = isShuffleOn ? shuffledPlaylist : originalPlaylist;
+                if (currentSongIndex !== -1 && activePlaylist[currentSongIndex] && 
+                    activePlaylist[currentSongIndex].audioUrl === song.audioUrl) {
+                    // Stop current playback
+                    audio.pause();
+                    audio.currentTime = 0;
+                    currentSongIndex = -1;
+                    updatePlayPauseButton();
+                    updateProgressBar();
+                    updateCurrentSongDisplay();
+                }
+                
                 // Refresh library
                 await refreshMusicLibrary();
                 
@@ -5094,8 +5107,11 @@
                                             `🎵 Título: ${song.title}`,
                                             `🎤 Artista: ${song.artist}`,
                                             song.album ? `💿 Álbum: ${song.album}` : null,
+                                            song.year ? `📅 Ano: ${song.year}` : null,
+                                            song.genre ? `🎭 Gênero: ${song.genre}` : null,
                                             song.filename ? `📁 Arquivo: ${song.filename}` : null,
                                             song.fileSize ? `📏 Tamanho: ${formatFileSize(song.fileSize)}` : null,
+                                            song.duration ? `⏱️ Duração: ${Math.floor(song.duration / 60)}:${String(Math.floor(song.duration % 60)).padStart(2, '0')}` : null,
                                             song.isLocal ? '📍 Música local' : '🌐 Música online'
                                         ].filter(Boolean).join('\n');
                                         
@@ -5215,6 +5231,47 @@
                     const volControls = body.querySelector('.volume-controls');
                     volControls.addEventListener('mouseenter', () => { clearTimeout(hideVolumeSliderTimeout); volumeSliderContainer.style.opacity = '1'; volumeSliderContainer.style.visibility = 'visible'; volumeSliderContainer.style.bottom = 'calc(100% + 15px)'; });
                     volControls.addEventListener('mouseleave', () => { hideVolumeSliderTimeout = setTimeout(() => { volumeSliderContainer.style.opacity = '0'; volumeSliderContainer.style.visibility = 'hidden'; volumeSliderContainer.style.bottom = 'calc(100% + 10px)'; }, 300); });
+                    
+                    // Keyboard shortcuts for music player
+                    windowEl.addEventListener('keydown', (e) => {
+                        // Don't interfere when typing in search box
+                        if (e.target === searchInput) return;
+                        
+                        switch(e.key) {
+                            case ' ': // Spacebar to play/pause
+                                e.preventDefault();
+                                playPauseBtn.click();
+                                break;
+                            case 'ArrowRight': // Right arrow for next song
+                                e.preventDefault();
+                                nextBtn.click();
+                                break;
+                            case 'ArrowLeft': // Left arrow for previous song
+                                e.preventDefault();
+                                prevBtn.click();
+                                break;
+                            case 'ArrowUp': // Up arrow to increase volume
+                                e.preventDefault();
+                                volumeSlider.value = Math.min(1, parseFloat(volumeSlider.value) + 0.1);
+                                audio.volume = volumeSlider.value;
+                                break;
+                            case 'ArrowDown': // Down arrow to decrease volume
+                                e.preventDefault();
+                                volumeSlider.value = Math.max(0, parseFloat(volumeSlider.value) - 0.1);
+                                audio.volume = volumeSlider.value;
+                                break;
+                            case 's': // S key to toggle shuffle
+                                if (e.ctrlKey || e.metaKey) return; // Don't interfere with save shortcuts
+                                e.preventDefault();
+                                shuffleBtn.click();
+                                break;
+                            case 'r': // R key to toggle repeat
+                                if (e.ctrlKey || e.metaKey) return; // Don't interfere with refresh shortcuts
+                                e.preventDefault();
+                                repeatBtn.click();
+                                break;
+                        }
+                    });
                     
                     windowEl.addEventListener('aura:close', () => { audio.pause(); document.title = originalDocTitle; });
                     break;
