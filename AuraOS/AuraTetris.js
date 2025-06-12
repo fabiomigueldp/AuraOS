@@ -355,10 +355,18 @@ function AuraTetrisGame(canvas) {
         if (gameRunning) {
             recalculateDimensions();
             draw(); // Redraw with new dimensions
+            
+            // Show brief resize notification
+            if (typeof AuraGameSDK !== 'undefined' && AuraGameSDK.ui) {
+                AuraGameSDK.ui.showNotification('Display Updated', `Canvas resized to ${canvas.width}x${canvas.height}`, 'info', 1000);
+            }
         }
     };
     function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);drawGameBoard();if(gameRunning)drawGhostPiece();if(currentPiece&&gameRunning)drawPiece(currentPiece,currentPiece.x,currentPiece.y);drawUI();}
     draw();
+
+    // Initialize with optimal layout
+    console.log(`AuraTetris initialized: Canvas ${canvas.width}x${canvas.height}, Block size: ${finalBlockSize}px`);
 
     let lastTime = 0;
 

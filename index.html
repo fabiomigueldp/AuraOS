@@ -2597,6 +2597,16 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.5); /* Subtle shadow for depth */
         }
 
+        #aura-tetrisCanvas { /* ID of the canvas for Aura Tetris */
+            background-color: #111;
+            border-radius: var(--ui-corner-radius-small, 8px);
+            display: block;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            image-rendering: pixelated; /* Sharp pixel rendering for retro look */
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
         .exit-game-button {
             margin-top: 15px;
             padding: 8px 18px; /* Slightly more padding */
@@ -7228,7 +7238,6 @@
                             </div>
                             <div class="game-content-area" style="flex-grow: 1; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <h2 class="initial-message">Select a game</h2>
-                                {/* Game Detail View or Game Canvas View will be rendered here */}
                             </div>
                         </div>
                     `;
