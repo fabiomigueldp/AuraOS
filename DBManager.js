@@ -1,7 +1,7 @@
 class DBManager {
     constructor() {
         this.dbName = 'AURA_OS_DB';
-        this.dbVersion = 2;
+        this.dbVersion = 3;
         this.db = null;
         this.initializationPromise = null;
     }
@@ -43,6 +43,12 @@ class DBManager {
                     const scoreStore = this.db.createObjectStore('high_scores', { autoIncrement: true });
                     scoreStore.createIndex('by_game', 'gameId', { unique: false });
                     console.log('Created "high_scores" object store and "by_game" index.');
+                }
+
+                // New player_progress store
+                if (!this.db.objectStoreNames.contains('player_progress')) {
+                    this.db.createObjectStore('player_progress', { keyPath: 'gameId_playerId' });
+                    console.log('Created "player_progress" object store.');
                 }
                 // Add any other future stores here in subsequent versions
 

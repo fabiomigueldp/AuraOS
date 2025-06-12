@@ -63,6 +63,102 @@ const AuraGameSDK = {
         }
     },
 
+    progression: {
+        /**
+         * Unlocks a component for the current player.
+         * @param {string} componentId - The ID of the component to unlock.
+         * @returns {Promise<void>}
+         */
+        async unlockComponent(componentId) {
+            try {
+                await AuraGameSDK._ensureReady();
+                if (!AuraGameSDK._gameId) {
+                    console.error('AuraGameSDK.progression.unlockComponent: SDK not initialized with a gameId.');
+                    return Promise.reject('SDK not initialized');
+                }
+                if (!componentId || typeof componentId !== 'string') {
+                    console.error('AuraGameSDK.progression.unlockComponent: componentId must be a non-empty string.');
+                    return Promise.reject('Invalid componentId');
+                }
+
+                const playerId = 'AuraUser'; // Placeholder for player identification
+                const key = `${AuraGameSDK._gameId}_${playerId}`;
+
+                let progressionData = await AuraGameSDK._dbManager.getObject('player_progress', key);
+
+                if (!progressionData) {
+                    progressionData = { gameId_playerId: key, unlockedItems: [] };
+                }
+
+                if (!progressionData.unlockedItems) { // Ensure unlockedItems array exists
+                    progressionData.unlockedItems = [];
+                }
+
+                if (!progressionData.unlockedItems.includes(componentId)) {
+                    progressionData.unlockedItems.push(componentId);
+                    await AuraGameSDK._dbManager.setObject('player_progress', progressionData);
+                    console.log(`AuraGameSDK.progression: Component '${componentId}' unlocked for game '${AuraGameSDK._gameId}'.`);
+                } else {
+                    console.log(`AuraGameSDK.progression: Component '${componentId}' already unlocked for game '${AuraGameSDK._gameId}'.`);
+                }
+            } catch (error) {
+                console.error(`AuraGameSDK.progression.unlockComponent: Error unlocking component '${componentId}' for game '${AuraGameSDK._gameId}':`, error);
+                return Promise.reject(error);
+            }
+        },
+
+        /**
+         * Retrieves the list of unlocked components for the current player.
+         * @returns {Promise<string[]>} An array of unlocked component IDs.
+         */
+        async getUnlockedComponents() {
+            try {
+                await AuraGameSDK._ensureReady();
+                if (!AuraGameSDK._gameId) {
+                    console.error('AuraGameSDK.progression.getUnlockedComponents: SDK not initialized with a gameId.');
+                    return Promise.reject('SDK not initialized');
+                }
+
+                const playerId = 'AuraUser'; // Placeholder for player identification
+                const key = `${AuraGameSDK._gameId}_${playerId}`;
+
+                const progressionData = await AuraGameSDK._dbManager.getObject('player_progress', key);
+
+                if (progressionData && progressionData.unlockedItems) {
+                    return progressionData.unlockedItems;
+                } else {
+                    // Default components if no progression data is found
+                    console.log(`AuraGameSDK.progression: No progression data found for game '${AuraGameSDK._gameId}'. Returning default components.`);
+                    return ['base_standard', 'weapon_blaster', 'mod_none'];
+                }
+            } catch (error) {
+                console.error(`AuraGameSDK.progression.getUnlockedComponents: Error fetching unlocked components for game '${AuraGameSDK._gameId}':`, error);
+                // Return default components on error to allow game to potentially continue
+                return ['base_standard', 'weapon_blaster', 'mod_none'];
+            }
+        },
+
+        /**
+         * Checks if a specific component is unlocked for the current player.
+         * @param {string} componentId - The ID of the component to check.
+         * @returns {Promise<boolean>} True if the component is unlocked, false otherwise.
+         */
+        async isComponentUnlocked(componentId) {
+            try {
+                await AuraGameSDK._ensureReady(); // _ensureReady itself handles SDK initialization checks
+                 if (!componentId || typeof componentId !== 'string') {
+                    console.error('AuraGameSDK.progression.isComponentUnlocked: componentId must be a non-empty string.');
+                    return false; // Or reject, depending on desired error handling for invalid input
+                }
+                const unlockedComponents = await this.getUnlockedComponents(); // `this` refers to AuraGameSDK.progression
+                return unlockedComponents.includes(componentId);
+            } catch (error) {
+                console.error(`AuraGameSDK.progression.isComponentUnlocked: Error checking if component '${componentId}' is unlocked:`, error);
+                return false; // Assume not unlocked on error
+            }
+        }
+    },
+
     storage: {
         /**
          * Saves arbitrary JSON-serializable data for the current game.
