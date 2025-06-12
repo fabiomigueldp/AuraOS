@@ -19,17 +19,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
-    <script defer src="DBManager.js"></script> <!-- DBManager.js linked -->
-    <script defer src="AuraGameSDK.js"></script>
-    <script defer src="AuraBreaker.js"></script> <!-- Add this line -->
-    <script defer src="AuraOS/AuraSnake.js"></script> <!-- DEV 4: ADD YOUR SCRIPT HERE -->
-    <script defer src="AuraOS/AuraPong.js"></script>
-    <script defer src="AuraOS/AuraTetris.js"></script>
-    <script defer src="AuraInvaders.js"></script>
-    <script defer src="AuraPaint.js"></script>
-    <script defer src="AuraFlow.js"></script>
-    <script defer src="AuraOS/notes.js"></script>
-    <script defer src="AuraOS/terminal.js"></script>
+
+    <script src="DBManager.js"></script>
+    <script src="AuraGameSDK.js"></script>
+    <script src="AuraBreaker.js"></script>
+    <script src="AuraOS/AuraSnake.js"></script>
+    <script src="AuraOS/AuraPong.js"></script>
+    <script src="AuraOS/AuraTetris.js"></script>
+    <script src="AuraInvaders.js"></script>
+    <script src="AuraPaint.js"></script>
+    <script src="AuraFlow.js"></script>
+    <script src="AuraOS/notes.js"></script>
+    <script src="AuraOS/terminal.js"></script>
+    <script src="AuraOS/Aura3DViewer.js"></script>
+
 
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
@@ -2715,6 +2718,12 @@
                         </svg>
                         <p>AuraFlow</p>
                     </div>
+                    <div class="desktop-icon" data-app-id="aura-3d-viewer" title="Aura 3D Viewer">
+                        <svg viewBox="0 0 24 24" fill="var(--icon-fill)">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <p>3D Viewer</p>
+                    </div>
                 </div>
                 
                 <!-- Divisor visual -->
@@ -3291,7 +3300,7 @@
             'terminal-app': { title: 'Terminal', width: 650, height: 400 },
             'task-manager': { title: 'Gerenciador de Tarefas', width: 500, height: 400 },
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
-            'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
+            'aura-3d-viewer': { title: 'Aura 3D Viewer', width: 700, height: 550, allowMultiple: true },
             'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
             'game-center': { title: 'Game Center', width: 800, height: 600 },
             'aura-paint': { title: 'AuraPaint', width: 700, height: 550 },
@@ -4301,7 +4310,7 @@
         '.txt': 'notes-app',
         '.log': 'notes-app', // Example: .log files also open with notes
         '.md': 'notes-app',  // Example: Markdown files
-        '.glb': 'model-viewer-app',
+        '.glb': 'aura-3d-viewer',
         // Add more associations as needed, e.g., for images
         '.jpg': 'image-viewer',
         '.jpeg': 'image-viewer',
@@ -7224,6 +7233,14 @@
                         clearInterval(taskManagerIntervalId);
                     });
                     break;
+                case 'aura-3d-viewer':
+                    if (typeof Aura3DViewerApp === 'function') {
+                        new Aura3DViewerApp(uniqueId, windowEl, data);
+                    } else {
+                        console.error('Aura3DViewerApp class not found. Ensure AuraOS/Aura3DViewer.js is loaded correctly.');
+                        body.innerHTML = '<p style="color:red; padding:10px;">Error: Aura 3D Viewer App module not loaded.</p>';
+                    }
+                    break;
                 case 'aura-paint': // Added case for AuraPaint
                     if (typeof AuraPaintApp === 'function') {
                         new AuraPaintApp(body, data);
@@ -7249,8 +7266,8 @@
 
                     const gameListDiv = body.querySelector('.game-list');
                     const gameContentArea = body.querySelector('.game-content-area');
-                    let currentGameInstance = null;
-                    let detailedGameId = null;
+                    window.currentGameInstance = null; // Ensure it's explicitly window.currentGameInstance if used globally
+                    let detailedGameId = null; // Keep track of which game's details are shown or for leaderboard context
 
                     // Clear placeholder
                     gameListDiv.innerHTML = '';
@@ -7485,39 +7502,72 @@
                                 const exitButton = gameContentArea.querySelector('.exit-game-button');
                                 if (exitButton) {
                                     exitButton.addEventListener('click', () => {
-                                        if (currentGameInstance && currentGameInstance.isRunning()) {
-                                            currentGameInstance.stop();
-                                        }
-                                        
-                                        // Call cleanup method if available
-                                        if (currentGameInstance && typeof currentGameInstance.cleanup === 'function') {
-                                            currentGameInstance.cleanup();
-                                        }
-                                        
-                                        // Clean up resize observer for Tetris
-                                        if (currentGameInstance && currentGameInstance._resizeObserver) {
-                                            currentGameInstance._resizeObserver.disconnect();
-                                            currentGameInstance._resizeObserver = null;
-                                        }
-                                        
-                                        currentGameInstance = null;
-                                        const gameToReDetail = games.find(g => g.id === gameData.id);
-                                        if (gameToReDetail) {
-                                            showGameDetails(gameToReDetail);
-                                            AuraGameSDK.leaderboard.getHighScores(5).then(scores => {
-                                                const lbList = document.getElementById('leaderboard-list');
-                                                if (lbList) {
-                                                    if (scores && scores.length > 0) {
-                                                        lbList.innerHTML = '<ul style="list-style:none; padding:0; text-align:left;">' + scores.map(s => `<li style="padding: 3px 0; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between;"><span style="font-weight:500;">${s.playerName}</span><span>${s.score}</span></li>`).join('') + '</ul>';
-                                                    } else {
-                                                        lbList.innerHTML = '<p style="text-align:center;"><em>No high scores yet. Be the first!</em></p>';
-                                                    }
+                                        if (window.currentGameInstance) { // Use window.currentGameInstance as per prompt, assuming it's the global ref
+                                            try {
+                                                // Stop the game
+                                                if (typeof window.currentGameInstance.stop === 'function') {
+                                                    window.currentGameInstance.stop();
+                                                    console.log('Game instance stopped via Game Center exit.');
+                                                } else {
+                                                    console.warn('Current game instance does not have a stop() method.');
                                                 }
-                                            }).catch(err => {
-                                                console.error("Failed to load high scores for detail view:", err);
-                                                const lbList = document.getElementById('leaderboard-list');
-                                                if (lbList) lbList.innerHTML = '<p style="text-align:center;"><em>Could not load high scores.</em></p>';
-                                            });
+
+                                                // Perform cleanup if the method exists
+                                                if (typeof window.currentGameInstance.cleanup === 'function') {
+                                                    window.currentGameInstance.cleanup();
+                                                    console.log('Game instance cleaned up via Game Center exit.');
+                                                }
+
+                                                // Clean up resize observer if it was specific to this game instance (e.g. Tetris)
+                                                // This assumes _resizeObserver is a property on the game instance itself
+                                                if (window.currentGameInstance._resizeObserver &&
+                                                    typeof window.currentGameInstance._resizeObserver.disconnect === 'function') {
+                                                    window.currentGameInstance._resizeObserver.disconnect();
+                                                    window.currentGameInstance._resizeObserver = null;
+                                                    console.log('Game instance resize observer disconnected.');
+                                                }
+
+                                            } catch (error) {
+                                                console.error('Error during game stop/cleanup via Game Center exit:', error);
+                                            } finally {
+                                                // Release the instance
+                                                window.currentGameInstance = null;
+                                                console.log('window.currentGameInstance set to null via Game Center exit.');
+                                            }
+                                        } else if (currentGameInstance) { // Fallback to local var if window.currentGameInstance was not used/found
+                                             try {
+                                                if (typeof currentGameInstance.stop === 'function') {
+                                                    currentGameInstance.stop();
+                                                    console.log('Local game instance stopped via Game Center exit.');
+                                                }
+                                                if (typeof currentGameInstance.cleanup === 'function') {
+                                                    currentGameInstance.cleanup();
+                                                    console.log('Local game instance cleaned up via Game Center exit.');
+                                                }
+                                                if (currentGameInstance._resizeObserver && typeof currentGameInstance._resizeObserver.disconnect === 'function') {
+                                                    currentGameInstance._resizeObserver.disconnect();
+                                                    currentGameInstance._resizeObserver = null;
+                                                }
+                                            } catch (error) {
+                                                console.error('Error during local game stop/cleanup via Game Center exit:', error);
+                                            } finally {
+                                                currentGameInstance = null; // Nullify the local variable too
+                                                console.log('Local currentGameInstance set to null via Game Center exit.');
+                                            }
+                                        } else {
+                                            console.log('No current game instance to exit in Game Center.');
+                                        }
+
+                                        // Existing logic to re-render Game Center detail view
+                                        const gameToReDetail = games.find(g => g.id === gameData.id); // gameData must be in scope
+                                        if (gameToReDetail) {
+                                            showGameDetails(gameToReDetail); // This will repopulate leaderboard etc.
+                                        } else if (detailedGameId) { // Fallback if gameData is not in scope
+                                            const fallbackGame = games.find(g => g.id === detailedGameId);
+                                            if (fallbackGame) showGameDetails(fallbackGame);
+                                            else gameContentArea.innerHTML = '<h2 class="initial-message">Select a game</h2>'; // Default
+                                        } else {
+                                            gameContentArea.innerHTML = '<h2 class="initial-message">Select a game</h2>'; // Default
                                         }
                                     });
                                 }
@@ -7580,17 +7630,176 @@
 
                     windowEl.addEventListener('aura:close', () => {
                         console.log('Game Center window closing. Stopping game if running.');
-                        if (currentGameInstance && currentGameInstance.isRunning()) {
-                            currentGameInstance.stop();
+                        if (window.currentGameInstance && typeof window.currentGameInstance.isRunning === 'function' && window.currentGameInstance.isRunning()) {
+                            window.currentGameInstance.stop();
                         }
                         
                         // Call cleanup method if available
-                        if (currentGameInstance && typeof currentGameInstance.cleanup === 'function') {
-                            currentGameInstance.cleanup();
+                        if (window.currentGameInstance && typeof window.currentGameInstance.cleanup === 'function') {
+                            window.currentGameInstance.cleanup();
                         }
-                        
-                        currentGameInstance = null;
+                         // Clean up resize observer if it was specific to this game instance (e.g. Tetris)
+                        if (window.currentGameInstance && window.currentGameInstance._resizeObserver &&
+                            typeof window.currentGameInstance._resizeObserver.disconnect === 'function') {
+                            window.currentGameInstance._resizeObserver.disconnect();
+                            window.currentGameInstance._resizeObserver = null;
+                        }
+                        window.currentGameInstance = null;
                     });
+
+                    // --- Leaderboard View Functionality ---
+                    async function displayScoresForGame(gameId) {
+                        const scoresDisplayDiv = body.querySelector('#leaderboard-scores-display');
+                        if (!scoresDisplayDiv) {
+                            console.error("Score display div not found for leaderboards.");
+                            return;
+                        }
+                        scoresDisplayDiv.innerHTML = '<p><em>Loading scores...</em></p>';
+
+                        try {
+                            const scores = await AuraGameSDK.leaderboard.getHighScores(gameId, 50);
+                            if (scores && scores.length > 0) {
+                                let scoresHTML = '<ol style="padding-left: 20px; list-style: decimal;">';
+                                scores.forEach((scoreEntry, index) => {
+                                    const dateStr = new Date(scoreEntry.timestamp).toLocaleDateString();
+                                    scoresHTML += `<li style="margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                                        <span>${index + 1}. <strong>${scoreEntry.playerName}</strong> - ${scoreEntry.score}</span>
+                                        <small style="color: var(--subtle-text-color); font-size: 0.8em;">${dateStr}</small>
+                                    </li>`;
+                                });
+                                scoresHTML += '</ol>';
+                                scoresDisplayDiv.innerHTML = scoresHTML;
+                            } else {
+                                scoresDisplayDiv.innerHTML = '<p style="text-align:center;"><em>No scores available for this game yet.</em></p>';
+                            }
+                        } catch (error) {
+                            console.error(`Error fetching high scores for ${gameId}:`, error);
+                            scoresDisplayDiv.innerHTML = `<p style="color: var(--red-accent); text-align:center;">Error loading scores. ${error.message || ''}</p>`;
+                        }
+                    }
+
+                    function showLeaderboardsView() {
+                        // Clear previous game instance if any
+                        if (window.currentGameInstance) {
+                             if (typeof window.currentGameInstance.stop === 'function') window.currentGameInstance.stop();
+                             if (typeof window.currentGameInstance.cleanup === 'function') window.currentGameInstance.cleanup();
+                             if (window.currentGameInstance._resizeObserver) { // Specific for Tetris
+                                window.currentGameInstance._resizeObserver.disconnect();
+                                window.currentGameInstance._resizeObserver = null;
+                             }
+                             window.currentGameInstance = null;
+                        }
+                        // Highlight "Leaderboards" tab
+                        gameListDiv.querySelectorAll('.game-item.active, .leaderboards-tab.active').forEach(item => item.classList.remove('active'));
+                        const lbTab = gameListDiv.querySelector('.leaderboards-tab');
+                        if (lbTab) lbTab.classList.add('active');
+                        
+                        detailedGameId = null; // Clear detailed game view context
+
+                        gameContentArea.innerHTML = `
+                            <div style="padding: 10px; width: 100%; box-sizing: border-box;">
+                                <h2 style="margin-top:0; margin-bottom: 15px; text-align:center;">Leaderboards</h2>
+                                <div style="margin-bottom: 20px; display: flex; justify-content: center;">
+                                    <select id="leaderboard-game-selector" style="padding: 8px 12px; border-radius: var(--ui-corner-radius-small); background: var(--glass-background); color: var(--text-color); border: 1px solid var(--glass-border); font-size: 0.9rem;">
+                                        <option value="">-- Select a Game --</option>
+                                        ${games.map(g => `<option value="${g.id}">${g.title}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div id="leaderboard-scores-display" style="min-height: 200px; padding:10px; border: 1px solid var(--glass-border); border-radius: var(--ui-corner-radius-small); background: rgba(0,0,0,0.1);">
+                                    <p style="text-align:center; color: var(--subtle-text-color);">Select a game to view its leaderboard.</p>
+                                </div>
+                            </div>
+                        `;
+                        const selector = gameContentArea.querySelector('#leaderboard-game-selector');
+                        selector.addEventListener('change', (event) => {
+                            if (event.target.value) {
+                                displayScoresForGame(event.target.value);
+                            } else {
+                                const scoresDisplayDiv = body.querySelector('#leaderboard-scores-display');
+                                if(scoresDisplayDiv) scoresDisplayDiv.innerHTML = '<p style="text-align:center; color: var(--subtle-text-color);">Select a game to view its leaderboard.</p>';
+                            }
+                        });
+                    }
+
+                    // Add "Leaderboards" to sidebar
+                    const leaderboardsTab = document.createElement('div');
+                    leaderboardsTab.className = 'game-item leaderboards-tab'; // Use game-item for consistent styling
+                    leaderboardsTab.innerHTML = `
+                        <div class="game-item-icon">
+                            <svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm-1 4l6 6v10c0 1.1-.9 2-2 2H7.99C6.89 23 6 22.1 6 21l.01-14c0-1.1.89-2 1.99-2h7zm-1 7h5.5L11 4.5V9c0 .55.45 1 1 1z"/>
+                            </svg>
+                        </div>
+                        <span class="game-item-title">Leaderboards</span>
+                    `;
+                    leaderboardsTab.addEventListener('click', () => {
+                        showLeaderboardsView();
+                    });
+                    gameListDiv.appendChild(leaderboardsTab);
+
+                    // --- Settings View Functionality ---
+                    function showSettingsView() {
+                        if (window.currentGameInstance) {
+                            if (typeof window.currentGameInstance.stop === 'function') window.currentGameInstance.stop();
+                            if (typeof window.currentGameInstance.cleanup === 'function') window.currentGameInstance.cleanup();
+                            if (window.currentGameInstance._resizeObserver) { // Specific for Tetris
+                                window.currentGameInstance._resizeObserver.disconnect();
+                                window.currentGameInstance._resizeObserver = null;
+                            }
+                            window.currentGameInstance = null;
+                        }
+                        // Highlight "Settings" tab
+                        gameListDiv.querySelectorAll('.game-item.active, .leaderboards-tab.active, .settings-tab.active').forEach(item => item.classList.remove('active'));
+                        const settingsTabElem = gameListDiv.querySelector('.settings-tab');
+                        if (settingsTabElem) settingsTabElem.classList.add('active');
+
+                        detailedGameId = null;
+
+                        gameContentArea.innerHTML = `
+                            <div style="padding: 20px; width: 100%; box-sizing: border-box; text-align: center;">
+                                <h2 style="margin-top:0; margin-bottom: 30px;">Settings</h2>
+                                <div class="setting-row" style="max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                    <label for="global-volume-slider" style="font-size: 1rem; color: var(--text-color);">Global Volume</label>
+                                    <div style="display: flex; align-items: center; width: 100%; gap: 15px;">
+                                        <input type="range" id="global-volume-slider" min="0" max="1" step="0.01" style="flex-grow: 1; cursor: pointer;">
+                                        <span id="volume-percentage" style="font-size: 0.9rem; color: var(--subtle-text-color); min-width: 45px; text-align: right;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        const volumeSlider = gameContentArea.querySelector('#global-volume-slider');
+                        const volumePercentageDisplay = gameContentArea.querySelector('#volume-percentage');
+
+                        const currentVolume = AuraGameSDK.audio.getVolume();
+                        volumeSlider.value = currentVolume;
+                        volumePercentageDisplay.textContent = `${Math.round(currentVolume * 100)}%`;
+
+                        volumeSlider.addEventListener('input', (event) => {
+                            const newVolume = parseFloat(event.target.value);
+                            AuraGameSDK.audio.setVolume(newVolume);
+                            volumePercentageDisplay.textContent = `${Math.round(newVolume * 100)}%`;
+                            // Note: Persistence of this setting is not handled here as per subtask focus.
+                            // It would require AuraGameSDK.storage.saveSetting or similar.
+                        });
+                    }
+
+                    // Add "Settings" to sidebar
+                    const settingsTab = document.createElement('div');
+                    settingsTab.className = 'game-item settings-tab'; // Use game-item for consistent styling
+                    settingsTab.innerHTML = `
+                        <div class="game-item-icon">
+                            <svg viewBox="0 0 24 24" width="32" height="32" fill="var(--icon-fill)">
+                                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.69-1.62-0.92L14.4,2.23C14.34,2.01,14.14,1.86,13.9,1.86 h-3.8c-0.24,0-0.44,0.15-0.5,0.37L9.16,4.61C8.57,4.85,8.04,5.15,7.55,5.53L5.16,4.57c-0.22-0.08-0.47,0-0.59,0.22L2.65,8.11 c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.74,10.7,4.73,11.02,4.73,11.33c0,0.31,0.01,0.63,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.69,1.62,0.92L9.6,21.77 c0.06,0.22,0.26,0.37,0.5,0.37h3.8c0.24,0,0.44-0.15,0.5-0.37l0.43-2.34c0.59-0.23,1.12-0.54,1.62-0.92l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.11-0.2,0.06-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                            </svg>
+                        </div>
+                        <span class="game-item-title">Settings</span>
+                    `;
+                    settingsTab.addEventListener('click', () => {
+                        showSettingsView();
+                    });
+                    gameListDiv.appendChild(settingsTab);
+
                     break;
                 case 'aura-flow': // Added case for AuraFlow
                     if (typeof AuraFlowApp === 'function') {
@@ -7929,18 +8138,31 @@
                                 'ideas.txt': { type: 'file', content: 'Player de vídeo.', lastModified: Date.now() }
                             }, lastModified: Date.now() },
                             'Music': { type: 'folder', children: {}, lastModified: Date.now() },
-                            'Pictures': { type: 'folder', children: {
-                                 'astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', lastModified: Date.now() }
+                            'Pictures': { type: 'folder', children: {}, lastModified: Date.now() },
+                            'Models': { type: 'folder', children: {
+                                'Astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', lastModified: Date.now() }
                             }, lastModified: Date.now() },
                             'System': { type: 'folder', children: {}, lastModified: Date.now() }
                         }}
                     };
 
                     fileSystem = defaultFSInMemory; // Set in-memory FS to default
-                    await saveFileSystem(); // Save this default structure to DB
+
+                    // Explicitly save the root directory object to dbManager
+                    const rootObjectForDB = {
+                        path: '/',
+                        type: 'folder',
+                        name: '', // Root folder name is typically empty
+                        lastModified: Date.now(),
+                        // content: {} // Folders don't have content like files, use null or {} for data arg in saveFile
+                    };
+                    await dbManager.saveFile(rootObjectForDB, {}); // Second arg is fileData, can be {} or null for folders
+                    console.log("Root directory '/' explicitly saved to DBManager.");
+
+                    await saveFileSystem(); // Save this default structure (children of root) to DB
 
                     localStorage.setItem('auraOS_initial_fs_created', 'true');
-                    console.log("Default file system initialized, saved to DB, and loaded into memory.");
+                    console.log("Default file system initialized, root and children saved to DB, and loaded into memory.");
                     // No need to re-read from DB here, as we've just populated it.
                     return;
                 }

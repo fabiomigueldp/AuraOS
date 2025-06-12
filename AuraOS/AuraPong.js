@@ -61,36 +61,8 @@ function AuraPongGame(canvas) {
   this.maxBallSpeed = 10; // Maximum speed for ball components
   this.winningScore = 7;
 
-  // Sound Effects
-  const hitSoundUrl = 'https://www.soundjay.com/button/sounds/button-16.mp3'; // Example generic hit
-  const scoreSoundUrl = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3'; // Example generic score
-  const wallHitSoundUrl = 'https://www.soundjay.com/button/sounds/button-09.mp3'; // Example generic wall hit
-
-  const dummySound = { 
-    play: function() { 
-      return Promise.resolve(); 
-    }, 
-    pause: function() {}, 
-    currentTime: 0, 
-    volume: 0 
-  };
-
-  try {
-    this.hitSound = dummySound;
-    this.scoreSound = dummySound;
-    this.wallHitSound = dummySound;
-
-    // Optional: Set volume
-    // this.hitSound.volume = 0.5;
-    // this.scoreSound.volume = 0.7;
-    // this.wallHitSound.volume = 0.3;
-  } catch (e) {
-    console.error("Error initializing audio:", e);
-    this.hitSound = { play: () => console.warn("Audio not initialized: hitSound") };
-    this.scoreSound = { play: () => console.warn("Audio not initialized: scoreSound") };
-    this.wallHitSound = { play: () => console.warn("Audio not initialized: wallHitSound") };
-  }
-
+  // Sound effect placeholders (actual Audio objects will be created on demand)
+  // No need for dummySound or pre-assigned sound variables anymore.
 
   /**
    * Starts the game.
@@ -229,21 +201,19 @@ AuraPongGame.prototype.update = function() {
   if (this.ball.y - this.ball.radius < 0) {
     this.ball.dy = -this.ball.dy;
     this.ball.y = this.ball.radius;
-    if (this.wallHitSound && typeof this.wallHitSound.play === 'function') {
-      const playResult = this.wallHitSound.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(e => console.warn("Wall hit sound play failed:", e));
-      }
-    }
+    try {
+      const sound = new Audio('gameassets/sounds/pong_wall_hit.wav');
+      sound.volume = AuraGameSDK.audio.getVolume() * 0.6; // Wall hit at 60%
+      sound.play().catch(e => console.warn("AuraPong: Wall hit sound play failed:", e));
+    } catch (e) { console.error("AuraPong: Error creating wall hit Audio object:", e); }
   } else if (this.ball.y + this.ball.radius > this.canvas.height) {
     this.ball.dy = -this.ball.dy;
     this.ball.y = this.canvas.height - this.ball.radius;
-    if (this.wallHitSound && typeof this.wallHitSound.play === 'function') {
-      const playResult = this.wallHitSound.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(e => console.warn("Wall hit sound play failed:", e));
-      }
-    }
+    try {
+      const sound = new Audio('gameassets/sounds/pong_wall_hit.wav');
+      sound.volume = AuraGameSDK.audio.getVolume() * 0.6;
+      sound.play().catch(e => console.warn("AuraPong: Wall hit sound play failed:", e));
+    } catch (e) { console.error("AuraPong: Error creating wall hit Audio object:", e); }
   }
 
   // Player Paddle Collision
@@ -272,12 +242,11 @@ AuraPongGame.prototype.update = function() {
     if (Math.abs(this.ball.dy) > this.maxBallSpeed) { // Still cap dy in case hitPos * 5 is too high
         this.ball.dy = Math.sign(this.ball.dy) * this.maxBallSpeed;
     }
-    if (this.hitSound && typeof this.hitSound.play === 'function') {
-      const playResult = this.hitSound.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(e => console.warn("Hit sound play failed:", e));
-      }
-    }
+    try {
+      const sound = new Audio('gameassets/sounds/pong_paddle_hit.wav');
+      sound.volume = AuraGameSDK.audio.getVolume() * 0.7; // Paddle hit at 70%
+      sound.play().catch(e => console.warn("AuraPong: Player paddle hit sound play failed:", e));
+    } catch (e) { console.error("AuraPong: Error creating player paddle hit Audio object:", e); }
   }
 
   // AI Paddle Collision
@@ -305,24 +274,22 @@ AuraPongGame.prototype.update = function() {
     if (Math.abs(this.ball.dy) > this.maxBallSpeed) { // Still cap dy
         this.ball.dy = Math.sign(this.ball.dy) * this.maxBallSpeed;
     }
-    if (this.hitSound && typeof this.hitSound.play === 'function') {
-      const playResult = this.hitSound.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(e => console.warn("Hit sound play failed:", e));
-      }
-    }
+    try {
+      const sound = new Audio('gameassets/sounds/pong_paddle_hit.wav');
+      sound.volume = AuraGameSDK.audio.getVolume() * 0.7;
+      sound.play().catch(e => console.warn("AuraPong: AI paddle hit sound play failed:", e));
+    } catch (e) { console.error("AuraPong: Error creating AI paddle hit Audio object:", e); }
   }
 
   // Scoring logic
   // Player scores (ball passes AI paddle - right side)
   if (this.ball.x + this.ball.radius > this.canvas.width) {
     this.playerScore++;
-    if (this.scoreSound && typeof this.scoreSound.play === 'function') {
-      const playResult = this.scoreSound.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(e => console.warn("Score sound play failed:", e));
-      }
-    }
+    try {
+      const sound = new Audio('gameassets/sounds/pong_score.wav');
+      sound.volume = AuraGameSDK.audio.getVolume(); // Score sound at global volume
+      sound.play().catch(e => console.warn("AuraPong: Player score sound play failed:", e));
+    } catch (e) { console.error("AuraPong: Error creating player score Audio object:", e); }
     console.log('Player scores! Player: ' + this.playerScore + ', AI: ' + this.aiScore);
     if (this.playerScore >= this.winningScore) {
       this.gameOver(true); // Player won
@@ -333,12 +300,11 @@ AuraPongGame.prototype.update = function() {
   // AI scores (ball passes player paddle - left side)
   else if (this.ball.x - this.ball.radius < 0) {
     this.aiScore++;
-    if (this.scoreSound && typeof this.scoreSound.play === 'function') {
-      const playResult = this.scoreSound.play();
-      if (playResult && typeof playResult.catch === 'function') {
-        playResult.catch(e => console.warn("Score sound play failed:", e));
-      }
-    }
+    try {
+      const sound = new Audio('gameassets/sounds/pong_score.wav');
+      sound.volume = AuraGameSDK.audio.getVolume();
+      sound.play().catch(e => console.warn("AuraPong: AI score sound play failed:", e));
+    } catch (e) { console.error("AuraPong: Error creating AI score Audio object:", e); }
     console.log('AI scores! Player: ' + this.playerScore + ', AI: ' + this.aiScore);
     if (this.aiScore >= this.winningScore) {
       this.gameOver(false); // AI won

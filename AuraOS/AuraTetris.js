@@ -12,10 +12,7 @@ function AuraTetrisGame(canvas) {
     const ctx = canvas.getContext('2d');
     AuraGameSDK.init('aura-tetris', canvas);
 
-    // Music system for Tetris theme
-    let isMusicPlaying = false;
-    let isMusicPaused = false;
-    const TETRIS_THEME_PATH = 'music/tracks/tetris_-_theme.mp3';
+    // Music will be managed by AuraGameSDK.audio
 
     let score = 0;
     let level = 1; // Start at level 1
@@ -139,12 +136,8 @@ function AuraTetrisGame(canvas) {
         document.removeEventListener('keydown', handleKeyPress);
 
         // Stop music when game ends
-        if (isMusicPlaying) {
-            AuraGameSDK.audio.stop();
-            isMusicPlaying = false;
-            isMusicPaused = false;
-            console.log("AuraTetris: Music stopped due to game over");
-        }
+        AuraGameSDK.audio.stop(); // SDK handles if music is playing or not
+        console.log("AuraTetris: Music stopped due to game over");
 
         // Play game over sound (TODO)
         // if (gameOverSound) gameOverSound.play();
@@ -433,43 +426,28 @@ gameTickTimer=0;gameRunning=true;if(animationFrameId)cancelAnimationFrame(animat
 document.removeEventListener('keydown',handleKeyPress);document.addEventListener('keydown',handleKeyPress);lastTime=performance.now();
 
 // Start Tetris theme music when game starts
-if (!isMusicPlaying) {
-    AuraGameSDK.audio.playLoopMusic(TETRIS_THEME_PATH, 0.4).then(() => {
-        isMusicPlaying = true;
-        console.log("AuraTetris: Background music started");
-    }).catch((error) => {
-        console.warn("AuraTetris: Could not start background music:", error);
+AuraGameSDK.audio.playLoopMusic('music/tracks/tetris_-_theme.mp3', 0.4)
+    .then(() => {
+        console.log("AuraTetris: Background music started via SDK");
+    })
+    .catch((error) => {
+        console.warn("AuraTetris: Could not start background music via SDK:", error);
     });
-}
 
 gameLoop(lastTime);};
     this.stop=function(){if(!gameRunning)return;console.log("AuraTetrisGame:Stopping game...");gameRunning=false;if(animationFrameId)cancelAnimationFrame(animationFrameId);animationFrameId=null;document.removeEventListener('keydown',handleKeyPress);
 
 // Stop music when game is manually stopped
-if (isMusicPlaying) {
-    AuraGameSDK.audio.stop();
-    isMusicPlaying = false;
-    isMusicPaused = false;
-    console.log("AuraTetris: Music stopped due to manual game stop");
-}
+AuraGameSDK.audio.stop(); // SDK handles if music is playing or not
+console.log("AuraTetris: Music stop requested due to manual game stop");
 
 };
     this.isRunning=function(){return gameRunning;};
 
     // Cleanup function to stop music when window/game is closed
     this.cleanup = function() {
-        if (isMusicPlaying) {
-            AuraGameSDK.audio.stop();
-            isMusicPlaying = false;
-            isMusicPaused = false;
-            console.log("AuraTetris: Music stopped due to cleanup");
-        }
-        
-        // Remove visibility change listener
-        if (this._visibilityChangeHandler) {
-            document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
-            this._visibilityChangeHandler = null;
-        }
+        AuraGameSDK.audio.stop(); // SDK handles if music is playing or not
+        console.log("AuraTetris: Music stop requested due to cleanup");
         
         // Clean up resize observer if it exists
         if (this._resizeObserver) {
@@ -478,25 +456,9 @@ if (isMusicPlaying) {
         }
     };
 
-    // Pause music (for window minimization, etc.)
-    this.pauseMusic = function() {
-        if (isMusicPlaying && !isMusicPaused) {
-            AuraGameSDK.audio.pause();
-            isMusicPaused = true;
-            console.log("AuraTetris: Music paused");
-        }
-    };
-
-    // Resume music (for window restoration, etc.)
-    this.resumeMusic = function() {
-        if (isMusicPlaying && isMusicPaused) {
-            AuraGameSDK.audio.resume();
-            isMusicPaused = false;
-            console.log("AuraTetris: Music resumed");
-        }
-    };
-
     // Listen for window close event to cleanup music
+    // This ensures that if the game instance is still around when the window closes,
+    // it attempts to tell the SDK to stop its music.
     if (canvas && canvas.closest) {
         const gameWindow = canvas.closest('.window');
         if (gameWindow) {
@@ -505,20 +467,5 @@ if (isMusicPlaying) {
             });
         }
     }
-
-    // Listen for page visibility changes to pause/resume music
-    const handleVisibilityChange = () => {
-        if (document.hidden) {
-            this.pauseMusic();
-        } else {
-            this.resumeMusic();
-        }
-    };
-
-    // Add visibility change listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Store reference to remove listener on cleanup
-    this._visibilityChangeHandler = handleVisibilityChange;
 }
 window.AuraTetrisGame = AuraTetrisGame;
