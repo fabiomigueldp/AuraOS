@@ -28,6 +28,7 @@
     <script src="AuraOS/AuraTetris.js"></script>
     <script src="AuraInvaders.js"></script>
     <script src="AuraPaint.js"></script>
+    <script src="AuraCitadel.js"></script> <!-- Added AuraCitadel.js -->
     <script src="AuraFlow.js"></script>
     <script src="AuraOS/notes.js"></script>
     <script src="AuraOS/terminal.js"></script>
@@ -7461,6 +7462,14 @@
                             description: 'Defend Earth from alien invaders! Shoot down waves of enemies before they reach the ground. How many waves can you survive in this retro space shooter?'
                         }
                         // OTHER DEVS' METADATA WILL BE HERE
+                        {
+                            id: 'aura-citadel',
+                            title: 'Aura Citadel',
+                            // Placeholder SVG icon, replace with actual or better one later
+                            iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><path d="M16 2L2 8v10l14 6 14-6V8L16 2zm0 2.76L26.94 9 16 13.24 5.06 9 16 4.76zM4 10.34l12 5.14 12-5.14v7.32L16 22.8l-12-5.14v-7.32z"/></svg>',
+                            banner: 'gameassets/auracitadel_banner.png', // Placeholder banner
+                            description: 'Defend the Aura Core from waves of glitches by building and upgrading powerful towers. A strategic tower defense game.'
+                        },
                     ];
 
                     function showGameDetails(gameData) {
@@ -7588,6 +7597,9 @@
     currentGameInstance.start();
 } else if (typeof AuraPongGame === 'function' && gameData.id === 'aura-pong') {
     currentGameInstance = new AuraPongGame(canvas);
+    currentGameInstance.start();
+} else if (typeof AuraCitadelGame === 'function' && gameData.id === 'aura-citadel') { // Added AuraCitadelGame
+    currentGameInstance = new AuraCitadelGame(canvas);
     currentGameInstance.start();
 } else if (typeof AuraTetrisGame === 'function' && gameData.id === 'aura-tetris') {
     currentGameInstance = new AuraTetrisGame(canvas);
