@@ -12,6 +12,11 @@ function AuraTetrisGame(canvas) {
     const ctx = canvas.getContext('2d');
     AuraGameSDK.init('aura-tetris', canvas);
 
+    // Music system for Tetris theme
+    let isMusicPlaying = false;
+    let isMusicPaused = false;
+    const TETRIS_THEME_PATH = 'music/tracks/tetris_-_theme.mp3';
+
     let score = 0;
     let level = 1; // Start at level 1
     let linesCleared = 0; // Total lines cleared in the game
@@ -104,6 +109,14 @@ function AuraTetrisGame(canvas) {
             animationFrameId = null;
         }
         document.removeEventListener('keydown', handleKeyPress);
+
+        // Stop music when game ends
+        if (isMusicPlaying) {
+            AuraGameSDK.audio.stop();
+            isMusicPlaying = false;
+            isMusicPaused = false;
+            console.log("AuraTetris: Music stopped due to game over");
+        }
 
         // Play game over sound (TODO)
         // if (gameOverSound) gameOverSound.play();
@@ -220,8 +233,68 @@ uYO+=nPBS+30;ctx.font='16px Inter,sans-serif';ctx.fillText(`Score: ${score}`,uXO
     this.start=function(){if(gameRunning)return;console.log("AuraTetrisGame:Starting game...");level=1;score=0;linesCleared=0;
 gameBoard=initializeGameBoard();generateNewPiece();currentDropInterval=initialDropInterval-((level-1)*50);if(currentDropInterval<100)currentDropInterval=100;
 gameTickTimer=0;gameRunning=true;if(animationFrameId)cancelAnimationFrame(animationFrameId);
-document.removeEventListener('keydown',handleKeyPress);document.addEventListener('keydown',handleKeyPress);lastTime=performance.now();gameLoop(lastTime);};
-    this.stop=function(){if(!gameRunning)return;console.log("AuraTetrisGame:Stopping game...");gameRunning=false;if(animationFrameId)cancelAnimationFrame(animationFrameId);animationFrameId=null;document.removeEventListener('keydown',handleKeyPress);};
+document.removeEventListener('keydown',handleKeyPress);document.addEventListener('keydown',handleKeyPress);lastTime=performance.now();
+
+// Start Tetris theme music when game starts
+if (!isMusicPlaying) {
+    AuraGameSDK.audio.playLoopMusic(TETRIS_THEME_PATH, 0.4).then(() => {
+        isMusicPlaying = true;
+        console.log("AuraTetris: Background music started");
+    }).catch((error) => {
+        console.warn("AuraTetris: Could not start background music:", error);
+    });
+}
+
+gameLoop(lastTime);};
+    this.stop=function(){if(!gameRunning)return;console.log("AuraTetrisGame:Stopping game...");gameRunning=false;if(animationFrameId)cancelAnimationFrame(animationFrameId);animationFrameId=null;document.removeEventListener('keydown',handleKeyPress);
+
+// Stop music when game is manually stopped
+if (isMusicPlaying) {
+    AuraGameSDK.audio.stop();
+    isMusicPlaying = false;
+    isMusicPaused = false;
+    console.log("AuraTetris: Music stopped due to manual game stop");
+}
+
+};
     this.isRunning=function(){return gameRunning;};
+
+    // Cleanup function to stop music when window/game is closed
+    this.cleanup = function() {
+        if (isMusicPlaying) {
+            AuraGameSDK.audio.stop();
+            isMusicPlaying = false;
+            isMusicPaused = false;
+            console.log("AuraTetris: Music stopped due to cleanup");
+        }
+    };
+
+    // Pause music (for window minimization, etc.)
+    this.pauseMusic = function() {
+        if (isMusicPlaying && !isMusicPaused) {
+            AuraGameSDK.audio.pause();
+            isMusicPaused = true;
+            console.log("AuraTetris: Music paused");
+        }
+    };
+
+    // Resume music (for window restoration, etc.)
+    this.resumeMusic = function() {
+        if (isMusicPlaying && isMusicPaused) {
+            AuraGameSDK.audio.resume();
+            isMusicPaused = false;
+            console.log("AuraTetris: Music resumed");
+        }
+    };
+
+    // Listen for window close event to cleanup music
+    if (canvas && canvas.closest) {
+        const gameWindow = canvas.closest('.window');
+        if (gameWindow) {
+            gameWindow.addEventListener('aura:close', () => {
+                this.cleanup();
+            });
+        }
+    }
 }
 window.AuraTetrisGame = AuraTetrisGame;
