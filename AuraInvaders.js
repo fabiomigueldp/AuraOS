@@ -12,21 +12,6 @@ function AuraInvadersGame(canvas) {
   const ctx = canvas.getContext('2d');
   AuraGameSDK.init('aura-invaders', canvas);
 
-  // Sound Effects
-  const dummySound = { 
-    play: function() { return Promise.resolve(); }, 
-    pause: function() {}, 
-    currentTime: 0, 
-    volume: 0 
-  };
-  const playerShootSound = dummySound;
-  const invaderDestroyedSound = dummySound;
-  const playerDestroyedSound = dummySound;
-
-  // playerShootSound.volume = 0.3; // These would now set volume on dummySound if uncommented
-  // invaderDestroyedSound.volume = 0.2;
-  // playerDestroyedSound.volume = 0.4;
-
   // Game state variables (local scope)
   let score = 0;
   let lives = 3;
@@ -193,8 +178,11 @@ function AuraInvadersGame(canvas) {
         height: 10,
         speed: bulletSpeed
       });
-      playerShootSound.currentTime = 0; // Rewind to start
-      playerShootSound.play().catch(e => console.warn("AuraInvaders: Error playing player shoot sound:", e));
+      try {
+        const shootSound = new Audio('gameassets/sounds/invaders_shoot.wav');
+        shootSound.volume = AuraGameSDK.audio.getVolume() * 0.5; // Player shoot sound at 50% of global volume
+        shootSound.play().catch(e => console.warn("AuraInvaders: Error playing player shoot sound:", e));
+      } catch (e) { console.error("AuraInvaders: Error creating player shoot Audio object:", e); }
       shootCooldown = maxShootCooldown;
     }
 
@@ -225,8 +213,11 @@ function AuraInvadersGame(canvas) {
 
     if (anInvaderReachedBottom) {
         if (lives > 0) {
-          playerDestroyedSound.currentTime = 0;
-          playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (invader bottom):", e));
+          try {
+            const destroyedSound = new Audio('gameassets/sounds/invaders_player_die.wav');
+            destroyedSound.volume = AuraGameSDK.audio.getVolume();
+            destroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (invader bottom):", e));
+          } catch (e) { console.error("AuraInvaders: Error creating player destroyed Audio object (invader bottom):", e); }
           gameOver(false);
         }
         return;
@@ -273,8 +264,11 @@ function AuraInvadersGame(canvas) {
           invaders[j].alive = false;
           bullets.splice(i, 1);
           score += 10;
-          invaderDestroyedSound.currentTime = 0;
-          invaderDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing invader destroyed sound:", e));
+          try {
+            const destroyedSound = new Audio('gameassets/sounds/invaders_explode.wav');
+            destroyedSound.volume = AuraGameSDK.audio.getVolume() * 0.4; // Invader explosion at 40%
+            destroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing invader destroyed sound:", e));
+          } catch (e) { console.error("AuraInvaders: Error creating invader destroyed Audio object:", e); }
           // Check for win condition
           if (invaders.every(inv => !inv.alive)) {
             gameOver(true);
@@ -290,8 +284,11 @@ function AuraInvadersGame(canvas) {
       if (lives > 0 && checkCollision(invaderBullets[k], player)) {
         invaderBullets.splice(k, 1);
         lives--;
-        playerDestroyedSound.currentTime = 0;
-        playerDestroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (bullet hit):", e));
+        try {
+          const destroyedSound = new Audio('gameassets/sounds/invaders_player_die.wav');
+          destroyedSound.volume = AuraGameSDK.audio.getVolume();
+          destroyedSound.play().catch(e => console.warn("AuraInvaders: Error playing player destroyed sound (bullet hit):", e));
+        } catch (e) { console.error("AuraInvaders: Error creating player destroyed Audio object (bullet hit):", e); }
         // Reset player position (optional, or give brief invulnerability)
         player.x = canvas.width / 2 - player.width / 2;
         player.y = canvas.height - 60;

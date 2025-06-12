@@ -36,10 +36,7 @@ function AuraSnakeGame(canvas) {
     let gameTickDelay = 120; // Milliseconds between snake movements
     let lastTickTime = 0;
 
-    // Sound assets
-    const dummySound = { play: function() {}, pause: function() {}, currentTime: 0, volume: 0 };
-    const eatSound = dummySound;
-    const gameOverSound = dummySound;
+    // Sound assets will be created on demand.
 
     // --- Event Listener Function ---
     function handleInput(event) {
@@ -210,7 +207,11 @@ function AuraSnakeGame(canvas) {
         if (newHead.x === food.x && newHead.y === food.y) {
             score += 10; // Increment score
             spawnFood(); // Generate new food
-            eatSound.play();
+            try {
+                const sound = new Audio('gameassets/sounds/snake_eat.wav');
+                sound.volume = AuraGameSDK.audio.getVolume() * 0.6;
+                sound.play().catch(e => console.warn("AuraSnake: Eat sound play failed:", e));
+            } catch (e) { console.error("AuraSnake: Error creating eat sound Audio object:", e); }
             // Snake grows, so we don't pop the tail
         } else {
             snake.pop(); // Remove tail if no food eaten
@@ -225,7 +226,11 @@ function AuraSnakeGame(canvas) {
         gameRunning = false; // Primary flag to stop game logic in updateGame/gameLoop
 
         console.log("Game Over! Final Score:", score);
-        gameOverSound.play(); // Placeholder sound
+        try {
+            const sound = new Audio('gameassets/sounds/snake_gameover.wav');
+            sound.volume = AuraGameSDK.audio.getVolume();
+            sound.play().catch(e => console.warn("AuraSnake: Game over sound play failed:", e));
+        } catch (e) { console.error("AuraSnake: Error creating game over sound Audio object:", e); }
 
         self.stop(); // Calls the public stop method for cleanup (cancels animation frame, removes input listeners)
 
