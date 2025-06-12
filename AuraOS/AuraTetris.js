@@ -24,10 +24,24 @@ function AuraTetrisGame(canvas) {
     const gameBoardWidth = 10;
     const gameBoardHeight = 20;
 
-    const BLOCK_SIZE = 30;
-    const BLOCK_PADDING = 2;
+    // Calculate block size based on canvas dimensions to fit everything
+    const uiWidth = 140; // Space needed for UI (next piece + text)
+    const availableGameWidth = canvas.width - uiWidth;
+    const availableGameHeight = canvas.height - 20; // Small margin
+    
+    const maxBlockSizeByWidth = Math.floor(availableGameWidth / gameBoardWidth);
+    const maxBlockSizeByHeight = Math.floor(availableGameHeight / gameBoardHeight);
+    const BLOCK_SIZE = Math.min(maxBlockSizeByWidth, maxBlockSizeByHeight, 30); // Max 30px per block
+    
+    const BLOCK_PADDING = Math.max(1, Math.floor(BLOCK_SIZE * 0.067)); // Proportional padding
     const BOARD_BORDER_COLOR = 'rgba(100, 100, 100, 0.5)';
     const GRID_COLOR = 'rgba(50, 50, 70, 0.5)';
+
+    // Calculate game board offset to center it in available space
+    const totalGameWidth = gameBoardWidth * BLOCK_SIZE;
+    const availableSpaceForBoard = canvas.width - uiWidth;
+    const BOARD_OFFSET_X = Math.max(0, (availableSpaceForBoard - totalGameWidth) / 2);
+    const BOARD_OFFSET_Y = Math.max(0, (canvas.height - gameBoardHeight * BLOCK_SIZE) / 2);
 
     let gameBoard = [];
     let currentPiece = null;
@@ -151,23 +165,113 @@ function AuraTetrisGame(canvas) {
         return true;
     }
 
-    function drawBlock(x,y,c,iS=false){if(iS){ctx.globalAlpha=0.3;ctx.strokeStyle=c;ctx.lineWidth=2;ctx.strokeRect(x+BLOCK_PADDING,y+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);ctx.globalAlpha=1.0;return;}
-ctx.globalAlpha=0.6;ctx.fillStyle=c;ctx.fillRect(x+BLOCK_PADDING,y+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
-ctx.globalAlpha=0.3;ctx.fillStyle='rgba(255,255,255,0.5)';const gI=BLOCK_PADDING*2;ctx.fillRect(x+gI,y+gI,BLOCK_SIZE-2*gI,BLOCK_SIZE-2*gI);
-ctx.globalAlpha=0.8;ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.strokeRect(x+BLOCK_PADDING,y+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);ctx.globalAlpha=1.0;}
-    function drawGameBoard(){ctx.strokeStyle=BOARD_BORDER_COLOR;ctx.lineWidth=2;ctx.strokeRect(0,0,gameBoardWidth*BLOCK_SIZE,gameBoardHeight*BLOCK_SIZE);
-ctx.strokeStyle=GRID_COLOR;ctx.lineWidth=0.5;for(let x=0;x<gameBoardWidth;x++){ctx.beginPath();ctx.moveTo(x*BLOCK_SIZE,0);ctx.lineTo(x*BLOCK_SIZE,gameBoardHeight*BLOCK_SIZE);ctx.stroke();}
-for(let y=0;y<gameBoardHeight;y++){ctx.beginPath();ctx.moveTo(0,y*BLOCK_SIZE);ctx.lineTo(gameBoardWidth*BLOCK_SIZE,y*BLOCK_SIZE);ctx.stroke();}
-for(let r=0;r<gameBoardHeight;r++)for(let c=0;c<gameBoardWidth;c++)if(gameBoard[r][c]!==0)drawBlock(c*BLOCK_SIZE,r*BLOCK_SIZE,gameBoard[r][c]);}
+    function drawBlock(x,y,c,iS=false){
+        const drawX = x + BOARD_OFFSET_X;
+        const drawY = y + BOARD_OFFSET_Y;
+        
+        if(iS){
+            ctx.globalAlpha=0.3;
+            ctx.strokeStyle=c;
+            ctx.lineWidth=2;
+            ctx.strokeRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
+            ctx.globalAlpha=1.0;
+            return;
+        }
+        ctx.globalAlpha=0.6;
+        ctx.fillStyle=c;
+        ctx.fillRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
+        ctx.globalAlpha=0.3;
+        ctx.fillStyle='rgba(255,255,255,0.5)';
+        const gI=BLOCK_PADDING*2;
+        ctx.fillRect(drawX+gI,drawY+gI,BLOCK_SIZE-2*gI,BLOCK_SIZE-2*gI);
+        ctx.globalAlpha=0.8;
+        ctx.strokeStyle='rgba(255,255,255,0.3)';
+        ctx.lineWidth=1;
+        ctx.strokeRect(drawX+BLOCK_PADDING,drawY+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
+        ctx.globalAlpha=1.0;
+    }
+    function drawGameBoard(){
+        const boardPixelWidth = gameBoardWidth * BLOCK_SIZE;
+        const boardPixelHeight = gameBoardHeight * BLOCK_SIZE;
+        
+        ctx.strokeStyle=BOARD_BORDER_COLOR;
+        ctx.lineWidth=2;
+        ctx.strokeRect(BOARD_OFFSET_X, BOARD_OFFSET_Y, boardPixelWidth, boardPixelHeight);
+        
+        ctx.strokeStyle=GRID_COLOR;
+        ctx.lineWidth=0.5;
+        for(let x=0;x<=gameBoardWidth;x++){
+            ctx.beginPath();
+            ctx.moveTo(BOARD_OFFSET_X + x*BLOCK_SIZE, BOARD_OFFSET_Y);
+            ctx.lineTo(BOARD_OFFSET_X + x*BLOCK_SIZE, BOARD_OFFSET_Y + boardPixelHeight);
+            ctx.stroke();
+        }
+        for(let y=0;y<=gameBoardHeight;y++){
+            ctx.beginPath();
+            ctx.moveTo(BOARD_OFFSET_X, BOARD_OFFSET_Y + y*BLOCK_SIZE);
+            ctx.lineTo(BOARD_OFFSET_X + boardPixelWidth, BOARD_OFFSET_Y + y*BLOCK_SIZE);
+            ctx.stroke();
+        }
+        
+        for(let r=0;r<gameBoardHeight;r++)
+            for(let c=0;c<gameBoardWidth;c++)
+                if(gameBoard[r][c]!==0)
+                    drawBlock(c*BLOCK_SIZE,r*BLOCK_SIZE,gameBoard[r][c]);
+    }
     function drawPiece(pDI,pOX,pOY,iS=false){if(!pDI||!pDI.shape)return;const M=pDI.shape;const C=pDI.color;for(let r=0;r<M.length;r++)for(let c=0;c<M[r].length;c++)if(M[r][c])drawBlock((pOX+c)*BLOCK_SIZE,(pOY+r)*BLOCK_SIZE,C,iS);}
     function drawGhostPiece(){if(!currentPiece||!gameRunning)return;let gY=currentPiece.y;while(isValidMove(currentPiece,currentPiece.x,gY+1,currentPiece.shape))gY++;drawPiece(currentPiece,currentPiece.x,gY,true);}
-    function drawUI(){const uXO=gameBoardWidth*BLOCK_SIZE+20;let uYO=30;ctx.fillStyle='white';ctx.font='bold 18px Inter,sans-serif';
-ctx.fillText('Next:',uXO,uYO);uYO+=10;const nPBS=4*BLOCK_SIZE;ctx.strokeStyle=GRID_COLOR;ctx.lineWidth=1;ctx.strokeRect(uXO,uYO,nPBS,nPBS);
-if(nextPiece){const m=nextPiece.shape;const mW=m[0].length;const mH=m.length;let minR=mH,maxR=-1,minC=mW,maxC=-1;
-for(let r=0;r<mH;++r)for(let c=0;c<mW;++c)if(m[r][c]){if(r<minR)minR=r;if(r>maxR)maxR=r;if(c<minC)minC=c;if(c>maxC)maxC=c;}
-const pAW=(maxC-minC+1);const pAH=(maxR-minR+1);const pOX=uXO+(nPBS-pAW*BLOCK_SIZE)/2;const pOY=uYO+(nPBS-pAH*BLOCK_SIZE)/2;
-for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++)if(m[r][c])drawBlock(pOX-(minC*BLOCK_SIZE)+(c*BLOCK_SIZE),pOY-(minR*BLOCK_SIZE)+(r*BLOCK_SIZE),nextPiece.color);}
-uYO+=nPBS+30;ctx.font='16px Inter,sans-serif';ctx.fillText(`Score: ${score}`,uXO,uYO);uYO+=25;ctx.fillText(`Level: ${level}`,uXO,uYO);uYO+=25;ctx.fillText(`Lines: ${linesCleared}`,uXO,uYO);}
+    function drawUI(){
+        const boardPixelWidth = gameBoardWidth * BLOCK_SIZE;
+        const uXO = BOARD_OFFSET_X + boardPixelWidth + Math.max(10, BLOCK_SIZE * 0.33); // Responsive margin
+        let uYO = BOARD_OFFSET_Y + Math.max(20, BLOCK_SIZE * 0.67);
+        
+        ctx.fillStyle='white';
+        ctx.font=`bold ${Math.max(14, Math.floor(BLOCK_SIZE * 0.6))}px Inter,sans-serif`;
+        
+        ctx.fillText('Next:',uXO,uYO);
+        uYO += Math.max(10, BLOCK_SIZE * 0.33);
+        
+        const nPBS = Math.max(80, BLOCK_SIZE * 2.67); // Responsive next piece box size
+        ctx.strokeStyle=GRID_COLOR;
+        ctx.lineWidth=1;
+        ctx.strokeRect(uXO,uYO,nPBS,nPBS);
+        
+        if(nextPiece){
+            const m=nextPiece.shape;
+            const mW=m[0].length;
+            const mH=m.length;
+            let minR=mH,maxR=-1,minC=mW,maxC=-1;
+            
+            for(let r=0;r<mH;++r)for(let c=0;c<mW;++c)if(m[r][c]){
+                if(r<minR)minR=r;if(r>maxR)maxR=r;if(c<minC)minC=c;if(c>maxC)maxC=c;
+            }
+            
+            const pAW=(maxC-minC+1);
+            const pAH=(maxR-minR+1);
+            const previewBlockSize = Math.min(BLOCK_SIZE * 0.75, nPBS / Math.max(pAW, pAH) * 0.8);
+            const pOX=uXO+(nPBS-pAW*previewBlockSize)/2;
+            const pOY=uYO+(nPBS-pAH*previewBlockSize)/2;
+            
+            for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++)if(m[r][c]){
+                const x = pOX-(minC*previewBlockSize)+(c*previewBlockSize);
+                const y = pOY-(minR*previewBlockSize)+(r*previewBlockSize);
+                
+                // Draw preview piece block
+                ctx.globalAlpha=0.6;
+                ctx.fillStyle=nextPiece.color;
+                ctx.fillRect(x+1, y+1, previewBlockSize-2, previewBlockSize-2);
+                ctx.globalAlpha=1.0;
+            }
+        }
+        
+        uYO += nPBS + Math.max(20, BLOCK_SIZE * 0.67);
+        ctx.font=`${Math.max(12, Math.floor(BLOCK_SIZE * 0.53))}px Inter,sans-serif`;
+        ctx.fillText(`Score: ${score}`,uXO,uYO);
+        uYO += Math.max(18, BLOCK_SIZE * 0.6);
+        ctx.fillText(`Level: ${level}`,uXO,uYO);
+        uYO += Math.max(18, BLOCK_SIZE * 0.6);
+        ctx.fillText(`Lines: ${linesCleared}`,uXO,uYO);
+    }
     function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);drawGameBoard();if(gameRunning)drawGhostPiece();if(currentPiece&&gameRunning)drawPiece(currentPiece,currentPiece.x,currentPiece.y);drawUI();}
     draw();
 

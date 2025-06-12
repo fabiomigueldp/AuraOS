@@ -7311,6 +7311,24 @@
                                     const smallerDim = Math.min(containerWidth, containerHeight);
                                     canvasWidth = smallerDim;
                                     canvasHeight = smallerDim;
+                                } else if (gameData.id === 'aura-tetris') {
+                                    // Tetris needs space for game board (300px) + UI (140px) = ~440px minimum width
+                                    // Game board is 10x20 blocks, ideally 30px per block = 300x600
+                                    const minWidth = 440; // Game board + UI space
+                                    const idealRatio = minWidth / 600; // width/height ratio for Tetris
+                                    
+                                    if (containerWidth >= minWidth) {
+                                        canvasWidth = containerWidth;
+                                        canvasHeight = canvasWidth / idealRatio;
+                                        if (canvasHeight > containerHeight) {
+                                            canvasHeight = containerHeight;
+                                            canvasWidth = canvasHeight * idealRatio;
+                                        }
+                                    } else {
+                                        // Scale down proportionally if container is too small
+                                        canvasWidth = containerWidth;
+                                        canvasHeight = containerWidth / idealRatio;
+                                    }
                                 }
                                 // Fallback for other games or if ID not matched (though should be handled by if/else if below)
                                 else {
