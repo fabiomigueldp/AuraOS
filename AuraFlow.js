@@ -184,7 +184,11 @@ class AuraFlowApp {
                 this.nodes.shift(); // Remove the oldest node
             }
         } else if (this.currentMode === 'voronoi') {
-            const themeColors = [
+            this.seedPoints.push(new SeedPoint(
+                clickX,
+                clickY,
+                (Math.random() - 0.5) * 2 * this.seedSpeedMultiplier,
+                (Math.random() - 0.5) * 2 * this.seedSpeedMultiplier,
                 this._getRandomColorFromCurrentPalette(), // Use palette color
                 this.canvas
             ));
