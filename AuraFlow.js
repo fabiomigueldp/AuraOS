@@ -779,26 +779,41 @@ class AuraFlowApp {
         paletteButtonContainer.appendChild(paletteNameSpan);
         this.controlPanel.appendChild(createControlRow('Palette:', paletteButtonContainer));
 
+        // Add separator
+        const separator = document.createElement('div');
+        Object.assign(separator.style, {
+            height: '1px',
+            background: 'var(--glass-border)',
+            margin: '12px 0',
+            opacity: '0.5'
+        });
+        this.controlPanel.appendChild(separator);
 
-        // Reset Button
+        // Action Buttons Container
+        const actionsContainer = document.createElement('div');
+        Object.assign(actionsContainer.style, {
+            display: 'flex',
+            gap: '8px',
+            marginTop: '4px'
+        });
+
         const resetBtn = document.createElement('button');
         resetBtn.id = 'auraFlowResetBtn';
-        resetBtn.textContent = 'Reset Simulation';
+        resetBtn.textContent = 'Reset';
+        styleButton(resetBtn);
         this._boundHandleResetSimulation = this._handleResetSimulation.bind(this);
         resetBtn.addEventListener('click', this._boundHandleResetSimulation);
-        this.controlPanel.appendChild(createControlRow('Actions:', resetBtn));
+        actionsContainer.appendChild(resetBtn);
 
-        // Save Image Button
         const saveImageBtn = document.createElement('button');
         saveImageBtn.id = 'auraFlowSaveImageBtn';
-        saveImageBtn.textContent = 'Save Image';
-        this._boundHandleSaveImage = this._handleSaveImage.bind(this); // Define this method
+        saveImageBtn.textContent = 'Save';
+        styleButton(saveImageBtn, true); // Primary button style
+        this._boundHandleSaveImage = this._handleSaveImage.bind(this);
         saveImageBtn.addEventListener('click', this._boundHandleSaveImage);
-        // To put it on the same row as Reset, we'd need a more complex row structure.
-        // For now, adding as a new row, or find the "Actions:" row and append.
-        const actionsRow = resetBtn.parentElement; // Assuming resetBtn is already in a row
-        actionsRow.appendChild(saveImageBtn); // Add to the same row as Reset
-        saveImageBtn.style.marginLeft = "10px";
+        actionsContainer.appendChild(saveImageBtn);
+
+        this.controlPanel.appendChild(createControlRow('Actions:', actionsContainer));
 
 
         this.windowBody.appendChild(this.controlPanel);
