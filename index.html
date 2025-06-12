@@ -8125,10 +8125,22 @@
                     };
 
                     fileSystem = defaultFSInMemory; // Set in-memory FS to default
-                    await saveFileSystem(); // Save this default structure to DB
+
+                    // Explicitly save the root directory object to dbManager
+                    const rootObjectForDB = {
+                        path: '/',
+                        type: 'folder',
+                        name: '', // Root folder name is typically empty
+                        lastModified: Date.now(),
+                        // content: {} // Folders don't have content like files, use null or {} for data arg in saveFile
+                    };
+                    await dbManager.saveFile(rootObjectForDB, {}); // Second arg is fileData, can be {} or null for folders
+                    console.log("Root directory '/' explicitly saved to DBManager.");
+
+                    await saveFileSystem(); // Save this default structure (children of root) to DB
 
                     localStorage.setItem('auraOS_initial_fs_created', 'true');
-                    console.log("Default file system initialized, saved to DB, and loaded into memory.");
+                    console.log("Default file system initialized, root and children saved to DB, and loaded into memory.");
                     // No need to re-read from DB here, as we've just populated it.
                     return;
                 }
