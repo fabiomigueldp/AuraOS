@@ -156,7 +156,6 @@ class AuraNotesApp {
         }
         const newContent = this.editor.getValue();
         const noteInCache = this.notesCache.find(n => n.path === this.currentNotePath);
-        const noteInCache = this.notesCache.find(n => n.path === this.currentNotePath);
 
         // Ensure content is actually loaded before trying to compare or save
         if (!noteInCache || noteInCache.content === null) {
