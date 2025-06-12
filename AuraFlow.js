@@ -465,20 +465,17 @@ class AuraFlowApp {
     _updateCanvasSize() {
         // Update canvas dimensions to match the actual display size
         const rect = this.windowBody.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
         
-        // Set the actual size in memory (scaled for high DPI displays)
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
+        // Set canvas size to match container
+        this.canvas.width = rect.width;
+        this.canvas.height = rect.height;
         
-        // Scale the drawing context so everything draws at the correct size
-        this.ctx.scale(dpr, dpr);
+        // Ensure context is available
+        if (!this.ctx) {
+            this.ctx = this.canvas.getContext('2d');
+        }
         
-        // Set the display size (CSS pixels)
-        this.canvas.style.width = rect.width + 'px';
-        this.canvas.style.height = rect.height + 'px';
-        
-        console.log(`Canvas updated to: ${rect.width}x${rect.height} (display) / ${this.canvas.width}x${this.canvas.height} (actual)`);
+        console.log(`Canvas updated to: ${rect.width}x${rect.height}`);
     }
 
     initUI() {
@@ -498,11 +495,11 @@ class AuraFlowApp {
         this.canvas.style.height = '100%';
         this.canvas.style.display = 'block';
         
-        // Set initial canvas size
-        this._updateCanvasSize();
-        
         this.windowBody.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d');
+        
+        // Set initial canvas size after getting context
+        this._updateCanvasSize();
 
         this.mouseX = this.canvas.width / 2;
         this.mouseY = this.canvas.height / 2;
