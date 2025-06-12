@@ -2878,73 +2878,212 @@
                     }
                 }
                 
-                // Force refresh example files to ensure they load properly
-                await populateWithExampleFiles();
+                // Populate with auto-discovered project files
+                await populateWithProjectFiles();
                 
             } catch (error) {
                 console.error('Error ensuring music directories exist:', error);
             }
         }
         
-        // Function to populate DBManager with existing example music files
-        async function populateWithExampleFiles() {
+        async function populateWithProjectFiles() {
             try {
-                const exampleFiles = [
-                    {
-                        path: 'music/tracks/local_artist_-_gape_noster.mp3',
-                        url: 'music/tracks/local_artist_-_gape_noster.mp3',
-                        type: 'file',
-                        mimeType: 'audio/mpeg'
-                    },
-                    {
-                        path: 'music/covers/local_artist_-_gape_noster.png',
-                        url: 'music/covers/local_artist_-_gape_noster.png',
-                        type: 'file',
-                        mimeType: 'image/png'
-                    }
+                console.log('Auto-discovering music files in project directory...');
+                
+                // Strategy: Since we can't list directories directly in browser,
+                // we'll use a smart discovery approach that tests common patterns
+                const discoveredFiles = [];
+                
+                // Define supported file extensions
+                const musicExtensions = ['mp3', 'm4a', 'wav', 'flac', 'ogg'];
+                const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+                
+                // Common naming patterns to try (expandable)
+                const commonPatterns = [
+                    // Known files from current directory
+                    'beethoven_-_fur_elise',
+                    'bennett_-_vois_sur_ton_chemin',
+                    'local_artist_-_gape_noster',
+                    
+                    // Common music patterns to test
+                    'track_01', 'track_02', 'track_03', 'track_04', 'track_05',
+                    'song_01', 'song_02', 'song_03', 'song_04', 'song_05',
+                    'music_01', 'music_02', 'music_03', 'music_04', 'music_05',
+                    'audio_01', 'audio_02', 'audio_03', 'audio_04', 'audio_05',
+                    
+                    // Artist patterns
+                    'artist_-_song', 'artist_-_title', 'band_-_track',
+                    
+                    // Generic patterns
+                    'sample', 'demo', 'test', 'music', 'audio', 'sound'
                 ];
                 
-                for (const file of exampleFiles) {
-                    try {
-                        // Check if file already exists in DBManager
-                        await dbManager.loadFile(file.path);
-                        console.log(`File ${file.path} already exists in DBManager`);
-                    } catch (error) {
-                        // File doesn't exist, try to load it as blob and convert to data URL
-                        console.log(`Adding example file to DBManager: ${file.path}`);
-                        
-                        try {
-                            // Try to fetch the file and convert to data URL
-                            const response = await fetch(file.url);
-                            if (response.ok) {
-                                const blob = await response.blob();
-                                const reader = new FileReader();
-                                
-                                const dataUrl = await new Promise((resolve, reject) => {
-                                    reader.onload = () => resolve(reader.result);
-                                    reader.onerror = reject;
-                                    reader.readAsDataURL(blob);
-                                });
-                                
-                                await dbManager.saveFile({
-                                    path: file.path,
-                                    type: file.type,
-                                    lastModified: Date.now(),
-                                    mimeType: file.mimeType,
-                                    size: blob.size
-                                }, dataUrl);
-                                
-                                console.log(`Successfully added ${file.path} to DBManager with ${blob.size} bytes`);
-                            } else {
-                                console.log(`Could not fetch ${file.url}: ${response.status}`);
+                // Auto-discovery function for music files
+                async function discoverMusicFiles() {
+                    console.log('🔍 Discovering music files...');
+                    const foundFiles = [];
+                    
+                    for (const pattern of commonPatterns) {
+                        for (const ext of musicExtensions) {
+                            const filename = `${pattern}.${ext}`;
+                            const fileUrl = `music/tracks/${filename}`;
+                            
+                            try {
+                                const response = await fetch(fileUrl, { method: 'HEAD' });
+                                if (response.ok) {
+                                    foundFiles.push({
+                                        filename,
+                                        path: `music/tracks/${filename}`,
+                                        url: fileUrl,
+                                        type: 'audio',
+                                        pattern
+                                    });
+                                    console.log(`✅ Found music file: ${filename}`);
+                                }
+                            } catch (error) {
+                                // File doesn't exist, continue silently
                             }
-                        } catch (fetchError) {
-                            console.log(`Could not load example file ${file.path}:`, fetchError);
                         }
                     }
+                    
+                    return foundFiles;
                 }
+                
+                // Auto-discovery function for cover images
+                async function discoverCoverFiles(musicPatterns) {
+                    console.log('🖼️ Discovering cover images...');
+                    const foundFiles = [];
+                    
+                    // Use patterns from discovered music files
+                    const patternsToTry = [...new Set([...musicPatterns, ...commonPatterns])];
+                    
+                    for (const pattern of patternsToTry) {
+                        for (const ext of imageExtensions) {
+                            const filename = `${pattern}.${ext}`;
+                            const fileUrl = `music/covers/${filename}`;
+                            
+                            try {
+                                const response = await fetch(fileUrl, { method: 'HEAD' });
+                                if (response.ok) {
+                                    foundFiles.push({
+                                        filename,
+                                        path: `music/covers/${filename}`,
+                                        url: fileUrl,
+                                        type: 'image',
+                                        pattern
+                                    });
+                                    console.log(`✅ Found cover image: ${filename}`);
+                                }
+                            } catch (error) {
+                                // File doesn't exist, continue silently
+                            }
+                        }
+                    }
+                    
+                    return foundFiles;
+                }
+                
+                // Discover music files first
+                const musicFiles = await discoverMusicFiles();
+                discoveredFiles.push(...musicFiles);
+                
+                // Extract patterns from found music files for cover discovery
+                const musicPatterns = musicFiles.map(file => file.pattern);
+                
+                // Discover cover files based on music patterns
+                const coverFiles = await discoverCoverFiles(musicPatterns);
+                discoveredFiles.push(...coverFiles);
+                
+                console.log(`🎵 Discovery complete! Found ${musicFiles.length} music files and ${coverFiles.length} covers`);
+                
+                // Load discovered files into DBManager
+                for (const file of discoveredFiles) {
+                    try {
+                        // Check if file already exists in DBManager with proper content
+                        const existingFile = await dbManager.loadFile(file.path);
+                        if (existingFile && existingFile.content && existingFile.content.startsWith('data:')) {
+                            console.log(`📁 ${file.path} already loaded in database`);
+                            continue;
+                        } else if (existingFile) {
+                            console.log(`🔄 Updating content for ${file.path}`);
+                            await dbManager.deleteFile(file.path);
+                        }
+                    } catch (error) {
+                        console.log(`➕ Adding new file ${file.path} to database`);
+                    }
+                    
+                    // Load the physical file
+                    try {
+                        console.log(`📥 Loading ${file.path}...`);
+                        const response = await fetch(file.url);
+                        
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            
+                            // Convert to data URL
+                            const dataUrl = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            });
+                            
+                            // Determine MIME type
+                            const mimeType = file.type === 'audio' ? 
+                                (file.filename.endsWith('.mp3') ? 'audio/mpeg' : 
+                                 file.filename.endsWith('.m4a') ? 'audio/mp4' : 
+                                 file.filename.endsWith('.wav') ? 'audio/wav' : 
+                                 file.filename.endsWith('.flac') ? 'audio/flac' : 
+                                 file.filename.endsWith('.ogg') ? 'audio/ogg' : 'audio/mpeg') :
+                                (file.filename.endsWith('.png') ? 'image/png' : 
+                                 file.filename.endsWith('.jpg') || file.filename.endsWith('.jpeg') ? 'image/jpeg' : 
+                                 file.filename.endsWith('.webp') ? 'image/webp' : 
+                                 file.filename.endsWith('.gif') ? 'image/gif' : 'image/png');
+                            
+                            // Save to database
+                            await dbManager.saveFile({
+                                path: file.path,
+                                type: 'file',
+                                lastModified: Date.now(),
+                                mimeType: mimeType,
+                                size: blob.size
+                            }, dataUrl);
+                            
+                            console.log(`✅ Successfully loaded ${file.path} (${(blob.size / 1024).toFixed(1)} KB)`);
+                        } else {
+                            console.log(`❌ Could not fetch ${file.url}: ${response.status}`);
+                        }
+                    } catch (fetchError) {
+                        console.log(`❌ Error loading ${file.path}:`, fetchError);
+                    }
+                }
+                
+                // Summary
+                const musicCount = discoveredFiles.filter(f => f.type === 'audio').length;
+                const coverCount = discoveredFiles.filter(f => f.type === 'image').length;
+                
+                console.log(`🎯 Auto-discovery summary: ${musicCount} music files, ${coverCount} covers loaded into database`);
+                
+                if (musicCount > 0) {
+                    AuraOS.showNotification({
+                        title: 'Descoberta Automática',
+                        message: `🎵 ${musicCount} música(s) e ${coverCount} capa(s) descobertas automaticamente!`,
+                        type: 'success',
+                        duration: 3000
+                    });
+                }
+                
+                return discoveredFiles;
+                
             } catch (error) {
-                console.error('Error populating with example files:', error);
+                console.error('❌ Error in auto-discovery:', error);
+                AuraOS.showNotification({
+                    title: 'Erro na Descoberta',
+                    message: 'Falha ao descobrir arquivos de música automaticamente',
+                    type: 'error',
+                    duration: 3000
+                });
+                return [];
             }
         }
 
@@ -4763,6 +4902,11 @@
                                     <button id="refresh-library-btn" class="add-music-button" title="Atualizar Biblioteca">
                                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                             <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                        </svg>
+                                    </button>
+                                    <button id="clear-db-btn" class="add-music-button" title="Limpar Cache" style="margin-left: 5px;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                                         </svg>
                                     </button>
                                     <button id="add-music-btn" class="add-music-button" title="Adicionar Música">
