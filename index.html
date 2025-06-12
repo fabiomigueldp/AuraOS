@@ -30,6 +30,7 @@
     <script src="AuraFlow.js"></script>
     <script src="AuraOS/notes.js"></script>
     <script src="AuraOS/terminal.js"></script>
+    <script src="AuraOS/Aura3DViewer.js"></script>
 
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
@@ -2715,6 +2716,12 @@
                         </svg>
                         <p>AuraFlow</p>
                     </div>
+                    <div class="desktop-icon" data-app-id="aura-3d-viewer" title="Aura 3D Viewer">
+                        <svg viewBox="0 0 24 24" fill="var(--icon-fill)">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <p>3D Viewer</p>
+                    </div>
                 </div>
                 
                 <!-- Divisor visual -->
@@ -3287,7 +3294,7 @@
             'terminal-app': { title: 'Terminal', width: 650, height: 400 },
             'task-manager': { title: 'Gerenciador de Tarefas', width: 500, height: 400 },
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
-            'model-viewer-app': { title: 'Visualizador 3D', width: 450, height: 550 },
+            'aura-3d-viewer': { title: 'Aura 3D Viewer', width: 700, height: 550, allowMultiple: true },
             'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
             'game-center': { title: 'Game Center', width: 800, height: 600 },
             'aura-paint': { title: 'AuraPaint', width: 700, height: 550 },
@@ -4297,7 +4304,7 @@
         '.txt': 'notes-app',
         '.log': 'notes-app', // Example: .log files also open with notes
         '.md': 'notes-app',  // Example: Markdown files
-        '.glb': 'model-viewer-app',
+        '.glb': 'aura-3d-viewer',
         // Add more associations as needed, e.g., for images
         '.jpg': 'image-viewer',
         '.jpeg': 'image-viewer',
@@ -7220,6 +7227,14 @@
                         clearInterval(taskManagerIntervalId);
                     });
                     break;
+                case 'aura-3d-viewer':
+                    if (typeof Aura3DViewerApp === 'function') {
+                        new Aura3DViewerApp(uniqueId, windowEl, data);
+                    } else {
+                        console.error('Aura3DViewerApp class not found. Ensure AuraOS/Aura3DViewer.js is loaded correctly.');
+                        body.innerHTML = '<p style="color:red; padding:10px;">Error: Aura 3D Viewer App module not loaded.</p>';
+                    }
+                    break;
                 case 'aura-paint': // Added case for AuraPaint
                     if (typeof AuraPaintApp === 'function') {
                         new AuraPaintApp(body, data);
@@ -8117,8 +8132,9 @@
                                 'ideas.txt': { type: 'file', content: 'Player de vídeo.', lastModified: Date.now() }
                             }, lastModified: Date.now() },
                             'Music': { type: 'folder', children: {}, lastModified: Date.now() },
-                            'Pictures': { type: 'folder', children: {
-                                 'astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', lastModified: Date.now() }
+                            'Pictures': { type: 'folder', children: {}, lastModified: Date.now() },
+                            'Models': { type: 'folder', children: {
+                                'Astronaut.glb': { type: 'file', content: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb', lastModified: Date.now() }
                             }, lastModified: Date.now() },
                             'System': { type: 'folder', children: {}, lastModified: Date.now() }
                         }}
