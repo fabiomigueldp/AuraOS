@@ -19,17 +19,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
-    <script src="DBManager.js"></script> <!-- DBManager.js linked -->
-    <script src="AuraGameSDK.js"></script>
-    <script src="AuraBreaker.js"></script> <!-- Add this line -->
-    <script src="AuraOS/AuraSnake.js"></script> <!-- DEV 4: ADD YOUR SCRIPT HERE -->
-    <script src="AuraOS/AuraPong.js"></script>
-    <script src="AuraOS/AuraTetris.js"></script>
-    <script src="AuraInvaders.js"></script>
-    <script src="AuraPaint.js"></script>
-    <script src="AuraFlow.js"></script>
-    <script src="AuraOS/notes.js"></script>
-    <script src="AuraOS/terminal.js"></script>
+    <script defer src="DBManager.js"></script> <!-- DBManager.js linked -->
+    <script defer src="AuraGameSDK.js"></script>
+    <script defer src="AuraBreaker.js"></script> <!-- Add this line -->
+    <script defer src="AuraOS/AuraSnake.js"></script> <!-- DEV 4: ADD YOUR SCRIPT HERE -->
+    <script defer src="AuraOS/AuraPong.js"></script>
+    <script defer src="AuraOS/AuraTetris.js"></script>
+    <script defer src="AuraInvaders.js"></script>
+    <script defer src="AuraPaint.js"></script>
+    <script defer src="AuraFlow.js"></script>
+    <script defer src="AuraOS/notes.js"></script>
+    <script defer src="AuraOS/terminal.js"></script>
 
     <style>
         /* 1. SISTEMA DE DESIGN E CONFIGURAÇÃO GLOBAL */
@@ -3217,6 +3217,10 @@
     let desktop, dock, root, lockScreen, lockScreenClock, lockPasswordInput, unlockButton;
 
     document.addEventListener('DOMContentLoaded', async () => { // Made async
+        console.log('Initial check (DOMContentLoaded): typeof window.d3 =', typeof window.d3);
+        if (typeof window.d3 !== 'undefined') {
+            console.log('Initial check (DOMContentLoaded): typeof window.d3.Delaunay =', typeof window.d3.Delaunay);
+        }
         try {
             console.log("Initializing DBManager...");
             await dbManager.init();
