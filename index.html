@@ -4433,6 +4433,15 @@
              const windowEl = document.getElementById(windowId);
              if (windowEl) {
                  windowEl.classList.add('minimized');
+                 
+                 // Pause music for Tetris game when minimized
+                 const canvas = windowEl.querySelector('canvas');
+                 if (canvas && window.currentGameInstance && 
+                     typeof window.currentGameInstance.pauseMusic === 'function' &&
+                     windowId.includes('game-center')) {
+                     window.currentGameInstance.pauseMusic();
+                 }
+                 
                  saveDesktopState();
              }
         }
@@ -4440,6 +4449,14 @@
         function focusWindow(windowEl) {
             if(windowEl.classList.contains('minimized')) {
                 windowEl.classList.remove('minimized');
+                
+                // Resume music for Tetris game when restored
+                const canvas = windowEl.querySelector('canvas');
+                if (canvas && window.currentGameInstance && 
+                    typeof window.currentGameInstance.resumeMusic === 'function' &&
+                    windowEl.id.includes('game-center')) {
+                    window.currentGameInstance.resumeMusic();
+                }
             }
             document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
             windowEl.classList.add('focused');
