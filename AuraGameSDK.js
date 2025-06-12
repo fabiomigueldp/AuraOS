@@ -6,7 +6,7 @@
 const AuraGameSDK = {
     _gameId: null,
     _canvasElement: null,
-    _dbManager: window.dbManager, // Assuming dbManager is globally available
+    get _dbManager() { return window.dbManager; }, // Assuming dbManager is globally available
 
     /**
      * Initializes the SDK for a specific game.
