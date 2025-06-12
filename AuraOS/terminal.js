@@ -368,7 +368,12 @@ class AuraTerminalApp {
 
                         // Create the directory
                         await dbManager.saveFile({ path: dirPath, type: 'folder', name: name, lastModified: Date.now(), content: {} }, {}); // content for folder is empty obj
-                        console.log(`UI update needed for path ${dirPath} (mkdir)`); // Placeholder for UI update
+                        const parentDirToUpdate = this.resolvePath(dirPath, '..');
+                        if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                            window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                        } else {
+                            console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                        }
                         return true;
                     } catch (error) {
                         this._termLog(`mkdir: failed to create directory '${dirPath}': ${error.message}`, 'output-error');
@@ -447,7 +452,12 @@ class AuraTerminalApp {
                                 content: existingNode.content, // Preserve content
                                 lastModified: Date.now()
                             }, existingNode.content);
-                            console.log(`UI update needed for path ${filePath} (touch - existing file timestamp update)`);
+                            const parentDirToUpdate = this.resolvePath(filePath, '..');
+                            if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                                window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                            } else {
+                                console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                            }
                         } else {
                             this._termLog(`touch: cannot touch '${filePath}': It exists and is not a file (it's a ${existingNode.type}).`, 'output-error');
                         }
@@ -460,7 +470,12 @@ class AuraTerminalApp {
                             content: '',
                             lastModified: Date.now()
                         }, '');
-                        console.log(`UI update needed for path ${filePath} (touch - new file created)`);
+                        const parentDirToUpdate = this.resolvePath(filePath, '..');
+                        if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                            window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                        } else {
+                            console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                        }
                     }
                 } catch (error) {
                      this._termLog(`touch: failed to process file '${filePath}': ${error.message}`, 'output-error');
@@ -516,7 +531,12 @@ class AuraTerminalApp {
                                 } else {
                                     try {
                                         await dbManager.deleteFile(child.path);
-                                        console.log(`UI update needed for path ${child.path} (rm -r file)`);
+                                    const parentDirToUpdate = this.resolvePath(child.path, '..');
+                                    if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                                        window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                                    } else {
+                                        console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                                    }
                                     } catch (error) {
                                         this._termLog(`rm: failed to remove file '${child.path}' during recursive delete: ${error.message}`, 'output-error');
                                         // Optionally, re-throw or collect errors to stop the whole process
@@ -526,7 +546,12 @@ class AuraTerminalApp {
                             // After deleting all children, delete the folder itself
                             try {
                                 await dbManager.deleteFile(currentPath);
-                                console.log(`UI update needed for path ${currentPath} (rm -r folder)`);
+                                const parentDirToUpdate = this.resolvePath(currentPath, '..');
+                                if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                                    window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                                } else {
+                                    console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                                }
                             } catch (error) {
                                 this._termLog(`rm: failed to remove folder '${currentPath}' during recursive delete: ${error.message}`, 'output-error');
                                 // Optionally, re-throw or collect errors
@@ -542,7 +567,12 @@ class AuraTerminalApp {
                 try {
                     await dbManager.deleteFile(path);
                     this._termLog(`Removed '${targetNameArg}'`, 'output-text');
-                    console.log(`UI update needed for path ${path} (rm)`);
+                    const parentDirToUpdate = this.resolvePath(path, '..');
+                    if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                        window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                    } else {
+                        console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                    }
                 } catch (error) {
                     this._termLog(`rm: failed to remove '${targetNameArg}': ${error.message}`, 'output-error');
                 }
@@ -801,7 +831,12 @@ Ping statistics for ${hostname}:
 
 
                             await dbManager.saveFile({ path: dest, type: 'folder', name: getFileName(dest), lastModified: Date.now(), content: {} }, {});
-                            console.log(`UI update needed for path ${dest} (cp folder created)`);
+                            const parentDirToUpdate = this.resolvePath(dest, '..');
+                            if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                                window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                            } else {
+                                console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                            }
                         } catch (error) {
                             this._termLog(`cp: failed to create directory '${dest}': ${error.message}`, 'output-error');
                             throw error; // Propagate
@@ -858,7 +893,12 @@ Ping statistics for ${hostname}:
                                 content: sourceNode.content || sourceNode.data || '',
                                 lastModified: Date.now()
                             }, sourceNode.content || sourceNode.data || '');
-                            console.log(`UI update needed for path ${finalDestPath} (cp file created/updated)`);
+                            const parentDirToUpdate = this.resolvePath(finalDestPath, '..');
+                            if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
+                                window.AuraOS.updateFileSystemUI(parentDirToUpdate);
+                            } else {
+                                console.warn('Global UI update function window.AuraOS.updateFileSystemUI not found. UI may be stale.');
+                            }
                         } catch (error) {
                             this._termLog(`cp: failed to copy file '${src}' to '${finalDestPath}': ${error.message}`, 'output-error');
                             throw error; // Propagate
