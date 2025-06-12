@@ -4,6 +4,14 @@ class Aura3DViewerApp {
         this.windowEl = windowEl;
         this.data = data;
 
+        this.cdnModels = [
+            { name: 'Astronaut', src: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' },
+            { name: 'Horse', src: 'https://modelviewer.dev/shared-assets/models/Horse.glb' },
+            { name: 'Damaged Helmet', src: 'https://modelviewer.dev/shared-assets/models/DamagedHelmet.glb' },
+            { name: 'Robot Expressive', src: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb' },
+            { name: 'Alpha Blend Mode Test', src: 'https://modelviewer.dev/shared-assets/models/AlphaBlendModeTest.glb' }
+        ];
+
         this._boundDestroy = this.destroy.bind(this);
         this.windowEl.addEventListener('aura:close', this._boundDestroy);
 
@@ -20,17 +28,17 @@ class Aura3DViewerApp {
         }
 
         const containerHTML = `
-            <div class="aura-3d-viewer-container" style="display: flex; height: 100%; width: 100%;">
-                <div class="aura-3d-viewer-sidebar" style="width: 200px; height: 100%; background: rgba(0,0,0,0.1); padding: 10px; box-sizing: border-box; overflow-y: auto;">
+            <div class="aura-3d-viewer-container">
+                <div class="aura-3d-viewer-sidebar">
                     <!-- Models list will be populated here -->
                 </div>
-                <div class="aura-3d-viewer-main-area" style="flex-grow: 1; height: 100%; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                    <div class="current-model-name" style="padding-bottom: 10px; font-weight: bold;">No model loaded</div>
-                    <model-viewer src="" alt="3D Model" style="width: 100%; height: 80%; border: 1px solid var(--glass-border);" camera-controls auto-rotate shadow-intensity="1"></model-viewer>
-                    <div class="model-controls" style="padding-top: 10px; display: flex; gap: 10px;">
-                        <button data-action="play-pause">Play Animations</button>
-                        <button data-action="toggle-rotate">Toggle Auto-Rotate</button>
-                        <button data-action="toggle-shadow">Toggle Shadow</button>
+                <div class="aura-3d-viewer-main-area">
+                    <div class="current-model-name">No model loaded</div>
+                    <model-viewer class="model-viewer-tag" src="" alt="3D Model" camera-controls auto-rotate shadow-intensity="1"></model-viewer>
+                    <div class="model-controls">
+                        <button class="aura-os-button" data-action="play-pause">Play Animations</button>
+                        <button class="aura-os-button" data-action="toggle-rotate">Toggle Auto-Rotate</button>
+                        <button class="aura-os-button" data-action="toggle-shadow">Toggle Shadow</button>
                     </div>
                 </div>
             </div>
@@ -92,51 +100,62 @@ class Aura3DViewerApp {
     }
 
     async _initialize() {
-        await this._scanAndPopulateModels();
+        await this._scanAndPopulateModels(); // This now populates both CDN and local
 
         if (this.data && this.data.filePath) {
             this._loadModel(this.data.filePath);
+        } else if (this.cdnModels && this.cdnModels.length > 0) {
+            // If no specific file path, and CDN models exist, load the first one by default
+            this._loadModel(this.cdnModels[0].src);
+            // Optionally, find and activate the corresponding sidebar item
+            const firstCdnItem = this.sidebarDiv.querySelector(`.sidebar-item[data-file-path="${this.cdnModels[0].src.replace(/"/g, '\\"')}"]`);
+            if (firstCdnItem) {
+                // Ensure other items are deactivated first
+                this.sidebarDiv.querySelectorAll('.sidebar-item.active').forEach(activeItem => {
+                    activeItem.classList.remove('active');
+                });
+                firstCdnItem.classList.add('active');
+            }
         } else {
+            // Existing logic for when no model is loaded (welcome message)
             if (!this.modelViewerElement.hasAttribute('src') || !this.modelViewerElement.getAttribute('src')) {
                  this.modelNameDiv.textContent = 'Welcome to Aura 3D Viewer!';
                  this.modelViewerElement.style.display = 'none';
-                 const placeholderText = document.createElement('p');
-                 placeholderText.textContent = 'Select a model from the list to begin.';
-                 placeholderText.style.textAlign = 'center';
-                 // Insert placeholder before model-controls
-                 const controlsDiv = this.mainAreaDiv.querySelector('.model-controls');
-                 if (controlsDiv) {
-                    this.mainAreaDiv.insertBefore(placeholderText, controlsDiv);
-                 } else { // Fallback if controlsDiv isn't there for some reason
-                    this.mainAreaDiv.appendChild(placeholderText);
+                 // Ensure existing placeholder logic is still sound or simplified
+                 let placeholderText = this.mainAreaDiv.querySelector('.viewer-placeholder-text');
+                 if (!placeholderText) {
+                     placeholderText = document.createElement('p');
+                     placeholderText.className = 'viewer-placeholder-text'; // Use class
+                     const controlsDiv = this.mainAreaDiv.querySelector('.model-controls');
+                     if (controlsDiv) {
+                        this.mainAreaDiv.insertBefore(placeholderText, controlsDiv);
+                     } else {
+                        this.mainAreaDiv.appendChild(placeholderText);
+                     }
                  }
+                 placeholderText.textContent = 'Select a model from the list to begin, or add local models to /Models/.';
             }
         }
     }
 
     async _scanAndPopulateModels() {
-        const modelsDirectory = '/Models/'; // Define the directory to scan
         this.sidebarDiv.innerHTML = ''; // Clear current list
 
-        try {
-            const files = await dbManager.listFiles(modelsDirectory);
-            const glbFiles = files.filter(file => file.name.toLowerCase().endsWith('.glb') && file.type === 'file');
+        // --- Render CDN Models ---
+        const cdnHeader = document.createElement('h3');
+        cdnHeader.textContent = 'Cloud Models';
+        this.sidebarDiv.appendChild(cdnHeader);
 
-            if (glbFiles.length === 0) {
-                this.sidebarDiv.innerHTML = `<p>No models found in ${modelsDirectory}</p>`;
-                return;
-            }
-
-            glbFiles.forEach(file => {
+        if (this.cdnModels && this.cdnModels.length > 0) {
+            this.cdnModels.forEach(model => {
                 const listItem = document.createElement('div');
                 listItem.className = 'sidebar-item';
-                listItem.textContent = file.name;
-                const filePath = modelsDirectory + file.name; // Construct full path
-                listItem.dataset.filePath = filePath;
+                listItem.textContent = model.name;
+                listItem.dataset.filePath = model.src; // Use filePath to be consistent with existing _loadModel logic
 
                 listItem.addEventListener('click', () => {
-                    this._loadModel(filePath);
-                    // Handle highlighting
+                    this._loadModel(model.src);
+                    // Handle highlighting (remove active from all, add to this one)
                     this.sidebarDiv.querySelectorAll('.sidebar-item.active').forEach(activeItem => {
                         activeItem.classList.remove('active');
                     });
@@ -144,14 +163,60 @@ class Aura3DViewerApp {
                 });
                 this.sidebarDiv.appendChild(listItem);
             });
+        } else {
+            const noCdnModelsMsg = document.createElement('p');
+            noCdnModelsMsg.textContent = 'No cloud models available.';
+            noCdnModelsMsg.style.fontSize = '0.8rem'; // Optional: slightly smaller text for this message
+            noCdnModelsMsg.style.color = 'var(--subtle-text-color)';
+            this.sidebarDiv.appendChild(noCdnModelsMsg);
+        }
+
+        // --- Render Local Models ---
+        const localHeader = document.createElement('h3');
+        localHeader.textContent = 'Local Models';
+        this.sidebarDiv.appendChild(localHeader);
+
+        const modelsDirectory = '/Models/';
+        try {
+            const files = await dbManager.listFiles(modelsDirectory);
+            const glbFiles = files.filter(file => file.name.toLowerCase().endsWith('.glb') && file.type === 'file');
+
+            if (glbFiles.length === 0) {
+                const noLocalModelsMsg = document.createElement('p');
+                noLocalModelsMsg.textContent = `No models found in ${modelsDirectory}`;
+                noLocalModelsMsg.style.fontSize = '0.8rem'; // Optional
+                noLocalModelsMsg.style.color = 'var(--subtle-text-color)';
+                this.sidebarDiv.appendChild(noLocalModelsMsg);
+                // return; // Do not return here, allow app to function with only CDN models if local are none
+            } else {
+                glbFiles.forEach(file => {
+                    const listItem = document.createElement('div');
+                    listItem.className = 'sidebar-item';
+                    listItem.textContent = file.name;
+                    const filePath = modelsDirectory + file.name;
+                    listItem.dataset.filePath = filePath;
+
+                    listItem.addEventListener('click', () => {
+                        this._loadModel(filePath);
+                        this.sidebarDiv.querySelectorAll('.sidebar-item.active').forEach(activeItem => {
+                            activeItem.classList.remove('active');
+                        });
+                        listItem.classList.add('active');
+                    });
+                    this.sidebarDiv.appendChild(listItem);
+                });
+            }
 
         } catch (error) {
             console.error(`Error scanning models in ${modelsDirectory}:`, error);
-            this.sidebarDiv.innerHTML = `<p>Error loading models.</p>`;
-            // Show a notification to the user
-             if (window.AuraOS && AuraOS.showNotification) {
+            const errorMsg = document.createElement('p');
+            errorMsg.textContent = 'Error loading local models.';
+            errorMsg.style.fontSize = '0.8rem'; // Optional
+            errorMsg.style.color = 'var(--red-accent)'; // Indicate error
+            this.sidebarDiv.appendChild(errorMsg);
+            if (window.AuraOS && AuraOS.showNotification) {
                 AuraOS.showNotification({
-                    title: 'Error Loading Models',
+                    title: 'Error Loading Local Models',
                     message: `Could not scan ${modelsDirectory}. Ensure the directory exists.`,
                     type: 'error'
                 });
