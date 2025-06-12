@@ -742,14 +742,13 @@ class AuraFlowApp {
             cancelAnimationFrame(this.animationFrameId);
         }
 
-        let animateFunction;
         if (this.currentMode === 'particleFlow') {
-            animateFunction = this.animateParticleFlow.bind(this);
+            this.animateParticleFlow();
         } else if (this.currentMode === 'connectedFibers') {
-            animateFunction = this.animateConnectedFibers.bind(this);
+            this.animateConnectedFibers();
         } else if (this.currentMode === 'voronoi') {
             if (typeof d3 !== 'undefined' && d3.Delaunay) {
-                 this.animateVoronoi();
+                this.animateVoronoi();
             } else {
                 this.ctx.fillStyle = 'white';
                 this.ctx.font = '16px Arial';
@@ -832,7 +831,9 @@ class AuraFlowApp {
                 }
             }
         }
-        requestAnimationFrame(this.animateConnectedFibers.bind(this));
+        if (this.isVisible) {
+            this.animationFrameId = requestAnimationFrame(this.animateConnectedFibers.bind(this));
+        }
     }
 
     // --- Voronoi Tessellation Mode Methods ---
@@ -997,6 +998,42 @@ class SeedPoint {
         let currentL = this.baseL + lightnessVariation;
         currentL = Math.max(10, Math.min(90, currentL)); // Clamp lightness
         return `hsl(${this.baseH}, ${this.baseS}%, ${currentL}%)`;
+    }
+
+    updateBaseHSL() {
+        // Re-convert baseColor to HSL if the color has changed
+        let r = 0, g = 0, b = 0;
+        if (this.baseColor.startsWith('#')) {
+            const hex = this.baseColor.slice(1);
+            r = parseInt(hex.substring(0,2), 16);
+            g = parseInt(hex.substring(2,4), 16);
+            b = parseInt(hex.substring(4,6), 16);
+        } else if (this.baseColor.startsWith('rgb')) {
+            const parts = this.baseColor.match(/[\d.]+/g);
+            if (parts && parts.length >= 3) {
+                r = parseInt(parts[0]);
+                g = parseInt(parts[1]);
+                b = parseInt(parts[2]);
+            }
+        }
+        // Basic RGB to HSL conversion (simplified)
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2 / 255;
+        if (max === min) {
+            h = s = 0; // achromatic
+        } else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 * 255 - max - min) : d / (max + min);
+            switch(max){
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        this.baseH = h * 360;
+        this.baseS = s * 100;
+        this.baseL = l * 100;
     }
 
     draw(ctx) { // Optional: for drawing the seed points themselves
