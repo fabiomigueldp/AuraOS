@@ -772,6 +772,203 @@ const AuraGameSDK = {
             console.error(errorMsg, dbError);
             return Promise.reject(errorMsg);
         }
+    },
+
+    ui: {
+        _cssInjected: false,
+
+        /**
+         * Injects the necessary CSS for UI components into the document's head.
+         * @private
+         */
+        _injectCSS() {
+            if (this._cssInjected) return;
+
+            const styles = `
+                .aura-modal {
+                    position: fixed;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: #333;
+                    color: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    z-index: 1000;
+                    border: 1px solid #555;
+                    min-width: 300px;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+                }
+                .aura-modal-hidden {
+                    display: none;
+                }
+                .aura-modal-visible {
+                    display: block; /* Or flex, if using flex for internal centering */
+                }
+                .aura-modal-header {
+                    font-size: 1.5em;
+                    margin-bottom: 10px;
+                    border-bottom: 1px solid #444;
+                    padding-bottom: 10px;
+                }
+                .aura-modal-body {
+                    margin-bottom: 15px;
+                }
+                .aura-modal-footer {
+                    text-align: right;
+                    border-top: 1px solid #444;
+                    padding-top: 10px;
+                }
+                .aura-sdk-button {
+                    background-color: #555;
+                    color: white;
+                    border: 1px solid #777;
+                    padding: 8px 15px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-left: 10px;
+                }
+                .aura-sdk-button:hover {
+                    background-color: #777;
+                }
+            `;
+            const styleSheet = document.createElement("style");
+            styleSheet.type = "text/css";
+            styleSheet.innerText = styles;
+            document.head.appendChild(styleSheet);
+            this._cssInjected = true;
+            console.log("AuraGameSDK.ui: CSS injected.");
+        },
+
+        /**
+         * Creates a button element.
+         * @param {string} text - Text to display on the button.
+         * @param {function} onClickCallback - Function to execute when the button is clicked.
+         * @param {object} [options] - Optional parameters.
+         * @param {string} [options.className] - Custom CSS class for the button.
+         * @param {string} [options.id] - ID for the button.
+         * @returns {HTMLButtonElement} The created button element.
+         */
+        createButton(text, onClickCallback, options = {}) {
+            const button = document.createElement('button');
+            button.textContent = text;
+            button.className = 'aura-sdk-button'; // Default class
+
+            if (options.className) {
+                button.classList.add(options.className);
+            }
+            if (options.id) {
+                button.id = options.id;
+            }
+
+            if (typeof onClickCallback === 'function') {
+                button.addEventListener('click', onClickCallback);
+            } else {
+                console.warn('AuraGameSDK.ui.createButton: onClickCallback is not a function for button with text "' + text + '".');
+            }
+
+            return button;
+        },
+
+        /**
+         * Creates a modal dialog.
+         * @param {string} id - Unique ID for the modal DOM element.
+         * @param {object} [options] - Options for the modal.
+         * @param {string} [options.title] - Title for the modal header.
+         * @param {string|HTMLElement} [options.content] - HTML string or a DOM element for modal content.
+         * @param {Array<object>} [options.buttons] - Array of button definitions for the footer.
+         *                                           Each object: { text: string, callback: function, className?: string }
+         * @returns {HTMLElement|null} The created modal element, or null if id is missing.
+         */
+        createModal(id, options = {}) {
+            if (!id) {
+                console.error('AuraGameSDK.ui.createModal: id is required.');
+                return null;
+            }
+
+            this._injectCSS(); // Ensure CSS is injected
+
+            const modal = document.createElement('div');
+            modal.id = id;
+            modal.className = 'aura-modal aura-modal-hidden'; // Hidden by default
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'aura-modal-content';
+
+            // Header
+            if (options.title) {
+                const header = document.createElement('div');
+                header.className = 'aura-modal-header';
+                header.textContent = options.title;
+                modalContent.appendChild(header);
+            }
+
+            // Body
+            if (options.content) {
+                const body = document.createElement('div');
+                body.className = 'aura-modal-body';
+                if (typeof options.content === 'string') {
+                    body.innerHTML = options.content;
+                } else if (options.content instanceof HTMLElement) {
+                    body.appendChild(options.content);
+                }
+                modalContent.appendChild(body);
+            }
+
+            // Footer & Buttons
+            if (options.buttons && Array.isArray(options.buttons) && options.buttons.length > 0) {
+                const footer = document.createElement('div');
+                footer.className = 'aura-modal-footer';
+                options.buttons.forEach(btnDef => {
+                    const button = this.createButton(btnDef.text, btnDef.callback, { className: btnDef.className });
+                    footer.appendChild(button);
+                });
+                modalContent.appendChild(footer);
+            }
+
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal); // Or a specific SDK-managed container
+            console.log(`AuraGameSDK.ui: Modal "${id}" created.`);
+            return modal;
+        },
+
+        /**
+         * Shows a modal dialog.
+         * @param {string} id - The ID of the modal to show.
+         */
+        showModal(id) {
+            if (!id) {
+                console.error('AuraGameSDK.ui.showModal: id is required.');
+                return;
+            }
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('aura-modal-hidden');
+                modal.classList.add('aura-modal-visible');
+                console.log(`AuraGameSDK.ui: Modal "${id}" shown.`);
+            } else {
+                console.error(`AuraGameSDK.ui.showModal: Modal with id "${id}" not found.`);
+            }
+        },
+
+        /**
+         * Hides a modal dialog.
+         * @param {string} id - The ID of the modal to hide.
+         */
+        hideModal(id) {
+            if (!id) {
+                console.error('AuraGameSDK.ui.hideModal: id is required.');
+                return;
+            }
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.remove('aura-modal-visible');
+                modal.classList.add('aura-modal-hidden');
+                console.log(`AuraGameSDK.ui: Modal "${id}" hidden.`);
+            } else {
+                console.error(`AuraGameSDK.ui.hideModal: Modal with id "${id}" not found.`);
+            }
+        }
     }
 };
 
