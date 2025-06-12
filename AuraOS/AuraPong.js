@@ -461,3 +461,5 @@ AuraPongGame.prototype.drawParticles = function() {
     }
   }
 };
+
+window.AuraPongGame = AuraPongGame;

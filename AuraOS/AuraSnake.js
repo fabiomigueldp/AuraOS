@@ -379,4 +379,4 @@ function AuraSnakeGame(canvas) {
 }
 
 // If AuraSnakeGame needs to be globally accessible for instantiation by Game Center:
-// window.AuraSnakeGame = AuraSnakeGame;
+window.AuraSnakeGame = AuraSnakeGame;

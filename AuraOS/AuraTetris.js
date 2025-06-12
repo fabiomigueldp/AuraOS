@@ -138,8 +138,6 @@ function AuraTetrisGame(canvas) {
         return true;
     }
 
-    generateNewPiece();
-
     function drawBlock(x,y,c,iS=false){if(iS){ctx.globalAlpha=0.3;ctx.strokeStyle=c;ctx.lineWidth=2;ctx.strokeRect(x+BLOCK_PADDING,y+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);ctx.globalAlpha=1.0;return;}
 ctx.globalAlpha=0.6;ctx.fillStyle=c;ctx.fillRect(x+BLOCK_PADDING,y+BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING,BLOCK_SIZE-2*BLOCK_PADDING);
 ctx.globalAlpha=0.3;ctx.fillStyle='rgba(255,255,255,0.5)';const gI=BLOCK_PADDING*2;ctx.fillRect(x+gI,y+gI,BLOCK_SIZE-2*gI,BLOCK_SIZE-2*gI);
