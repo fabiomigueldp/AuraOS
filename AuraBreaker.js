@@ -275,4 +275,4 @@ function AuraBreakerGame(canvas) {
 }
 
 // Make AuraBreakerGame globally accessible if needed by Game Center to instantiate it.
-// window.AuraBreakerGame = AuraBreakerGame;
+window.AuraBreakerGame = AuraBreakerGame;

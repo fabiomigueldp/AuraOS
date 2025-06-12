@@ -404,3 +404,5 @@ function AuraInvadersGame(canvas) {
   };
 
 } // End of AuraInvadersGame constructor
+
+window.AuraInvadersGame = AuraInvadersGame;
