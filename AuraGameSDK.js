@@ -118,14 +118,11 @@ const AuraGameSDK = {
         /**
          * Gets the top N scores for the current game from the leaderboard.
          * Scores are returned in descending order (highest score first).
+         * @param {string} gameId - The ID of the game for which to fetch scores.
          * @param {number} [limit=10] - The maximum number of high scores to retrieve.
          * @returns {Promise<Array<object>>} A Promise that resolves with an array of score objects, or an empty array if none are found or an error occurs.
          */
-        async getHighScores(limit = 10) {
-            if (!AuraGameSDK._gameId) {
-                console.error('AuraGameSDK not initialized. Call init() first.');
-                return Promise.resolve([]); // Resolve with empty array on error
-            }
+        async getHighScores(gameId, limit = 10) {
             if (!AuraGameSDK._dbManager || !AuraGameSDK._dbManager.db) {
                  console.error('AuraGameSDK: dbManager or db instance not available for getHighScores.');
                  return Promise.resolve([]);
@@ -137,7 +134,7 @@ const AuraGameSDK = {
                     const store = transaction.objectStore('high_scores');
                     const index = store.index('by_game'); // Use the 'by_game' index
 
-                    const request = index.getAll(AuraGameSDK._gameId); // Get all scores for the current gameId
+                    const request = index.getAll(gameId); // Get all scores for the current gameId
 
                     request.onsuccess = (event) => {
                         const scores = event.target.result || [];
@@ -152,11 +149,11 @@ const AuraGameSDK = {
                     };
 
                     request.onerror = (event) => {
-                        console.error(`Error fetching high scores for ${AuraGameSDK._gameId}:`, event.target.error);
+                        console.error(`Error fetching high scores for ${gameId}:`, event.target.error);
                         resolve([]); // Resolve with empty array on DB error
                     };
                 } catch (error) {
-                    console.error(`Critical error in getHighScores for ${AuraGameSDK._gameId}:`, error);
+                    console.error(`Critical error in getHighScores for ${gameId}:`, error);
                     resolve([]); // Resolve with empty array on critical error
                 }
             });

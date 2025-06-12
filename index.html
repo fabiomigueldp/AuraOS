@@ -7221,7 +7221,7 @@
                         detailedGameId = gameData.id;
                         gameContentArea.innerHTML = `
                             <div class="game-detail-view">
-                                <div class="game-banner" style="background-image: url('https://via.placeholder.com/600x200.png?text=${encodeURIComponent(gameData.title)}+Banner');"></div>
+                                <div class="game-banner" style="background-color: var(--glass-background);"></div>
                                 <div class="game-info-debajo-banner">
                                     <h2 class="game-title-detail">${gameData.title}</h2>
                                     <p class="game-description">
@@ -7292,6 +7292,15 @@
                                 } else if (typeof AuraSnakeGame === 'function' && gameData.id === 'aura-snake') { // DEV 4: ADD YOUR GAME INSTANTIATION LOGIC HERE
                                     currentGameInstance = new AuraSnakeGame(canvas);
                                     currentGameInstance.start();
+} else if (typeof AuraInvadersGame === 'function' && gameData.id === 'aura-invaders') {
+    currentGameInstance = new AuraInvadersGame(canvas);
+    currentGameInstance.start();
+} else if (typeof AuraPongGame === 'function' && gameData.id === 'aura-pong') {
+    currentGameInstance = new AuraPongGame(canvas);
+    currentGameInstance.start();
+} else if (typeof AuraTetrisGame === 'function' && gameData.id === 'aura-tetris') {
+    currentGameInstance = new AuraTetrisGame(canvas);
+    currentGameInstance.start();
                                 } else {
                                     console.error("Game function not found or ID mismatch for:", gameData.id);
                                     gameContentArea.innerHTML = "<p>Error: Could not load game.</p>";
@@ -7327,7 +7336,7 @@
                             });
                         }
 
-                        AuraGameSDK.leaderboard.getHighScores(5)
+                        AuraGameSDK.leaderboard.getHighScores(gameData.id, 5)
                             .then(scores => {
                                 const lbList = document.getElementById('leaderboard-list');
                                 if (lbList) {
