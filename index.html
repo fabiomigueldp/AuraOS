@@ -4599,6 +4599,26 @@
             if (initialFocus) focusWindow(windowEl); // Fallback
         }
 
+        windowEl.querySelector('.close-btn').addEventListener('click', (e) => {
+            console.log(`[index.html] Close button clicked for window: ${uniqueId}, app: ${effectiveAppId}`);
+            e.stopPropagation();
+            closeWindow(uniqueId, effectiveAppId);
+        });
+        windowEl.querySelector('.minimize-btn').addEventListener('click', (e) => {
+            console.log(`[index.html] Minimize button clicked for window: ${uniqueId}`);
+            e.stopPropagation();
+            minimizeWindow(uniqueId);
+        });
+
+        const maximizeBtn = windowEl.querySelector('.maximize-btn');
+        maximizeBtn.addEventListener('click', (e) => {
+            console.log(`[index.html] Maximize button clicked for window: ${uniqueId}`);
+            e.stopPropagation();
+            if (window.windowManager) {
+                window.windowManager.maximizeWindow(windowEl);
+            }
+        });
+
         initializeAppLogic(uniqueId, effectiveAppId, windowEl, data);
         // saveDesktopState(); // Called by WM methods or drag/resize end
         return windowEl;

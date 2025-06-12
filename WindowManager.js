@@ -29,18 +29,20 @@ class WindowManager {
     }
 
     registerWindow(windowEl, options = {}) {
+        console.log(`WM.registerWindow: Called for ${windowEl?.id}, options:`, options);
         if (!windowEl || !windowEl.id) {
             console.error("WindowManager: Cannot register window without an element or ID.", windowEl);
             return;
         }
         if (this.windows.some(w => w.id === windowEl.id)) {
             console.warn(`WindowManager: Window with ID ${windowEl.id} is already registered.`);
-            this.focusWindow(windowEl);
+            this.focusWindow(windowEl); // Attempt to focus existing
             return;
         }
 
-        const initialZIndex = this.getNewZIndex("window");
+        const initialZIndex = options.zIndexToRestore || this.getNewZIndex("window");
         windowEl.style.zIndex = initialZIndex;
+        console.log(`WM.registerWindow: Assigned initial z-index ${initialZIndex} to ${windowEl.id}`);
 
         const windowRecord = {
             id: windowEl.id,
@@ -59,22 +61,24 @@ class WindowManager {
         };
         this.windows.push(windowRecord);
         windowEl.dataset.aurawmId = windowEl.id;
-        console.log(`WindowManager: Window registered: ${windowRecord.title} (ID: ${windowRecord.id}), normal z-index: ${initialZIndex}, resizable: ${windowRecord.resizable}, filePath: ${windowRecord.filePath}`);
+        console.log(`WM.registerWindow: Record pushed. windowEl.dataset.aurawmId set to ${windowEl.id}. Total windows: ${this.windows.length}`);
 
         if (windowRecord.resizable) {
+            console.log(`WM.registerWindow: Window ${windowRecord.id} is resizable, creating handles.`);
             this.createResizeHandles(windowEl);
         }
-        // Initial focus is usually handled by loadAndRestoreWindowState or the caller of createWindow for new windows
-        // this.focusWindow(windowEl); // Potentially defer this if called from loadAndRestore
-        // If it's a restored window, don't automatically focus here. loadAndRestoreWindowState will handle it.
+
         if (options.restoredId) {
-            console.log(`WindowManager: Registered restored window: ${windowRecord.title} (ID: ${windowRecord.id})`);
+            console.log(`WM.registerWindow: Registered restored window: ${windowRecord.title} (ID: ${windowRecord.id}). Focus deferred.`);
         } else {
-            this.focusWindow(windowEl); // Only auto-focus brand new windows
+            console.log(`WM.registerWindow: Registering new window: ${windowRecord.title} (ID: ${windowRecord.id}). Attempting focus.`);
+            this.focusWindow(windowEl); // Auto-focus brand new windows
         }
+        console.log(`WM.registerWindow: Finished for ${windowEl.id}`);
     }
 
     unregisterWindow(windowEl) {
+        console.log(`WM.unregisterWindow: Called for ${windowEl?.id}`);
         if (!windowEl || !windowEl.id) {
             console.warn("WindowManager: Cannot unregister window without an element or ID.", windowEl);
             return;
@@ -84,19 +88,26 @@ class WindowManager {
         if (index !== -1) {
             const unregisteredWindowTitle = this.windows[index].title;
             this.windows.splice(index, 1);
-            console.log(`WindowManager: Window unregistered: ${unregisteredWindowTitle} (ID: ${windowId})`);
+            console.log(`WM.unregisterWindow: Window unregistered: ${unregisteredWindowTitle} (ID: ${windowId}). Total windows: ${this.windows.length}`);
             if (this.windows.filter(w => w.zIndex < this.Z_INDEX_LAYERS.focusedWindow).length === 0) {
                 this.currentWindowZIndexCounter = this.baseWindowZIndex;
-                console.log("WindowManager: All normal windows closed, z-index counter reset to", this.baseWindowZIndex);
+                console.log("WM.unregisterWindow: All normal windows closed, z-index counter reset to", this.baseWindowZIndex);
             }
         } else {
-            console.warn(`WindowManager: Window with ID ${windowId} not found for unregistration.`);
+            console.warn(`WM.unregisterWindow: Window with ID ${windowId} not found for unregistration.`);
         }
+        console.log(`WM.unregisterWindow: Finished for ${windowEl?.id}`);
     }
 
     getWindowRecord(windowEl) {
-        if (!windowEl || !windowEl.dataset.aurawmId) return undefined;
-        return this.windows.find(w => w.id === windowEl.dataset.aurawmId);
+        // console.log(`WM.getWindowRecord: Called for element with ID ${windowEl?.id}, dataset.aurawmId: ${windowEl?.dataset?.aurawmId}`);
+        if (!windowEl || !windowEl.dataset.aurawmId) {
+            // console.log("WM.getWindowRecord: Element or aurawmId missing, returning undefined.");
+            return undefined;
+        }
+        const record = this.windows.find(w => w.id === windowEl.dataset.aurawmId);
+        // console.log(`WM.getWindowRecord: Found record:`, record ? { id: record.id, title: record.title, state: record.state } : "undefined");
+        return record;
     }
 
     getNewZIndex(layerName) {
@@ -112,18 +123,24 @@ class WindowManager {
     }
 
     focusWindow(windowEl) {
-        if (!windowEl || !windowEl.id) return;
-        const recordToFocus = this.getWindowRecord(windowEl);
-        if (!recordToFocus) {
-            console.warn("WindowManager: Tried to focus an unregistered window:", windowEl.id);
+        console.log(`WM.focusWindow: Called for ${windowEl?.id}`);
+        if (!windowEl || !windowEl.id) {
+            console.log("WM.focusWindow: Window element or ID missing.");
             return;
         }
+        const recordToFocus = this.getWindowRecord(windowEl);
+        if (!recordToFocus) {
+            console.warn(`WM.focusWindow: Tried to focus an unregistered window: ${windowEl.id}`);
+            return;
+        }
+        console.log(`WM.focusWindow: Record to focus: ${recordToFocus.id}, Current state: ${recordToFocus.state}, Current z-index: ${recordToFocus.element.style.zIndex}`);
 
         let maxNormalZIndex = this.baseWindowZIndex;
         this.windows.forEach(w => {
             if (w.id !== recordToFocus.id) {
                 if (w.isFocused) {
-                    w.element.style.zIndex = w.zIndex;
+                    // console.log(`WM.focusWindow: Defocusing ${w.id}, resetting z-index to ${w.zIndex}`);
+                    w.element.style.zIndex = String(w.zIndex);
                 }
                 w.element.classList.remove('focused');
                 w.isFocused = false;
@@ -134,37 +151,47 @@ class WindowManager {
         });
 
         const newFocusedZIndex = this.getNewZIndex("focusedWindow");
-        windowEl.style.zIndex = newFocusedZIndex;
+        windowEl.style.zIndex = String(newFocusedZIndex);
 
         windowEl.classList.add('focused');
         recordToFocus.isFocused = true;
-        this.currentWindowZIndexCounter = Math.max(this.currentWindowZIndexCounter, maxNormalZIndex);
+        // this.currentWindowZIndexCounter = Math.max(this.currentWindowZIndexCounter, maxNormalZIndex); // Not strictly needed here as focused Z is separate
+        console.log(`WM.focusWindow: Window ${recordToFocus.id} focused. New z-index: ${newFocusedZIndex}. Max normal z-index was: ${maxNormalZIndex}. Base normal z-index now: ${this.currentWindowZIndexCounter}`);
         // console.log(`WindowManager: Window focused: ${recordToFocus.title} (ID: ${recordToFocus.id}), new element z-index: ${newFocusedZIndex}. Normal stack z-index: ${recordToFocus.zIndex}`);
+        console.log(`WM.focusWindow: Finished for ${windowEl?.id}. Focused: ${recordToFocus.isFocused}, Z-Index: ${windowEl.style.zIndex}`);
     }
 
     setWindowState(windowEl, newState) {
         const record = this.getWindowRecord(windowEl);
+        // console.log(`WM.setWindowState: Called for ${windowEl?.id}, new state: ${newState}, current record:`, record ? {id: record.id, title: record.title, oldState: record.state} : "NO RECORD");
         if (!record) {
-            console.error("WindowManager: Window not found for setWindowState", windowEl);
+            console.error(`WindowManager: Window not found for setWindowState. Element ID: ${windowEl?.id}, Dataset ID: ${windowEl?.dataset?.aurawmId}`);
             return;
         }
         const oldState = record.state;
-        if (oldState === newState) return;
-        console.log(`WindowManager: Setting state for ${record.id} from ${oldState} to ${newState}`);
+        if (oldState === newState) {
+            console.log(`WM.setWindowState: State is already ${newState} for ${record.id}`);
+            return;
+        }
+        console.log(`WM.setWindowState: Changing ${record.id} from ${oldState} to ${newState}`);
 
         if (oldState === "normal" && (newState === "maximized" || newState === "snapped-left" || newState === "snapped-right")) {
             record.originalNormalPosition = { top: record.element.offsetTop, left: record.element.offsetLeft };
             record.originalNormalSize = { width: record.element.offsetWidth, height: record.element.offsetHeight };
+            console.log(`WM.setWindowState: Stored original normal position/size for ${record.id}:`, record.originalNormalPosition, record.originalNormalSize);
         }
 
         record.state = newState;
 
         if (newState === "normal") {
             if (record.originalNormalSize && record.originalNormalPosition) {
+                console.log(`WM.setWindowState: Restoring ${record.id} to normal with original dimensions/position.`);
                 record.element.style.width = `${record.originalNormalSize.width}px`;
                 record.element.style.height = `${record.originalNormalSize.height}px`;
                 record.element.style.top = `${record.originalNormalPosition.top}px`;
                 record.element.style.left = `${record.originalNormalPosition.left}px`;
+            } else {
+                console.log(`WM.setWindowState: Restoring ${record.id} to normal, but no original dimensions/position stored. Defaulting might occur.`);
             }
             if (record.resizable) this.showResizeHandles(windowEl); else this.hideResizeHandles(windowEl);
             windowEl.classList.remove('maximized', 'snapped-left', 'snapped-right', 'minimized');
@@ -185,8 +212,12 @@ class WindowManager {
             }
         }
 
+        // Update currentPosition and currentSize in the record
         record.currentPosition = { top: record.element.offsetTop, left: record.element.offsetLeft };
         record.currentSize = { width: record.element.offsetWidth, height: record.element.offsetHeight };
+        console.log(`WM.setWindowState: ${record.id} state changed. Element classes: ${record.element.className}`);
+        console.log(`WM.setWindowState: ${record.id} new pos: (${record.currentPosition.left},${record.currentPosition.top}), new size: (${record.currentSize.width}x${record.currentSize.height})`);
+        console.log(`WM.setWindowState: Finished for ${windowEl?.id}, new state: ${newState}`);
     }
 
     getWorkArea() {
@@ -226,21 +257,29 @@ class WindowManager {
     }
 
     maximizeWindow(windowEl) {
+        console.log(`WM.maximizeWindow: Called for ${windowEl?.id}`);
         const record = this.getWindowRecord(windowEl);
-        if (!record) return;
+        if (!record) {
+            console.error(`WM.maximizeWindow: No record found for ${windowEl?.id}`);
+            return;
+        }
         if (!record.resizable && record.state !== "maximized") {
-             console.warn(`WindowManager: Attempted to maximize non-resizable window: ${record.id}`);
+             console.warn(`WM.maximizeWindow: Attempted to maximize non-resizable window: ${record.id}`);
              return;
         }
 
         if (record.state === "maximized") {
+            console.log(`WM.maximizeWindow: Window ${record.id} is already maximized, calling restoreWindow.`);
             this.restoreWindow(windowEl);
         } else {
-            if(record.state === "normal"){
+            console.log(`WM.maximizeWindow: Maximizing window ${record.id}. Current state: ${record.state}`);
+            if(record.state === "normal"){ // Only store if current state is normal, otherwise originalNormal is already set
                  record.originalNormalPosition = { top: record.element.offsetTop, left: record.element.offsetLeft };
                  record.originalNormalSize = { width: record.element.offsetWidth, height: record.element.offsetHeight };
+                 console.log(`WM.maximizeWindow: Stored original normal pos/size for ${record.id}:`, record.originalNormalPosition, record.originalNormalSize);
             }
             const workArea = this.getWorkArea();
+            console.log(`WM.maximizeWindow: Work area for ${record.id}:`, workArea);
             record.element.style.top = `${workArea.y}px`;
             record.element.style.left = `${workArea.x}px`;
             record.element.style.width = `${workArea.width}px`;
@@ -250,13 +289,19 @@ class WindowManager {
             if (maxBtn) maxBtn.title = "Restaurar";
             windowEl.dispatchEvent(new CustomEvent('aura:window-resized', { detail: { width: workArea.width, height: workArea.height } }));
         }
+        console.log(`WM.maximizeWindow: Finished for ${windowEl?.id}`);
     }
 
     restoreWindow(windowEl) {
+        console.log(`WM.restoreWindow: Called for ${windowEl?.id}`);
         const record = this.getWindowRecord(windowEl);
-        if (!record) return;
+        if (!record) {
+            console.error(`WM.restoreWindow: No record found for ${windowEl?.id}`);
+            return;
+        }
 
         if (record.originalNormalSize && record.originalNormalPosition) {
+            console.log(`WM.restoreWindow: Restoring ${record.id} to originalNormalSize:`, record.originalNormalSize, `and originalNormalPosition:`, record.originalNormalPosition);
             record.element.style.width = `${record.originalNormalSize.width}px`;
             record.element.style.height = `${record.originalNormalSize.height}px`;
             record.element.style.top = `${record.originalNormalPosition.top}px`;
@@ -266,6 +311,7 @@ class WindowManager {
             if (maxBtn) maxBtn.title = "Maximizar";
             windowEl.dispatchEvent(new CustomEvent('aura:window-resized', { detail: { width: record.originalNormalSize.width, height: record.originalNormalSize.height } }));
         } else {
+            console.warn(`WM.restoreWindow: No originalNormalSize/Position for ${record.id}. Restoring to default normal state.`);
             this.setWindowState(windowEl, "normal");
             const workArea = this.getWorkArea();
             record.element.style.left = `${workArea.x + 50}px`;
@@ -274,6 +320,7 @@ class WindowManager {
             record.element.style.height = `300px`;
             windowEl.dispatchEvent(new CustomEvent('aura:window-resized', { detail: { width: 400, height: 300 } }));
         }
+        console.log(`WM.restoreWindow: Finished for ${windowEl?.id}`);
     }
 
     snapWindow(windowEl, edge) {
