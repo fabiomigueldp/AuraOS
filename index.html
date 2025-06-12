@@ -5203,6 +5203,14 @@
                         currentGameInstance = null;
                     });
                     break;
+                case 'aura-flow': // Added case for AuraFlow
+                    if (typeof AuraFlowApp === 'function') {
+                        new AuraFlowApp(body, data);
+                    } else {
+                        console.error('AuraFlowApp class not found. Ensure AuraFlow.js is loaded.');
+                        body.innerHTML = '<p style="color: red; padding: 10px;">Error: AuraFlow application module not loaded.</p>';
+                    }
+                    break;
             }
         }
         
