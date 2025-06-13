@@ -122,34 +122,47 @@ class AuraNotesApp {
         // Use cached title (filename based) or derive from path for the confirmation dialog and notifications.
         const noteTitle = noteToDelete ? (noteToDelete.title || filePath.split('/').pop().replace('.txt','')) : filePath.split('/').pop().replace('.txt','');
 
-        AuraOS.dialog.confirm(
-            `Tem certeza que deseja excluir "${noteTitle}"? Esta ação não pode ser desfeita.`,
-            async () => {
-                try {
-                    await dbManager.deleteFile(filePath);
-                    console.log(`AuraNotesApp: Note ${filePath} deleted from DB.`);
-                    AuraOS.showNotification({ title: 'Anotação Excluída', message: `"${noteTitle}" foi excluída.`, type: 'info' });
+        Aura.UI.createModal({
+            title: 'Confirmar Exclusão',
+            message: `Tem certeza que deseja excluir "${noteTitle}"? Esta ação não pode ser desfeita.`,
+            buttons: [
+                {
+                    label: 'Cancelar',
+                    action: (modal) => modal.close()
+                },
+                {
+                    label: 'Confirmar',
+                    action: async (modal) => {
+                        try {
+                            await dbManager.deleteFile(filePath);
+                            console.log(`AuraNotesApp: Note ${filePath} deleted from DB.`);
+                            AuraOS.showNotification({ title: 'Anotação Excluída', message: `"${noteTitle}" foi excluída.`, type: 'info' });
 
-                    if (this.currentNotePath === filePath) {
-                        this.currentNotePath = null; // Signal to _loadNotesList to select a new default
-                        if (this.editor) {
-                            // Clear editor immediately, _loadNotesList will load new content if a note is selected
-                            this.editor.setValue('');
+                            if (this.currentNotePath === filePath) {
+                                this.currentNotePath = null; // Signal to _loadNotesList to select a new default
+                                if (this.editor) {
+                                    // Clear editor immediately, _loadNotesList will load new content if a note is selected
+                                    this.editor.setValue('');
+                                }
+                            }
+
+                            // Reloads cache from DB (which will exclude the deleted note),
+                            // re-renders the list, and handles selection logic
+                            // (e.g. selects most recent if currentNotePath is null and notes exist,
+                            // or sets empty state if no notes are left).
+                            await this._loadNotesList();
+
+                        } catch (error) {
+                            console.error(`AuraNotesApp: Error deleting note ${filePath}:`, error);
+                            AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Não foi possível excluir "${noteTitle}". Detalhes: ${error.message}`, type: 'error' });
+                        } finally {
+                            modal.close(); // Ensure modal is closed in either case
                         }
-                    }
-
-                    // Reloads cache from DB (which will exclude the deleted note),
-                    // re-renders the list, and handles selection logic
-                    // (e.g. selects most recent if currentNotePath is null and notes exist,
-                    // or sets empty state if no notes are left).
-                    await this._loadNotesList();
-
-                } catch (error) {
-                    console.error(`AuraNotesApp: Error deleting note ${filePath}:`, error);
-                    AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Não foi possível excluir "${noteTitle}". Detalhes: ${error.message}`, type: 'error' });
+                    },
+                    primary: true
                 }
-            }
-        );
+            ]
+        });
     }
 
     async _autoSaveNote() {
@@ -411,12 +424,30 @@ class AuraNotesApp {
                 <div class="note-preview" style="font-size: 12px; color: var(--subtle-text-color); opacity: 0.7; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">${preview}</div>
             `;
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-note-btn';
-            deleteBtn.innerHTML = '<svg viewBox="0 0 16 16" width="10" height="10" fill="currentColor"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg>';
+            deleteBtn.className = 'delete-note-btn aura-icon-button';
+            deleteBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"></path></svg>';
             deleteBtn.title = 'Excluir anotação';
             deleteBtn.style.position = 'absolute';
             deleteBtn.style.top = '8px';
             deleteBtn.style.right = '8px';
+            deleteBtn.style.opacity = '0.7'; // Default state
+
+            deleteBtn.onmouseover = () => {
+                deleteBtn.style.opacity = '1';
+                // deleteBtn.style.color = 'var(--aura-danger-color, red)'; // Optional: if color change is desired
+            };
+            deleteBtn.onmouseout = () => {
+                deleteBtn.style.opacity = '0.7';
+                // deleteBtn.style.color = 'currentColor'; // Optional: revert color
+                deleteBtn.style.transform = 'scale(1)'; // Ensure transform is reset if mouse leaves while pressed
+            };
+            deleteBtn.onmousedown = () => {
+                deleteBtn.style.transform = 'scale(0.9)';
+            };
+            deleteBtn.onmouseup = () => {
+                deleteBtn.style.transform = 'scale(1)';
+            };
+
             deleteBtn.onclick = (e) => {
                 e.stopPropagation();
                 this._deleteNote(note.path);
