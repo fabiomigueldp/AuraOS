@@ -722,5 +722,9 @@ class WindowManager {
    }
 }
 
+// Make the WindowManager globally available (if not using ES6 modules for import/export)
 window.windowManager = new WindowManager();
 console.log('WindowManager instance created and attached to window object.');
+
+// If using ES6 modules, you would export the class:
+// export default WindowManager;
