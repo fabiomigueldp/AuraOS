@@ -593,17 +593,23 @@
         }
         
         /* Terminal (Avançado) */
-        #terminal-app .window-body { background: rgba(0,0,0,0.8); padding: 10px; font-family: 'Fira Code', monospace; line-height: 1.6; }
+        #terminal-app .window-body {
+            background: var(--glass-background); /* MODIFIED to use theme variable */
+            padding: 10px;
+            font-family: 'Fira Code', monospace;
+            line-height: 1.6;
+            color: var(--text-color); /* ADDED default text color for the terminal body */
+        }
         .terminal-output { height: 100%; overflow-y: auto; }
         .terminal-line { display: flex; }
 
         /* Terminal Styling */
         .terminal-prompt { color: var(--highlight-secondary); margin-right: 8px; white-space: nowrap; }
         .terminal-input { flex-grow: 1; background: none; border: none; color: var(--text-color); font-family: 'Fira Code', monospace; outline: none; }
-        .terminal-output .command { color: #8be9fd; }
-        .terminal-output .output-text { color: #f8f8f2; white-space: pre-wrap; }
-        .terminal-output .output-error { color: #ff5555; }
-        .terminal-output .output-link { color: #50fa7b; text-decoration: underline; }
+        .terminal-output .command { color: var(--highlight-primary); } /* MODIFIED from #8be9fd */
+        .terminal-output .output-text { color: var(--text-color); white-space: pre-wrap; } /* MODIFIED from #f8f8f2 */
+        .terminal-output .output-error { color: var(--red-accent); } /* MODIFIED from #ff5555 */
+        .terminal-output .output-link { color: var(--green-accent); text-decoration: underline; } /* MODIFIED from #50fa7b */
 
         /* Notes App - MacOS-inspired Layout */
         #notes-app .window-body { 
@@ -4524,7 +4530,8 @@
         '.gif': 'image-viewer',
         // Future: '.mp3': 'music-player-app' (if music player can play individual files)
         // DEV 5: ADD YOUR FILE ASSOCIATION HERE
-        '.aura': 'aura-paint'
+        '.aura': 'aura-paint',
+        '.sh': 'terminal-app' // Added .sh association
     };
 
     function openFile(filePath) {
@@ -8531,6 +8538,8 @@
             root.className = themeName === 'light' ? 'light-theme' : 'dark-theme';
             await setSystemProperty('theme', themeName, save);
             updateThemeControls(); // This will read from the updated global 'state'
+            // Dispatch a custom event for theme change
+            document.dispatchEvent(new CustomEvent('aura:themechanged', { detail: { themeName } }));
         }
 
         async function setDockPosition(position, save = true) { // Made async
