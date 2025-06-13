@@ -221,6 +221,14 @@ class WindowManager {
     }
 
     getWorkArea() {
+        if (document.fullscreenElement) {
+            return {
+                x: 0,
+                y: 0,
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+        }
         let topInset = this.WORK_AREA_INSETS.top;
         let rightInset = this.WORK_AREA_INSETS.right;
         let bottomInset = this.WORK_AREA_INSETS.bottom;

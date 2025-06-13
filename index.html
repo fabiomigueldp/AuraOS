@@ -322,6 +322,32 @@
         #dock.dock-left .active-indicator { left: -8px; top: 50%; transform: translateY(-50%); width: 4px; height: 20px; border-radius: 4px; }
         #dock.dock-right .active-indicator { right: -8px; top: 50%; transform: translateY(-50%); width: 4px; height: 20px; border-radius: 4px; }
 
+        #fullscreen-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 0 10px; /* Consistent with lock-os-button */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Hide UI elements in fullscreen */
+        html:fullscreen #top-bar,
+        html:fullscreen #dock {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-out;
+        }
+
+        /* Fullscreen button icon states (JS also manipulates these directly) */
+        #fullscreen-btn #icon-enter-fullscreen { display: block; }
+        #fullscreen-btn #icon-exit-fullscreen { display: none; }
+
+        #fullscreen-btn.is-fullscreen #icon-enter-fullscreen { display: none; }
+        #fullscreen-btn.is-fullscreen #icon-exit-fullscreen { display: block; }
+
         /* 6. APLICATIVOS ESPECÍFICOS - NOVOS E MELHORADOS */
 
         /* Painel de Controle (Expandido) */
@@ -2899,6 +2925,10 @@
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                     <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/>
                 </svg>
+            </button>
+            <button id="fullscreen-btn" title="Enter Fullscreen">
+                <svg id="icon-enter-fullscreen" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                <svg id="icon-exit-fullscreen" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="display: none;"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
             </button>
         </div>
 
@@ -9448,6 +9478,46 @@
         }
 
     });
+
+            // --- Fullscreen Toggle Logic ---
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const iconEnterFullscreen = document.getElementById('icon-enter-fullscreen');
+            const iconExitFullscreen = document.getElementById('icon-exit-fullscreen');
+
+            if (fullscreenBtn && iconEnterFullscreen && iconExitFullscreen) {
+                fullscreenBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                            AuraOS.showNotification({ title: 'Fullscreen Error', message: 'Could not enter fullscreen mode.', type: 'error' });
+                        });
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen().catch(err => {
+                                console.error(`Error attempting to exit full-screen mode: ${err.message} (${err.name})`);
+                                AuraOS.showNotification({ title: 'Fullscreen Error', message: 'Could not exit fullscreen mode.', type: 'error' });
+                            });
+                        }
+                    }
+                });
+
+                document.addEventListener('fullscreenchange', () => {
+                    if (document.fullscreenElement) {
+                        iconEnterFullscreen.style.display = 'none';
+                        iconExitFullscreen.style.display = 'block';
+                        fullscreenBtn.title = 'Exit Fullscreen';
+                        fullscreenBtn.classList.add('is-fullscreen');
+                    } else {
+                        iconEnterFullscreen.style.display = 'block';
+                        iconExitFullscreen.style.display = 'none';
+                        fullscreenBtn.title = 'Enter Fullscreen';
+                        fullscreenBtn.classList.remove('is-fullscreen');
+                    }
+                });
+            } else {
+                console.warn('Fullscreen button or icons not found. Fullscreen toggle will not work.');
+            }
+            // --- End of Fullscreen Toggle Logic ---
 
     // --- GLOBAL MOVE OPERATION HANDLER ---
     async function handleMoveOperation(draggedItemsArray, destinationFolderPath) {
