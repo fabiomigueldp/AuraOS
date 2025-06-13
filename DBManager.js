@@ -52,6 +52,12 @@ class DBManager {
                 }
                 // Add any other future stores here in subsequent versions
 
+                // New Achievements store for Game Center
+                if (!this.db.objectStoreNames.contains('achievements')) {
+                    this.db.createObjectStore('achievements', { keyPath: ['gameId', 'achievementId'] });
+                    console.log('Created "achievements" object store.');
+                }
+
                 console.log('Database upgrade complete.');
             };
 
