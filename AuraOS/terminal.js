@@ -7,13 +7,17 @@ class AuraTerminalApp {
         this.windowEl.addEventListener('aura:close', this.destroy.bind(this));
 
         this.body = this.windowEl.querySelector('.window-body');
-        this.body.style.background = 'rgba(0,0,0,0.8)';
-        this.body.style.padding = '10px';
-        this.body.style.fontFamily = "'Fira Code', monospace";
-        this.body.style.lineHeight = '1.6';
-        this.body.style.overflow = 'hidden'; // To contain output and input area
+        // Visual styles (background, padding, fontFamily, lineHeight, color) are now primarily set by CSS
+        // using variables in the #terminal-app .window-body rule (index.html).
+        // Only essential structural styles or those not easily handled by static CSS remain here.
+        this.body.style.overflow = 'hidden';
         this.body.style.display = 'flex';
         this.body.style.flexDirection = 'column';
+
+        // Apply initial theme-dependent styles and set up listener for changes.
+        this._applyThemeStyles(); // Call to apply any initial JS-based styling
+        this.themeChangeHandler = () => this._applyThemeStyles(); // Define handler
+        document.addEventListener('aura:themechanged', this.themeChangeHandler); // Add listener
 
         this.output = document.createElement('div');
         this.output.className = 'terminal-output';
@@ -50,6 +54,11 @@ class AuraTerminalApp {
                 if (lastInput) { lastInput.focus(); }
             }
         });
+
+        // Handle .sh file path if provided in data
+        if (data && data.filePath && data.filePath.endsWith('.sh')) {
+            this._handleShFile(data.filePath);
+        }
     }
 
     destroy() {
@@ -58,14 +67,56 @@ class AuraTerminalApp {
             this.activeIntervals.forEach(clearInterval);
             this.activeIntervals = [];
         }
+        // Remove theme change listener
+        document.removeEventListener('aura:themechanged', this.themeChangeHandler);
         // Future: Remove any event listeners specific to this app instance if added
         // For example, if input event listeners are added directly to input elements managed by the class
+    }
+
+    _applyThemeStyles() {
+        // This function is called on init and on theme change.
+        // It ensures that styles which might be dynamically calculated or
+        // are hard to set purely via inherited CSS variables are updated.
+        // The main terminal body background and text colors are now defined in CSS using variables.
+        this.body.style.color = 'var(--text-color)';
+
+        console.log("AuraTerminalApp: Theme styles (re-)applied. Current text color var(--text-color) for body is now effectively:", getComputedStyle(this.body).color);
+    }
+
+    _updateWindowTitle() {
+        const titleEl = this.windowEl.querySelector('.window-title');
+        if (titleEl) {
+            titleEl.textContent = `Terminal - ${this.currentPath}`;
+        } else {
+            console.warn("AuraTerminalApp: Could not find .window-title element to update.");
+        }
+    }
+
+    _findLongestCommonPrefix(strings) {
+        if (!strings || strings.length === 0) {
+            return "";
+        }
+        if (strings.length === 1) {
+            return strings[0];
+        }
+        const firstStr = strings[0];
+        let prefix = "";
+        for (let i = 0; i < firstStr.length; i++) {
+            const char = firstStr[i];
+            for (let j = 1; j < strings.length; j++) {
+                if (i >= strings[j].length || strings[j][i] !== char) {
+                    return prefix;
+                }
+            }
+            prefix += char;
+        }
+        return prefix;
     }
 
     _initTerminalLogic() {
         // Most of the logic from the original initializeTerminal function will go here.
         // It will set up the first prompt and input handling.
-        this._newTermLine();
+        this._newTermLine(); // This will also call _updateWindowTitle
     }
 
     resolvePath(current, target) {
@@ -126,7 +177,8 @@ class AuraTerminalApp {
   date                      - Exibe a data e hora atuais.
   whoami                    - Exibe o nome do usuário atual.
   about                     - Mostra informações sobre o AuraOS.
-  ping <hostname>           - Envia pacotes ICMP ECHO_REQUEST para um host de rede (simulado).`, 'output-text'),
+  ping <hostname>           - Envia pacotes ICMP ECHO_REQUEST para um host de rede (simulado).
+  sh <script_path>          - Executa um script shell.`, 'output-text'), // Added sh to help
             clear: (args) => { this.output.innerHTML = ''; },
             pwd: (args) => this._termLog(this.currentPath, 'output-text'),
             reboot: (args) => window.location.reload(),
@@ -232,6 +284,7 @@ class AuraTerminalApp {
             },
             cd: async (args) => {
                 const targetPathArg = args[0];
+                let oldPath = this.currentPath;
 
                 if (!targetPathArg || targetPathArg === '~') {
                     const homeDirectory = '/Documents'; // Define a default home directory
@@ -246,10 +299,7 @@ class AuraTerminalApp {
                     } catch (error) {
                         this._termLog(`cd: error accessing home directory '${homeDirectory}': ${error.message}`, 'output-error');
                     }
-                    return;
-                }
-
-                if (targetPathArg === '-') {
+                } else if (targetPathArg === '-') {
                     if (this.previousPath) {
                         const tempPath = this.currentPath;
                         this.currentPath = this.previousPath;
@@ -257,21 +307,21 @@ class AuraTerminalApp {
                     } else {
                         this._termLog('cd: OLDPWD not set', 'output-error');
                     }
-                    return;
-                }
-
-                const newPath = this.resolvePath(this.currentPath, targetPathArg);
-                try {
-                    const node = await dbManager.loadFile(newPath);
-                    if (node && node.type === 'folder') {
-                        this.previousPath = this.currentPath;
-                        this.currentPath = newPath;
-                    } else {
-                        this._termLog(`cd: '${targetPathArg}': Not a directory`, 'output-error');
+                } else {
+                    const newPath = this.resolvePath(this.currentPath, targetPathArg);
+                    try {
+                        const node = await dbManager.loadFile(newPath);
+                        if (node && node.type === 'folder') {
+                            this.previousPath = this.currentPath;
+                            this.currentPath = newPath;
+                        } else {
+                            this._termLog(`cd: '${targetPathArg}': Not a directory`, 'output-error');
+                        }
+                    } catch (error) {
+                        this._termLog(`cd: '${targetPathArg}': No such file or directory. ${error.message}`, 'output-error');
                     }
-                } catch (error) {
-                    this._termLog(`cd: '${targetPathArg}': No such file or directory. ${error.message}`, 'output-error');
                 }
+                // No explicit title update needed here, _newTermLine will handle it via _handleCommand's finally block
             },
             cat: async (args) => {
                 const lineNumbers = args.includes('-n');
@@ -368,6 +418,7 @@ class AuraTerminalApp {
 
                         // Create the directory
                         await dbManager.saveFile({ path: dirPath, type: 'folder', name: name, lastModified: Date.now(), content: {} }, {}); // content for folder is empty obj
+                        // this._termLog(`Directory created: ${dirPath}`, 'output-text'); // Path might be too verbose
                         const parentDirToUpdate = this.resolvePath(dirPath, '..');
                         if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
                             window.AuraOS.updateFileSystemUI(parentDirToUpdate);
@@ -412,7 +463,10 @@ class AuraTerminalApp {
                     }
                 } else {
                     // No -p, just create the target directory
-                    await createSingleDirectory(targetPath, dirName);
+                    const success = await createSingleDirectory(targetPath, dirName);
+                    if (success && !createParents) {
+                        this._termLog(`Directory created: ${targetPath}`, 'output-text');
+                    }
                 }
             },
             touch: async (args) => {
@@ -470,6 +524,7 @@ class AuraTerminalApp {
                             content: '',
                             lastModified: Date.now()
                         }, '');
+                        this._termLog(`File created: ${filePath}`, 'output-text');
                         const parentDirToUpdate = this.resolvePath(filePath, '..');
                         if (window.AuraOS && typeof window.AuraOS.updateFileSystemUI === 'function') {
                             window.AuraOS.updateFileSystemUI(parentDirToUpdate);
@@ -775,6 +830,33 @@ Ping statistics for ${hostname}:
                     this.activeIntervals.push(intervalId);
                 });
             },
+            sh: async (args) => { // Added 'sh' command
+                if (!args[0]) {
+                    this._termLog('Usage: sh <script_path>', 'output-error');
+                    return;
+                }
+                const scriptPath = this.resolvePath(this.currentPath, args[0]);
+                try {
+                    const node = await dbManager.loadFile(scriptPath);
+                    if (node && node.type === 'file') {
+                        // Basic security: For now, just log a message.
+                        // Actual script execution would be complex and require a parser/interpreter.
+                        this._termLog(`Executing script: ${scriptPath}... (simulation)`, 'output-text');
+                        this._termLog(`Content of ${scriptPath}:\n${node.content.replace(/\n/g, '<br>')}`, 'output-text');
+                        this._termLog(`--- Script execution finished (simulated) ---`, 'output-text');
+
+                        // Example of how one might try to execute commands if the script contains simple, known commands:
+                        // const commands = (node.content || '').split('\n').filter(cmd => cmd.trim() !== '');
+                        // for (const cmdStr of commands) {
+                        //   await this._handleCommand(cmdStr); // This could lead to nested calls and needs careful handling
+                        // }
+                    } else {
+                        this._termLog(`sh: '${scriptPath}': Not a file`, 'output-error');
+                    }
+                } catch (error) {
+                    this._termLog(`sh: '${scriptPath}': No such file or directory. ${error.message}`, 'output-error');
+                }
+            },
             cp: async (args) => {
                 const recursive = args.includes('-r') || args.includes('-R');
                 const paths = args.filter(arg => !arg.startsWith('-'));
@@ -1007,6 +1089,35 @@ Ping statistics for ${hostname}:
         this.output.scrollTop = this.output.scrollHeight;
     }
 
+    async _handleShFile(filePath) {
+        const scriptName = filePath.substring(filePath.lastIndexOf('/') + 1);
+        const scriptDir = filePath.substring(0, filePath.lastIndexOf('/')) || '/';
+
+        // Change current directory to script's directory
+        this.currentPath = scriptDir;
+        // Update prompt and window title for the new path
+        // _newTermLine will be called after this command, which handles title and prompt update.
+
+        // Pre-fill and execute the command
+        // We need to ensure a new input line is ready for this command
+        // This is a bit tricky as _handleCommand itself creates a new line in its `finally` block.
+        // For now, let's log the action and then simulate typing the command.
+        this._termLog(`Changing directory to ${scriptDir} and preparing to execute ${scriptName}...`, 'output-text');
+
+        // Ensure the prompt is updated before the command is "typed"
+        // This will create a new input line, set the prompt, and update the window title.
+        this._newTermLine();
+
+        const currentInput = this.output.querySelector('.terminal-line:last-child .terminal-input');
+        if (currentInput) {
+            currentInput.value = `sh ./${scriptName}`; // Use relative path
+            await this._handleCommand(currentInput.value.trim());
+        } else {
+            // Fallback if no input line is found, though _newTermLine should create it.
+            await this._handleCommand(`sh ./${scriptName}`);
+        }
+    }
+
     async _handleCommand(cmdStr) {
         const currentInput = this.output.querySelector('.terminal-line:last-child .terminal-input');
         if (currentInput) {
@@ -1014,11 +1125,14 @@ Ping statistics for ${hostname}:
         }
 
         if (cmdStr) {
-            this.commandHistory.push(cmdStr);
-            if (this.commandHistory.length > 50) { // Limit history size
+            // Avoid adding duplicate consecutive commands
+            if (this.commandHistory.length === 0 || this.commandHistory[this.commandHistory.length - 1] !== cmdStr) {
+                this.commandHistory.push(cmdStr);
+            }
+            if (this.commandHistory.length > 100) { // Limit history size
                 this.commandHistory.shift();
             }
-            this.historyIndex = this.commandHistory.length;
+            this.historyIndex = this.commandHistory.length; // Reset history index to point after the last command
             // No await here, saving history can be fire and forget
             dbManager.saveSetting('terminalHistory', this.commandHistory)
                 .catch(err => console.warn('Terminal: Could not save history', err));
@@ -1040,7 +1154,7 @@ Ping statistics for ${hostname}:
             this._termLog(`Error executing command ${cmd}: ${error.message}`, 'output-error');
         } finally {
             this.output.scrollTop = this.output.scrollHeight; // Ensure scroll after command output
-            this._newTermLine();
+            this._newTermLine(); // This will also update the prompt and title.
         }
     }
 
@@ -1054,15 +1168,21 @@ Ping statistics for ${hostname}:
         const input = line.querySelector('.terminal-input');
         input.focus();
 
+        // Update window title whenever a new line (and prompt) is created
+        this._updateWindowTitle();
+
         input.addEventListener('keydown', async e => { // Make event listener async
             if (e.key === 'Enter') {
                 e.preventDefault();
-                // handleCommand is already async, but we don't need to await it here
-                // as its completion will trigger _newTermLine itself.
-                this._handleCommand(input.value.trim());
+                const commandToExecute = input.value.trim();
+                // Save the current input value before executing, in case user wants to retrieve it via ArrowUp after execution.
+                // This is more about usability if they hit enter on a half-typed new command after navigating history.
+                // However, the prompt requirement is that an *edited* history command gets added.
+                // The existing logic in _handleCommand already correctly adds the executed command.
+                this._handleCommand(commandToExecute);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                if (this.historyIndex > 0) {
+                if (this.commandHistory.length > 0 && this.historyIndex > 0) {
                     this.historyIndex--;
                     input.value = this.commandHistory[this.historyIndex];
                     input.setSelectionRange(input.value.length, input.value.length); // Move cursor to end
@@ -1073,8 +1193,13 @@ Ping statistics for ${hostname}:
                     this.historyIndex++;
                     input.value = this.commandHistory[this.historyIndex];
                     input.setSelectionRange(input.value.length, input.value.length); // Move cursor to end
-                } else {
+                } else if (this.historyIndex === this.commandHistory.length - 1) {
+                    // If at the last item in history, pressing down again should clear input and set index to "after history"
                     this.historyIndex = this.commandHistory.length;
+                    input.value = '';
+                } else {
+                    // If already past the end (e.g. input cleared), do nothing or ensure input is clear
+                    this.historyIndex = this.commandHistory.length; // Ensure index is correct
                     input.value = '';
                 }
             } else if (e.key === 'Tab') {
@@ -1099,10 +1224,12 @@ Ping statistics for ${hostname}:
 
                 let opciones = [];
                 let fileNodeForType = null;
+                let potentialMatches = []; // Ensure potentialMatches is declared in this scope for command completion case
 
                 if (parts.length === 0 && !currentInputText.includes(' ') ) { // Completing the command name itself
                     opciones = Object.keys(this.commands).filter(cmd => cmd.startsWith(currentWord));
                     // No change to fileNodeForType here, it remains null
+                    // For command completion, potentialMatches isn't directly applicable in the same way as files
                 } else { // Completing arguments (files/directories)
                     let prefixToComplete = "";
                     let dirToListFrom = "";
@@ -1117,14 +1244,12 @@ Ping statistics for ${hostname}:
                         prefixToComplete = currentWord.substring(lastSlashIndex + 1);
                         originalPathPrefixTyped = currentWord.substring(0, lastSlashIndex + 1);
                         // Resolve the directory part relative to current path
-                        // For example, if currentWord is 'somefolder/other/', resolvePath(this.currentPath, 'somefolder/other/')
-                        // If currentWord is '/abs/path/', resolvePath will handle it correctly.
                         dirToListFrom = this.resolvePath(this.currentPath, originalPathPrefixTyped);
                     }
 
                     try {
                         const itemsInDir = await dbManager.listFiles(dirToListFrom);
-                        const potentialMatches = itemsInDir.filter(item => item.name.startsWith(prefixToComplete));
+                        potentialMatches = itemsInDir.filter(item => item.name.startsWith(prefixToComplete));
 
                         if (potentialMatches.length === 1) {
                             fileNodeForType = potentialMatches[0]; // Store the single match object
@@ -1135,11 +1260,9 @@ Ping statistics for ${hostname}:
                         }
 
                         // Further filter if specific commands expect only folders (e.g. cd)
-                        // This filtering should happen on the 'opciones' list of names
                         if (commandNameForContext === 'cd' || commandNameForContext === 'rmdir') {
                             const folderMatchesNames = [];
                             for (const matchName of opciones) {
-                                // Find the corresponding full item from potentialMatches to check its type
                                 const itemDetail = potentialMatches.find(i => i.name === matchName);
                                 if (itemDetail && itemDetail.type === 'folder') {
                                     folderMatchesNames.push(matchName);
@@ -1155,43 +1278,54 @@ Ping statistics for ${hostname}:
                         }
                     } catch (err) {
                         console.warn(`Error listing files from '${dirToListFrom}' for tab completion:`, err);
-                        // Optionally inform user: this._termLog(`Tab complete error: ${err.message}`, 'output-error');
-                        opciones = []; // Clear options on error
+                        opciones = [];
                         fileNodeForType = null;
                     }
                 }
 
                 if (opciones.length === 1) {
                     const baseCommandInput = parts.join(' ') + (parts.length > 0 ? ' ' : '');
-                    // originalPathPrefixTyped is what the user typed before the part we are completing
-                    // For command completion, originalPathPrefixTyped is "", fileNodeForType is null.
-                    // For argument completion, originalPathPrefixTyped is the path part before the prefix.
-                    const completedValue = baseCommandInput + (fileNodeForType ? originalPathPrefixTyped : "") + opciones[0];
+                    const originalTypedPrefix = fileNodeForType ? originalPathPrefixTyped : "";
+                    const completedValue = baseCommandInput + originalTypedPrefix + opciones[0];
                     const nodeType = fileNodeForType ? fileNodeForType.type : null;
 
                     input.value = (completedValue + (nodeType === 'folder' ? '/' : ' ')).trimStart();
                     input.setSelectionRange(input.value.length, input.value.length);
                 } else if (opciones.length > 1) {
-                    // For argument completion, show full matched names. For commands, also full names.
-                    this._termLog(opciones.join('  '), 'output-text');
-                    // We need to re-create the input line because the current one is now disabled by _handleCommand
-                    // if the user presses tab multiple times.
-                    // However, _newTermLine is called by _handleCommand's finally block.
-                    // For multi-tab display, we should just show options and let user continue typing on current line.
-                    // The original code called _newTermLine() then set its value.
-                    // This is tricky because the event listener is on the *current* input.
-                    // A simple solution is to log and then allow the user to continue typing on the *same* line.
-                    // The new line will be created when they press Enter.
-                    // So, removing the _newTermLine and subsequent input manipulation here for multiple options.
-                    // Let's ensure the current input remains focused and value is preserved.
-                    input.focus(); // Re-focus might be needed if _termLog causes blur
-                    // This part for restoring input to a *new* line is problematic if we don't want a new line yet.
-                    // const nextInput = this.output.querySelector('.terminal-line:last-child .terminal-input');
-                    // if (nextInput) {
-                    //     nextInput.value = currentInputText;
-                    //     nextInput.focus();
-                    //     nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-                    // }
+                    const commonPrefix = this._findLongestCommonPrefix(opciones);
+                    const baseCommandInput = parts.join(' ') + (parts.length > 0 ? ' ' : '');
+                    const originalTypedPrefix = fileNodeForType ? originalPathPrefixTyped : "";
+                    const whatUserTyped = currentWord;
+
+                    if (commonPrefix && commonPrefix.length > whatUserTyped.length) {
+                        const completedValue = baseCommandInput + originalTypedPrefix + commonPrefix;
+                        input.value = completedValue;
+
+                        let addSuffix = ' ';
+                        // Check against potentialMatches if it's file/dir completion, otherwise check against command list
+                        const exactMatch = fileNodeForType !== null ?
+                                           potentialMatches.find(item => item.name === commonPrefix) :
+                                           (Object.keys(this.commands).includes(commonPrefix) ? {name: commonPrefix, type: 'command'} : null) ;
+
+                        if (exactMatch && exactMatch.type === 'folder') {
+                            addSuffix = '/';
+                        } else if (exactMatch && exactMatch.type === 'command') {
+                           addSuffix = ' ';
+                        }
+
+                        input.value = (input.value + addSuffix).trimStart();
+                        input.setSelectionRange(input.value.length, input.value.length);
+
+                        if (opciones.filter(opt => opt.startsWith(commonPrefix)).length > 1 && commonPrefix !== whatUserTyped) {
+                             const isPrefixExactMatchToAnOption = opciones.includes(commonPrefix);
+                             if(!isPrefixExactMatchToAnOption || opciones.filter(o => o.startsWith(commonPrefix) && o !== commonPrefix).length > 0) {
+                                 this._termLog(opciones.join('  '), 'output-text');
+                             }
+                        }
+                    } else {
+                        this._termLog(opciones.join('  '), 'output-text');
+                    }
+                    input.focus();
                 }
             }
         });
