@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clock</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="tabs">
+    <button class="tab-button active" data-tab="clock-view">Clock</button>
+    <button class="tab-button" data-tab="alarms-view">Alarms</button>
+    <button class="tab-button" data-tab="stopwatch-view">Stopwatch</button>
+    <button class="tab-button" data-tab="timer-view">Timer</button>
+  </div>
+
+  <div id="clock-view" class="tab-content active">
+    <div id="analog-clock">
+      <!-- Placeholder for analog clock (e.g., SVG or canvas) -->
+      <svg width="200" height="200">
+        <circle cx="100" cy="100" r="90" stroke="black" stroke-width="2" fill="white" />
+        <line id="hour-hand" x1="100" y1="100" x2="100" y2="50" stroke="black" stroke-width="4" />
+        <line id="minute-hand" x1="100" y1="100" x2="100" y2="30" stroke="black" stroke-width="3" />
+        <line id="second-hand" x1="100" y1="100" x2="100" y2="20" stroke="red" stroke-width="2" />
+      </svg>
+    </div>
+    <div id="digital-clock">
+      <!-- Placeholder for digital clock -->
+      <span id="time"></span>
+    </div>
+  </div>
+
+  <div id="alarms-view" class="tab-content">
+    <h2>Alarms</h2>
+    <div>
+      <input type="time" id="alarm-time" />
+      <input type="text" id="alarm-label" placeholder="Alarm label" />
+      <button id="add-alarm-button">Add Alarm</button>
+    </div>
+    <ul id="alarms-list">
+      <!-- Alarms will be listed here -->
+    </ul>
+  </div>
+
+  <div id="stopwatch-view" class="tab-content">
+    <h2>Stopwatch</h2>
+    <h3 id="stopwatch-time">00:00:00.000</h3>
+    <div class="stopwatch-controls">
+      <button id="start-stopwatch">Start</button>
+      <button id="stop-stopwatch" disabled>Stop</button>
+      <button id="lap-stopwatch" disabled>Lap</button>
+      <button id="reset-stopwatch">Reset</button>
+    </div>
+    <ul id="stopwatch-laps">
+      <!-- Lap times will be listed here -->
+    </ul>
+  </div>
+
+  <div id="timer-view" class="tab-content">
+    <h2>Timer</h2>
+    <!-- Timer UI will go here -->
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
