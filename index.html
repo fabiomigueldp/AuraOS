@@ -20,6 +20,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Roboto:wght@400,500,700&family=Fira+Code&display=swap" rel="stylesheet">
 
+    <!-- React and ReactDOM CDN -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+
     <script src="DBManager.js"></script>
     <script src="WindowManager.js"></script>
     <script src="AuraGameSDK.js"></script>
@@ -2921,6 +2925,7 @@
         <div id="top-bar">
             <div id="top-bar-logo">AuraOS</div>
             <div id="clock" style="margin-right: auto;">12:00:00</div>
+            <div id="notification-icon-slot" style="margin-left: auto; display: flex; align-items: center;"></div>
             <button id="lock-os-button" title="Bloquear Sistema" style="background: none; border: none; color: var(--text-color); cursor: pointer; font-size: 1rem; padding: 0 10px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                     <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/>
@@ -9699,6 +9704,84 @@
 
     }
 
+    </script>
+    <div id="aura-notification-system-root"></div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Give React a moment to initialize
+        setTimeout(() => {
+          console.log("--- Running Notification System Test ---");
+
+          if (window.Aura && window.Aura.notifications && typeof window.Aura.notifications.create === 'function') {
+            console.log("API Aura.notifications.create found. Creating test notifications...");
+
+            const notif1 = Aura.notifications.create({
+              title: "Test Notification 1",
+              message: "This is the first test message.",
+              icon: "gameassets/aurapong.png" // Using an existing asset for testing
+            });
+            console.log("Created notification 1:", notif1);
+
+            const notif2 = Aura.notifications.create({
+              title: "Test Notification 2",
+              message: "Another message, this time with an onClick handler.",
+              onClick: () => { console.log("Test Notification 2 clicked!"); }
+            });
+            console.log("Created notification 2:", notif2);
+
+            Aura.notifications.create({
+              title: "Test 3 - No Icon",
+              message: "A third notification, without a custom icon."
+            });
+
+            // Accessing NotificationManager directly for state verification (for testing purposes)
+            // In a real app, you wouldn't typically do this from outside.
+            if (window.AuraOS_NotificationManager) { // Assuming NotificationManager instance is exposed for test
+              console.log("Current notifications via direct access:", window.AuraOS_NotificationManager.getNotifications());
+              console.log("Unread count via direct access:", window.AuraOS_NotificationManager.getUnreadCount());
+            } else if (window.Aura && window.Aura.notifications && window.Aura.notifications._internal_for_test) {
+              // Fallback if direct manager isn't exposed, but we have an internal test hook
+              console.log("Current notifications via internal test hook:", Aura.notifications._internal_for_test.getNotifications());
+              console.log("Unread count via internal test hook:", Aura.notifications._internal_for_test.getUnreadCount());
+            } else {
+                // If direct access to NotificationManager isn't straightforward from global scope for testing,
+                // we rely on the fact that NotificationRoot.jsx subscribes and would show counts/toasts.
+                // For this test, we'll assume the API call itself is the main thing to check.
+                // We can also try to get notifications via the API if such a getter was exposed,
+                // but the current spec is only for `create`.
+                console.log("Cannot directly access NotificationManager's state for full verification in this test script.");
+                console.log("Relaying on API calls and React component rendering for indirect verification.");
+            }
+
+            // Try to simulate opening the notification center to see if it lists them
+            // This requires the icon to be clickable and toggle the center.
+            // We'll simulate a click on the icon if we can find it.
+            setTimeout(() => {
+                const iconSlot = document.getElementById('notification-icon-slot');
+                if (iconSlot && iconSlot.firstChild) { // Assuming NotificationIcon is the first child
+                    console.log("Simulating click on notification icon...");
+                    iconSlot.firstChild.click(); // Simulate click to open center
+
+                    // After a short delay for the center to (conceptually) open and render
+                    setTimeout(() => {
+                        if (window.Aura && window.Aura.notifications && window.Aura.notifications._internal_for_test) {
+                             console.log("Notifications after opening center (should be same):", Aura.notifications._internal_for_test.getNotifications());
+                        }
+                        // Simulate another click to close it
+                        // iconSlot.firstChild.click();
+                    }, 1000);
+                }
+            }, 2000);
+
+
+          } else {
+            console.error("Notification API (Aura.notifications.create) not found!");
+            AuraOS.showNotification({ title: 'Test Error', message: 'Notification API not found.', type: 'error' });
+          }
+          console.log("--- Notification System Test End ---");
+        }, 2000); // Delay to ensure React components are mounted
+      });
     </script>
 </body>
 </html>
