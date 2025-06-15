@@ -42,7 +42,7 @@ function AuraCitadelGame(canvas) {
     this.gameRunning = false;
     this.animationFrameId = null;
     this.currentWave = 0;
-    this.playerCurrency = 100;
+    this.playerCurrency = 750;
     this.auraCoreHealth = 100;
     this.towers = [];
     this.enemies = [];
@@ -51,22 +51,30 @@ function AuraCitadelGame(canvas) {
     this.enemyPath = [];
     this.unlockedComponents = [];
     this.waveSpawningComplete = true;
-
-    // Shop and Tower Placement UI / State
+    this.waveSpawnInstructions = []; // Added for spawn instructions
+    this.timeSinceLastSpawn = 0; // Added for spawn timing
+    this.lastTimestamp = 0; // For deltaTime calculation    // Shop and Tower Placement UI / State
     this.shopUIDrawInfo = {
         x: 0,
-        y: this.canvas.height - 100, // Assuming shop height is 100px
+        y: this.canvas.height - 150, // Increased height for better component selection
         width: this.canvas.width,
-        height: 100,
+        height: 150,
         backgroundColor: AURA_COLORS.uiBackground,
-        itemSize: 60, // Size of each shop item icon
-        itemPadding: 10,
-        textColor: AURA_COLORS.primaryText
+        itemSize: 50, // Reduced size to fit more items
+        itemPadding: 8,
+        textColor: AURA_COLORS.primaryText,
+        tabHeight: 25
     };
     this.shopItems = []; // To store objects representing clickable shop items
-    this.selectedShopItem = null; // To store the component object selected from the shop
+    this.selectedComponents = {
+        base: null,
+        weapon: null,
+        modifier: null
+    }; // Store selected components for tower construction
+    this.selectedShopItem = null; // Legacy compatibility
     this.isPlacingTower = false; // Boolean to indicate if player is currently placing a tower
     this.currentGhostGridCoords = { x: -1, y: -1 }; // For tower placement ghost
+    this.currentShopTab = 'base'; // Current shop tab: 'base', 'weapon', 'modifier'
 
     // Define default ranges and fire rates if not specified in component
     const DEFAULT_WEAPON_RANGE = 3; // in grid units
@@ -114,9 +122,9 @@ AuraCitadelGame.prototype._createGlitch = function(type, health, speed, waveNumb
 };
 
 // --- Projectile Logic ---
-AuraCitadelGame.prototype._createProjectile = function(startX, startY, targetEnemy, damage, speed, type = 'bullet') {
+AuraCitadelGame.prototype._createProjectile = function(startX, startY, targetEnemy, damage, speed, towerId, type = 'bullet') {
     return {
-        id: generateUniqueId(), x: startX, y: startY, targetEnemy, damage, speed,
+        id: generateUniqueId(), x: startX, y: startY, targetEnemy, damage, speed, towerId,
         type, spriteColor: AURA_COLORS.projectileDefault, radius: 5,
     };
 };
@@ -126,25 +134,29 @@ AuraCitadelGame.prototype.start = async function() {
     console.log("Aura Citadel: Starting game...");
     this.gameRunning = true;
     this.currentWave = 0;
-    this.playerCurrency = 100;
+    this.playerCurrency = 750;
     this.auraCoreHealth = 100;
     this.towers = []; this.enemies = []; this.projectiles = [];
     this.waveSpawningComplete = true;
     this.gameState = "build_phase";
-    this._setupInitialGameBoard();
-
-    try {
+    this.lastTimestamp = 0; // Initialize for the first game loop
+    this._setupInitialGameBoard();    try {
         this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
-    } catch (error) { this.unlockedComponents = ['base_standard', 'weapon_blaster', 'mod_none']; }
+    } catch (error) { 
+        this.unlockedComponents = [
+            'base_standard', 'base_reinforced', 
+            'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
+            'mod_none', 'mod_range_increase', 'mod_damage_boost'
+        ]; 
+    }
 
     try {
         AuraGameSDK.audio.playLoopMusic('music/tracks/game_start_or_calm_phase.mp3', 0.5);
     } catch (error) {
         console.warn('AuraCitadel: Could not play background music:', error);
-    }
-
-    if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+    }    if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
     this._gameLoop();
+    this._initializeDefaultComponents(); // Initialize default selections
     this._populateShopItems(); // Called after start
 };
 
@@ -178,20 +190,23 @@ AuraCitadelGame.prototype.continueGame = async function() { /* ... same as befor
             this.towers = loadedState.towers.map(t => ({...t, lastFireTime: 0, targetEnemyId: null })) || [];
             this.waveSpawningComplete = true;
 
-            console.log("Aura Citadel: Game state restored.", loadedState);
-
-            try {
+            console.log("Aura Citadel: Game state restored.", loadedState);            try {
                 this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
-            } catch (error) { this.unlockedComponents = ['base_standard', 'weapon_blaster', 'mod_none']; }
+            } catch (error) { 
+                this.unlockedComponents = [
+                    'base_standard', 'base_reinforced', 
+                    'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
+                    'mod_none', 'mod_range_increase', 'mod_damage_boost'
+                ]; 
+            }
 
             this.gameRunning = true;
             this._setupInitialGameBoard();
-            this._reconstructGameState();
-
-            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+            this._reconstructGameState();            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
             this._gameLoop();
             AuraGameSDK.audio.playLoopMusic('music/game_resume_or_calm_phase.mp3', 0.5);
             console.log("Aura Citadel: Resuming from wave " + this.currentWave);
+            this._initializeDefaultComponents(); // Initialize default selections
             this._populateShopItems(); // Called after state restoration in continueGame
 
         } else {
@@ -205,7 +220,7 @@ AuraCitadelGame.prototype.continueGame = async function() { /* ... same as befor
 };
 
 AuraCitadelGame.prototype._handleCanvasMouseMove = function(event) {
-    if (this.isPlacingTower && this.selectedShopItem) {
+    if (this.isPlacingTower && this._canBuildTower()) {
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
@@ -280,7 +295,8 @@ AuraCitadelGame.prototype._gameOver = async function() { /* ... same as before .
 
 // --- Wave & Enemy Management ---
 AuraCitadelGame.prototype._initializeWave = function(waveNumber) { /* ... play music ... */
-    console.log(`Aura Citadel: Initializing wave ${waveNumber}...`);    AuraGameSDK.ui.showNotification({ message: `Wave ${waveNumber} starting!`, type: 'info' });
+    console.log(`Aura Citadel: Initializing wave ${waveNumber}...`);
+    AuraGameSDK.ui.showNotification({ message: `Wave ${waveNumber} starting!`, type: 'info' });
     try {
         AuraGameSDK.audio.playLoopMusic('music/tracks/wave_battle.mp3', 0.6);
     } catch (error) {
@@ -288,25 +304,89 @@ AuraCitadelGame.prototype._initializeWave = function(waveNumber) { /* ... play m
     }
 
     this.currentWave = waveNumber;
-    this.enemies = [];
-    this.waveSpawningComplete = false;
+    this.enemies = []; // Clear existing enemies, though spawning is now instruction-based
+    this.waveSpawnInstructions = []; // Clear previous instructions
+    this.waveSpawningComplete = false; // Set to false, actual spawning will occur over time
+    this.timeSinceLastSpawn = 0; // Reset spawn timer
 
     const numEnemies = 5 + waveNumber * 2;
     const enemyHealth = 20 + waveNumber * 5;
     const enemySpeed = 1 + waveNumber * 0.05; // Adjusted speed scaling
 
     for (let i = 0; i < numEnemies; i++) {
-        const newGlitch = this._createGlitch('basic', enemyHealth, enemySpeed, waveNumber);
-        if (newGlitch) this.enemies.push(newGlitch);
+        const spawnInstruction = {
+            type: 'basic', // For now, all are basic
+            health: enemyHealth,
+            speed: enemySpeed,
+            wave: waveNumber,
+            delay: (i === 0 ? 500 : 1000) // 500ms for the first, 1000ms for subsequent
+        };
+        this.waveSpawnInstructions.push(spawnInstruction);
     }
-    this.waveSpawningComplete = true;
-    console.log(`Aura Citadel: Spawned ${this.enemies.length} glitches for wave ${waveNumber}.`);
+
+    // Note: this.waveSpawningComplete = true; is removed from here.
+    // It will be set to true in the _update loop once all instructions are processed.
+    console.log(`Aura Citadel: Prepared ${this.waveSpawnInstructions.length} spawn instructions for wave ${waveNumber}.`);
 };
-AuraCitadelGame.prototype._updateEnemies = function() { /* ... same as before ... */
+
+AuraCitadelGame.prototype._handleSpawning = function() {
+    if (this.waveSpawnInstructions.length === 0) {
+        if (!this.waveSpawningComplete) { // Ensure this only logs once
+            this.waveSpawningComplete = true;
+            console.log("Aura Citadel: All enemies for the wave have spawned.");
+        }
+        return;
+    }
+
+    const currentInstruction = this.waveSpawnInstructions[0];
+    if (this.timeSinceLastSpawn >= currentInstruction.delay) {
+        const spawnDetails = this.waveSpawnInstructions.shift();
+        const newGlitch = this._createGlitch(spawnDetails.type, spawnDetails.health, spawnDetails.speed, spawnDetails.wave);
+        if (newGlitch) {
+            this.enemies.push(newGlitch);
+        }
+        console.log(`Aura Citadel: Spawning enemy type ${spawnDetails.type} after ${this.timeSinceLastSpawn.toFixed(0)}ms delay. Target delay: ${spawnDetails.delay}ms.`);
+        this.timeSinceLastSpawn = 0; // Reset timer for the next spawn
+
+        if (this.waveSpawnInstructions.length === 0) {
+            this.waveSpawningComplete = true;
+            console.log("Aura Citadel: All enemies for the wave have now spawned (last one).");
+        }
+    }
+};
+
+AuraCitadelGame.prototype._updateEnemies = function() {
     if (!this.enemyPath || this.enemyPath.length === 0) return;
+    const now = Date.now();
+
     for (let i = this.enemies.length - 1; i >= 0; i--) {
         const enemy = this.enemies[i];
-        if (enemy.pathIndex >= this.enemyPath.length) { this.enemies.splice(i, 1); continue; }
+        if (enemy.pathIndex >= this.enemyPath.length) {
+            this.enemies.splice(i, 1);
+            continue;
+        }
+
+        let currentSpeed = enemy.speed; // Base speed for this frame
+
+        // Process status effects
+        if (enemy.statusEffects && enemy.statusEffects.length > 0) {
+            let activeSlowEffect = null;
+            enemy.statusEffects = enemy.statusEffects.filter(effect => {
+                if (effect.startTime + effect.duration < now) {
+                    return false; // Remove expired effect
+                }
+                if (effect.type === 'slow_field_effect') {
+                    if (!activeSlowEffect || effect.slowMultiplier < activeSlowEffect.slowMultiplier) {
+                        activeSlowEffect = effect; // Find the most potent active slow effect
+                    }
+                }
+                return true; // Keep non-expired effects and non-slow effects
+            });
+
+            if (activeSlowEffect) {
+                currentSpeed *= activeSlowEffect.slowMultiplier;
+            }
+        }
 
         const targetTile = this.enemyPath[enemy.pathIndex];
         const targetX = (targetTile.x + 0.5) * this.gridTileSize;
@@ -314,7 +394,7 @@ AuraCitadelGame.prototype._updateEnemies = function() { /* ... same as before ..
         const dx = targetX - enemy.x, dy = targetY - enemy.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < enemy.speed) {
+        if (distance < currentSpeed) { // Use currentSpeed for movement calculation
             enemy.pathIndex++;
             if (enemy.pathIndex >= this.enemyPath.length) {
                 this.auraCoreHealth -= 10;
@@ -323,7 +403,11 @@ AuraCitadelGame.prototype._updateEnemies = function() { /* ... same as before ..
                 if (this.auraCoreHealth <= 0) { this._gameOver(); return; }
                 continue;
             }
-        } else { enemy.x += (dx / distance) * enemy.speed; enemy.y += (dy / distance) * enemy.speed; }
+        } else {
+            if (distance > 0) // Avoid division by zero if enemy is already at target (e.g. due to very low speed)
+                 enemy.x += (dx / distance) * currentSpeed;
+                 enemy.y += (dy / distance) * currentSpeed;
+        }
     }
 };
 
@@ -333,53 +417,92 @@ AuraCitadelGame.prototype._updateTowers = function() {
     this.towers.forEach(tower => {
         const weaponComp = this.masterComponentList[tower.weaponId];
         const modifierComp = this.masterComponentList[tower.modifierId];
-        if (!weaponComp || weaponComp.isUtility) return; // Skip non-attacking or utility towers for now
+        if (!weaponComp) return; // Skip if no weapon component
 
         let range = (weaponComp.range || 3) * this.gridTileSize; // Convert grid units to pixels
         let fireRate = weaponComp.fireRate || 1; // Shots per second
-        let damage = weaponComp.damage || 1;
+        let damage = weaponComp.damage || 0; // Default to 0 for non-damaging towers
 
         if (modifierComp) {
             if (modifierComp.range_boost) range += modifierComp.range_boost * this.gridTileSize;
             if (modifierComp.fire_rate_multiplier) fireRate *= modifierComp.fire_rate_multiplier;
-            if (modifierComp.damage_multiplier) damage *= modifierComp.damage_multiplier;
+            if (modifierComp.damage_multiplier && weaponComp.damage) damage *= modifierComp.damage_multiplier; // Apply damage multiplier only if tower has base damage
         }
 
         const fireCooldown = 1000 / fireRate; // Milliseconds
-
         if (now - (tower.lastFireTime || 0) < fireCooldown) return; // Still on cooldown
 
-        let target = null;
-        let minDistance = range + 1; // Start with distance just outside range
+        switch (weaponComp.id) {
+            case 'weapon_slow_field':
+                let affectedEnemy = false;
+                this.enemies.forEach(enemy => {
+                    const dx = enemy.x - ((tower.x + 0.5) * this.gridTileSize);
+                    const dy = enemy.y - ((tower.y + 0.5) * this.gridTileSize);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Basic targeting: find first enemy in range (can be improved to nearest, weakest etc.)
-        for (const enemy of this.enemies) {
-            const dx = enemy.x - ((tower.x + 0.5) * this.gridTileSize);
-            const dy = enemy.y - ((tower.y + 0.5) * this.gridTileSize);
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance <= range && distance < minDistance) {
-                target = enemy;
-                minDistance = distance;
-            }
-        }
+                    if (distance <= range) {
+                        // Check if enemy already has this slow effect and if it's active
+                        const existingEffect = enemy.statusEffects && enemy.statusEffects.find(eff => eff.type === 'slow_field_effect');
+                        if (existingEffect && existingEffect.startTime + existingEffect.duration > now) {
+                            // Effect already active, do nothing for this enemy
+                        } else {
+                            if (!enemy.statusEffects) enemy.statusEffects = [];
+                            // Remove old instance if present and expired
+                            enemy.statusEffects = enemy.statusEffects.filter(eff => !(eff.type === 'slow_field_effect' && eff.startTime + eff.duration <= now));                            enemy.statusEffects.push({
+                                type: 'slow_field_effect',
+                                slowMultiplier: 1 - (weaponComp.slowAmount || 0.3), // Convert slow amount to multiplier (0.3 slow = 0.7 speed)
+                                duration: 1000, // Duration of 1 second
+                                startTime: now,
+                                towerId: tower.uniqueId // To identify the source if needed
+                            });
+                            affectedEnemy = true; // Mark that this tower affected at least one enemy
+                        }
+                    }
+                });
+                if (affectedEnemy) { // Update lastFireTime only if the tower successfully applied its effect
+                    tower.lastFireTime = now;
+                }
+                // This tower type does not create projectiles.
+                break;
 
-        if (target) {
-            this.projectiles.push(this._createProjectile(
-                (tower.x + 0.5) * this.gridTileSize,
-                (tower.y + 0.5) * this.gridTileSize,
-                target, damage, 5 /* projectile speed */
-            ));
-            tower.lastFireTime = now;
-            tower.targetEnemyId = target.id; // For visualization or advanced logic            // Placeholder firing sound
-            try {
-                const fireSound = new Audio('gameassets/sounds/tower_fire.wav');
-                fireSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.5;
-                fireSound.play().catch(e => console.warn("Audio play failed:", e));
-            } catch (error) {
-                console.warn('AuraCitadel: Could not load fire sound:', error);
-            }
-        } else {
-            tower.targetEnemyId = null;
+            // Default case for projectile-based towers
+            default:
+                if (weaponComp.isUtility) break; // Explicitly skip utility towers that aren't handled above
+
+                let target = null;
+                let minDistance = range + 1; // Start with distance just outside range
+                for (const enemy of this.enemies) {
+                    const dx = enemy.x - ((tower.x + 0.5) * this.gridTileSize);
+                    const dy = enemy.y - ((tower.y + 0.5) * this.gridTileSize);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance <= range && distance < minDistance) {
+                        target = enemy;
+                        minDistance = distance;
+                    }
+                }
+
+                if (target) {
+                    this.projectiles.push(this._createProjectile(
+                        (tower.x + 0.5) * this.gridTileSize,
+                        (tower.y + 0.5) * this.gridTileSize,
+                        target,
+                        damage, // Use calculated damage
+                        5, /* projectile speed */
+                        tower.uniqueId // Pass towerId
+                    ));
+                    tower.lastFireTime = now;
+                    tower.targetEnemyId = target.id;
+                    try {
+                        const fireSound = new Audio('gameassets/sounds/tower_fire.wav');
+                        fireSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.5;
+                        fireSound.play().catch(e => console.warn("Audio play failed:", e));
+                    } catch (error) {
+                        console.warn('AuraCitadel: Could not load fire sound:', error);
+                    }
+                } else {
+                    tower.targetEnemyId = null;
+                }
+                break;
         }
     });
 };
@@ -399,25 +522,62 @@ AuraCitadelGame.prototype._updateProjectiles = function() {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < proj.speed || distance < target.radius) { // Hit
-            target.health -= proj.damage;
-            this.projectiles.splice(i, 1);
+            const primaryTarget = target; // Store for clarity
+            const impactX = primaryTarget.x;
+            const impactY = primaryTarget.y;
 
-            if (target.health <= 0) {
-                const enemyIndex = this.enemies.findIndex(e => e.id === target.id);
-                if (enemyIndex !== -1) this.enemies.splice(enemyIndex, 1);                this.playerCurrency += 5; // Currency for kill
-                
+            // Damage primary target
+            primaryTarget.health -= proj.damage;
+            let primaryTargetKilled = false;
+            if (primaryTarget.health <= 0) {
+                primaryTargetKilled = true;
+                const enemyIndex = this.enemies.findIndex(e => e.id === primaryTarget.id);
+                if (enemyIndex !== -1) this.enemies.splice(enemyIndex, 1);
+                this.playerCurrency += 3;
                 try {
                     const deathSound = new Audio('gameassets/sounds/enemy_death.wav');
                     deathSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.3;
                     deathSound.play().catch(e => console.warn("Audio play failed:", e));
-                } catch (error) {
-                    console.warn('AuraCitadel: Could not load death sound:', error);
-                }
+                } catch (error) { console.warn('AuraCitadel: Could not load death sound:', error); }
+                if (Math.random() < 0.1) this._unlockRandomComponent();
+            }
 
-                if (Math.random() < 0.1) { // 10% chance to drop blueprint
-                    this._unlockRandomComponent();
+            // Check for Pulser AoE damage
+            const firingTower = this.towers.find(t => t.uniqueId === proj.towerId);
+            if (firingTower && this.masterComponentList[firingTower.weaponId]?.id === 'weapon_pulser') {
+                const pulserWeaponStats = this.masterComponentList[firingTower.weaponId];
+                const areaOfEffectRadius = (pulserWeaponStats.areaOfEffect || 0) * this.gridTileSize;
+
+                if (areaOfEffectRadius > 0) {
+                    this.enemies.forEach(otherEnemy => {
+                        // Skip primary target if it wasn't killed and is still in the enemies list,
+                        // or if it was killed, ensure we are not processing it again if it was already removed.
+                        if (otherEnemy.id === primaryTarget.id) return;
+
+                        const distToImpact = Math.sqrt(Math.pow(otherEnemy.x - impactX, 2) + Math.pow(otherEnemy.y - impactY, 2));
+                        if (distToImpact <= areaOfEffectRadius) {
+                            otherEnemy.health -= proj.damage; // Apply same damage to secondary targets
+                            if (otherEnemy.health <= 0) {
+                                const otherEnemyIndex = this.enemies.findIndex(e => e.id === otherEnemy.id);
+                                if (otherEnemyIndex !== -1) {
+                                     // Important: Adjust loop index if splicing from the array being iterated
+                                    if (otherEnemyIndex < i) i--;
+                                    this.enemies.splice(otherEnemyIndex, 1);
+                                }
+                                this.playerCurrency += 3;
+                                try {
+                                    const deathSound = new Audio('gameassets/sounds/enemy_death.wav');
+                                    deathSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.3;
+                                    deathSound.play().catch(e => console.warn("Audio play failed:", e));
+                                } catch (error) { console.warn('AuraCitadel: Could not load death sound:', error); }
+                                if (Math.random() < 0.1) this._unlockRandomComponent();
+                            }
+                        }
+                    });
                 }
             }
+
+            this.projectiles.splice(i, 1); // Remove projectile after processing hit and AoE
             continue;
         }
         proj.x += (dx / distance) * proj.speed;
@@ -502,15 +662,24 @@ AuraCitadelGame.prototype._gameLoop = function() { /* ... same ... */
         this.animationFrameId = null;
         return;
     }
-    this._update();
+
+    const now = Date.now();
+    const deltaTime = (now - (this.lastTimestamp || now)) / 1000; // deltaTime in seconds
+    this.lastTimestamp = now;
+
+    this._update(deltaTime);
     this._draw();
     this.animationFrameId = requestAnimationFrame(this._gameLoop.bind(this));
 };
 
-AuraCitadelGame.prototype._update = function() {
+AuraCitadelGame.prototype._update = function(deltaTime) {
     if (!this.gameRunning) return;
 
     if (this.gameState === "combat_phase") {
+        if (!this.waveSpawningComplete) {
+            this.timeSinceLastSpawn += deltaTime * 1000; // Convert deltaTime to ms
+            this._handleSpawning();
+        }
         this._updateEnemies();
         this._updateTowers();
         this._updateProjectiles();
@@ -564,8 +733,6 @@ AuraCitadelGame.prototype._draw = function() {
     }
     // Reset line cap/join for other drawings
     ctx.lineCap = "butt"; ctx.lineJoin = "miter"; ctx.lineWidth = 1;
-
-
     // Towers
     this.towers.forEach(tower => {
         const baseC = this.masterComponentList[tower.baseId], weaponC = this.masterComponentList[tower.weaponId];
@@ -594,8 +761,12 @@ AuraCitadelGame.prototype._draw = function() {
         }
     });
 
-    // Draw Tower Ghost (if placing)
+    // Draw slow field effects
+    this._drawSlowFieldEffects(ctx);// Draw Tower Ghost (if placing)
     this._drawTowerGhost(ctx);
+    
+    // Draw Tower Ranges (if placing)
+    this._drawTowerRanges(ctx);
 
     // Projectiles
     this.projectiles.forEach(proj => {
@@ -603,14 +774,22 @@ AuraCitadelGame.prototype._draw = function() {
         ctx.beginPath();
         ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
         ctx.fill();
-    });
-
-    // Enemies
-    this.enemies.forEach(enemy => { /* ... same health bar logic ... */
+    });    // Enemies
+    this.enemies.forEach(enemy => {
         ctx.fillStyle = enemy.spriteColor;
         ctx.beginPath();
         ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
         ctx.fill();
+        
+        // Draw slow effect indicator
+        if (enemy.statusEffects && enemy.statusEffects.some(effect => effect.type === 'slow_field_effect')) {
+            ctx.strokeStyle = AURA_COLORS.highlightPrimary;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(enemy.x, enemy.y, enemy.radius + 3, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        
         if (enemy.health < enemy.maxHealth) {
             const barWidth = enemy.radius * 1.5; const barHeight = 4;
             const barX = enemy.x - barWidth / 2; const barY = enemy.y - enemy.radius - barHeight - 3;
@@ -640,6 +819,103 @@ AuraCitadelGame.prototype._draw = function() {
         ctx.fillText("GAME OVER", this.canvas.width / 2, this.canvas.height / 2);
         ctx.textAlign = "left"; // Reset
     }
+
+    // Draw tower ranges if placing a tower
+    this._drawTowerRanges(ctx);
+
+    // Draw Slow Field visual effects
+    this._drawSlowFieldEffects(ctx);
+};
+
+// Visual effects and range indicators
+AuraCitadelGame.prototype._drawTowerRanges = function(ctx) {
+    if (!this.isPlacingTower || !this._canBuildTower()) return;
+    
+    const gridX = this.currentGhostGridCoords.x;
+    const gridY = this.currentGhostGridCoords.y;
+    
+    if (gridX === -1 || gridY === -1) return;
+    
+    const weapon = this.selectedComponents.weapon;
+    const modifier = this.selectedComponents.modifier;
+    
+    if (!weapon) return;
+    
+    let range = (weapon.range || 3) * this.gridTileSize;
+    if (modifier && modifier.range_boost) {
+        range += modifier.range_boost * this.gridTileSize;
+    }
+    
+    // Draw range circle
+    ctx.strokeStyle = 'rgba(0, 191, 255, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(
+        (gridX + 0.5) * this.gridTileSize,
+        (gridY + 0.5) * this.gridTileSize,
+        range,
+        0,
+        Math.PI * 2
+    );
+    ctx.stroke();
+    
+    // Draw AoE indicator for Pulser
+    if (weapon.id === 'weapon_pulser' && weapon.areaOfEffect) {
+        ctx.strokeStyle = 'rgba(255, 165, 0, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(
+            (gridX + 0.5) * this.gridTileSize,
+            (gridY + 0.5) * this.gridTileSize,
+            weapon.areaOfEffect * this.gridTileSize,
+            0,
+            Math.PI * 2
+        );
+        ctx.stroke();
+    }
+};
+
+// Visual effects for slow field
+AuraCitadelGame.prototype._drawSlowFieldEffects = function(ctx) {
+    const now = Date.now();
+    
+    this.towers.forEach(tower => {
+        const weaponComp = this.masterComponentList[tower.weaponId];
+        if (weaponComp && weaponComp.id === 'weapon_slow_field') {
+            let range = (weaponComp.range || 3) * this.gridTileSize;
+            const modifierComp = this.masterComponentList[tower.modifierId];
+            if (modifierComp && modifierComp.range_boost) {
+                range += modifierComp.range_boost * this.gridTileSize;
+            }
+            
+            // Draw slow field aura
+            ctx.strokeStyle = 'rgba(0, 191, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(
+                (tower.x + 0.5) * this.gridTileSize,
+                (tower.y + 0.5) * this.gridTileSize,
+                range,
+                0,
+                Math.PI * 2
+            );
+            ctx.stroke();
+            
+            // Add pulsing effect
+            const pulse = Math.sin(now * 0.005) * 0.1 + 0.9;
+            ctx.strokeStyle = `rgba(0, 191, 255, ${0.2 * pulse})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(
+                (tower.x + 0.5) * this.gridTileSize,
+                (tower.y + 0.5) * this.gridTileSize,
+                range * pulse,
+                0,
+                Math.PI * 2
+            );
+            ctx.stroke();
+        }
+    });
 };
 
 // Global Accessibility
@@ -654,60 +930,136 @@ AuraCitadelGame.prototype._drawShopUI = function(ctx) {
     ctx.fillStyle = sUI.backgroundColor;
     ctx.fillRect(sUI.x, sUI.y, sUI.width, sUI.height);
 
-    // Draw Shop Items
-    ctx.font = '12px "Segoe UI", Arial, sans-serif'; // Smaller font for item details
-    this.shopItems.forEach(item => {
+    // Draw Shop Tabs
+    this._drawShopTabs(ctx);
+
+    // Draw Shop Items for current tab
+    ctx.font = '10px "Segoe UI", Arial, sans-serif';
+    const currentTabItems = this.shopItems.filter(item => item.component.type === this.currentShopTab);
+    
+    currentTabItems.forEach(item => {
         // Determine item color by component type
+        let itemColor = AURA_COLORS.gridLines;
         switch (item.component.type) {
             case 'base':
-                ctx.fillStyle = AURA_COLORS.towerBase;
+                itemColor = AURA_COLORS.towerBase;
                 break;
             case 'weapon':
-                ctx.fillStyle = AURA_COLORS.towerWeapon;
+                itemColor = AURA_COLORS.towerWeapon;
                 break;
             case 'modifier':
-                ctx.fillStyle = AURA_COLORS.highlightPrimary;
+                itemColor = AURA_COLORS.highlightPrimary;
                 break;
-            default:
-                ctx.fillStyle = AURA_COLORS.gridLines; // Default color if type is unknown
         }
+
+        // Highlight if selected
+        const isSelected = this.selectedComponents[item.component.type]?.id === item.component.id;
+        if (isSelected) {
+            ctx.fillStyle = AURA_COLORS.highlightSecondary;
+            ctx.fillRect(item.x - 2, item.y - 2, item.width + 4, item.height + 4);
+        }
+
+        ctx.fillStyle = itemColor;
         ctx.fillRect(item.x, item.y, item.width, item.height);
 
         // Draw item name and cost
         ctx.fillStyle = sUI.textColor;
         ctx.textAlign = "center";
-        // Adjust text position to be below the item box
-        const textY = item.y + item.height + sUI.itemPadding + 5; // +5 for a bit of space from item bottom
-
-        ctx.fillText(item.component.name, item.x + item.width / 2, textY);
-        ctx.fillText(`Cost: ${item.component.cost}`, item.x + item.width / 2, textY + 14); // 14px for next line
+        
+        // Draw name (truncated if too long)
+        const maxNameWidth = item.width - 4;
+        let displayName = item.component.name;
+        if (ctx.measureText(displayName).width > maxNameWidth) {
+            displayName = displayName.substring(0, 8) + '...';
+        }
+        
+        ctx.fillText(displayName, item.x + item.width / 2, item.y + item.height + 12);
+        ctx.fillText(`${item.component.cost}¤`, item.x + item.width / 2, item.y + item.height + 24);
 
         ctx.textAlign = "left"; // Reset alignment
     });
+
+    // Draw selected components summary
+    this._drawSelectedComponentsSummary(ctx);
+};
+
+AuraCitadelGame.prototype._drawShopTabs = function(ctx) {
+    const sUI = this.shopUIDrawInfo;
+    const tabs = ['base', 'weapon', 'modifier'];
+    const tabWidth = sUI.width / tabs.length;
+    
+    tabs.forEach((tab, index) => {
+        const tabX = sUI.x + index * tabWidth;
+        const tabY = sUI.y;
+        const isActive = this.currentShopTab === tab;
+        
+        // Draw tab background
+        ctx.fillStyle = isActive ? AURA_COLORS.highlightPrimary : AURA_COLORS.gridLines;
+        ctx.fillRect(tabX, tabY, tabWidth, sUI.tabHeight);
+        
+        // Draw tab border
+        ctx.strokeStyle = AURA_COLORS.primaryText;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tabX, tabY, tabWidth, sUI.tabHeight);
+        
+        // Draw tab text
+        ctx.fillStyle = AURA_COLORS.primaryText;
+        ctx.font = '12px "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = "center";
+        ctx.fillText(tab.charAt(0).toUpperCase() + tab.slice(1), tabX + tabWidth / 2, tabY + 16);
+        ctx.textAlign = "left";
+    });
+};
+
+AuraCitadelGame.prototype._drawSelectedComponentsSummary = function(ctx) {
+    const sUI = this.shopUIDrawInfo;
+    const summaryY = sUI.y + sUI.height - 35;
+    
+    ctx.fillStyle = sUI.textColor;
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    
+    // Draw selected components
+    let summaryText = "Selected: ";
+    if (this.selectedComponents.base) summaryText += `Base: ${this.selectedComponents.base.name} `;
+    if (this.selectedComponents.weapon) summaryText += `Weapon: ${this.selectedComponents.weapon.name} `;
+    if (this.selectedComponents.modifier) summaryText += `Mod: ${this.selectedComponents.modifier.name} `;
+    
+    ctx.fillText(summaryText, sUI.x + 10, summaryY);
+    
+    // Draw total cost
+    const totalCost = this._calculateTotalCost();
+    const costText = `Total Cost: ${totalCost}¤`;
+    const costColor = this.playerCurrency >= totalCost ? AURA_COLORS.primaryText : AURA_COLORS.enemyDefault;
+    ctx.fillStyle = costColor;
+    ctx.fillText(costText, sUI.x + 10, summaryY + 15);
+    
+    // Draw "Ready to Build" indicator
+    if (this.selectedComponents.base && this.selectedComponents.weapon && this.selectedComponents.modifier && this.playerCurrency >= totalCost) {
+        ctx.fillStyle = AURA_COLORS.highlightSecondary;
+        ctx.fillText("Ready to build! Click on map to place tower.", sUI.x + 200, summaryY + 7);
+    }
 };
 
 AuraCitadelGame.prototype._drawTowerGhost = function(ctx) {
-    if (this.isPlacingTower && this.selectedShopItem && this.currentGhostGridCoords.x !== -1) {
+    if (this.isPlacingTower && this._canBuildTower() && this.currentGhostGridCoords.x !== -1) {
         const gridX = this.currentGhostGridCoords.x;
         const gridY = this.currentGhostGridCoords.y;
 
         // Boundary Check
         if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
-            // Optionally, you could draw the ghost red at the edge of the screen or clamped to grid,
-            // but for now, just don't draw if mouse is way off-grid.
-            // If you want to show it even if slightly off-grid, adjust this check or how gridX/Y are clamped.
             return;
         }
 
-        // Ensure grid cell exists (it should if boundary check passed, but good for safety)
+        // Ensure grid cell exists
         if (!this.gameGrid[gridY] || !this.gameGrid[gridY][gridX]) {
             return;
         }
+        
         const cell = this.gameGrid[gridY][gridX];
         const isBuildable = cell.buildable && !cell.hasTower;
 
         // Draw Ghost Base
-        ctx.globalAlpha = 0.5; // Transparency for the base
+        ctx.globalAlpha = 0.5;
         ctx.fillStyle = isBuildable ? 'green' : 'red';
         ctx.fillRect(
             gridX * this.gridTileSize,
@@ -715,27 +1067,48 @@ AuraCitadelGame.prototype._drawTowerGhost = function(ctx) {
             this.gridTileSize,
             this.gridTileSize
         );
-        // No need to reset globalAlpha here if the icon also uses it or if it's reset after both.
 
-        // Draw Ghost "Icon" (representing selected item)
-        let itemColor = AURA_COLORS.towerBase; // Default for 'base' type
-        if (this.selectedShopItem.type === 'weapon') {
-            itemColor = AURA_COLORS.towerWeapon;
-        } else if (this.selectedShopItem.type === 'modifier') {
-            itemColor = AURA_COLORS.highlightPrimary;
+        if (isBuildable) {
+            // Draw base component
+            if (this.selectedComponents.base) {
+                ctx.fillStyle = this.selectedComponents.base.id === 'base_energy_siphon' ? 
+                    AURA_COLORS.highlightSecondary : AURA_COLORS.towerBase;
+                ctx.fillRect(
+                    gridX * this.gridTileSize + 4,
+                    gridY * this.gridTileSize + 4,
+                    this.gridTileSize - 8,
+                    this.gridTileSize - 8
+                );
+            }
+
+            // Draw weapon component
+            if (this.selectedComponents.weapon) {
+                ctx.fillStyle = this.selectedComponents.weapon.id === 'weapon_slow_field' ? 
+                    AURA_COLORS.highlightPrimary : AURA_COLORS.towerWeapon;
+                ctx.beginPath();
+                ctx.arc(
+                    (gridX + 0.5) * this.gridTileSize,
+                    (gridY + 0.5) * this.gridTileSize,
+                    this.gridTileSize / 4,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+
+            // Draw modifier indicator
+            if (this.selectedComponents.modifier && this.selectedComponents.modifier.id !== 'mod_none') {
+                ctx.fillStyle = AURA_COLORS.highlightSecondary;
+                ctx.fillRect(
+                    gridX * this.gridTileSize + this.gridTileSize - 8,
+                    gridY * this.gridTileSize + 2,
+                    6,
+                    6
+                );
+            }
         }
-        // If selectedShopItem.type is 'base', itemColor remains AURA_COLORS.towerBase.
 
-        ctx.globalAlpha = 0.7; // Different alpha for the icon, or could be same as base.
-        const iconSize = this.gridTileSize / 2;
-        ctx.fillStyle = itemColor;
-        ctx.fillRect(
-            gridX * this.gridTileSize + (this.gridTileSize - iconSize) / 2,
-            gridY * this.gridTileSize + (this.gridTileSize - iconSize) / 2,
-            iconSize,
-            iconSize
-        );
-        ctx.globalAlpha = 1.0; // Reset global alpha after all ghost drawing
+        ctx.globalAlpha = 1.0; // Reset global alpha
     }
 };
 
@@ -743,7 +1116,7 @@ AuraCitadelGame.prototype._drawStartWaveButton = function(ctx) {
     const buttonWidth = 150;
     const buttonHeight = 50;
     const buttonX = (this.canvas.width - buttonWidth) / 2;
-    const buttonY = this.shopUIDrawInfo.y - buttonHeight - 20; // Above shop UI
+    const buttonY = this.shopUIDrawInfo.y - buttonHeight - 30; // More space above shop UI
 
     this.startWaveButtonRect = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
 
@@ -751,161 +1124,276 @@ AuraCitadelGame.prototype._drawStartWaveButton = function(ctx) {
     ctx.fillStyle = AURA_COLORS.highlightPrimary;
     ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
 
+    // Draw Button Border
+    ctx.strokeStyle = AURA_COLORS.primaryText;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
     // Draw Button Text
     ctx.fillStyle = AURA_COLORS.primaryText;
-    ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+    ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Start Wave", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2);
-
-    // Reset text alignment and baseline
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
+    ctx.fillText(`Start Wave ${this.currentWave + 1}`, buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + 6);
+    ctx.textAlign = "left"; // Reset
 };
 
 // --- Event Handlers ---
 AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
+    if (!this.gameRunning || this.gameState !== "build_phase") return;
+
     const rect = this.canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    // Check for Start Wave button click
-    if (this.gameState === "build_phase" && this.startWaveButtonRect) {
+    // Start Wave Button Logic
+    if (this.startWaveButtonRect) {
         const btn = this.startWaveButtonRect;
         if (mouseX >= btn.x && mouseX <= btn.x + btn.width &&
             mouseY >= btn.y && mouseY <= btn.y + btn.height) {
 
             console.log("Aura Citadel: Start Wave button clicked.");
             this.gameState = "combat_phase";
-
-            // currentWave should represent the wave that was just COMPLETED,
-            // or 0 if no waves have been completed yet.
-            // So, the wave to start is always currentWave + 1.
             this._initializeWave(this.currentWave + 1);
-
-            this.selectedShopItem = null;
+            
+            this.selectedComponents = { base: null, weapon: null, modifier: null };
             this.isPlacingTower = false;
             this.currentGhostGridCoords = { x: -1, y: -1 };
-            return; // Exit after handling button click
+            return;
         }
     }
 
     // Shop Interaction Logic
-    if (mouseY >= this.shopUIDrawInfo.y) { // Click is within the shop panel's Y range
-        for (const item of this.shopItems) {
-            if (mouseX >= item.x && mouseX <= item.x + item.width &&
-                mouseY >= item.y && mouseY <= item.y + item.height) {
-
-                // Clicked on a shop item
-                if (this.playerCurrency >= item.component.cost) {
-                    this.selectedShopItem = item.component;
-                    this.isPlacingTower = true;
-                    console.log("AuraCitadel: Selected item:", this.selectedShopItem.name);
-                    AuraGameSDK.ui.showNotification({ message: `Selected: ${this.selectedShopItem.name}. Click on grid to place.`, type: 'info' });
-                } else {
-                    console.log("AuraCitadel: Not enough currency for:", item.component.name);
-                    AuraGameSDK.ui.showNotification({ message: `Not enough currency for ${item.component.name}`, type: 'warning' });
-                    this.selectedShopItem = null;
-                    this.isPlacingTower = false;
-                }
-                return; // Processed shop click
+    if (mouseY >= this.shopUIDrawInfo.y) {
+        // Check tab clicks
+        if (mouseY <= this.shopUIDrawInfo.y + this.shopUIDrawInfo.tabHeight) {
+            const tabs = ['base', 'weapon', 'modifier'];
+            const tabWidth = this.shopUIDrawInfo.width / tabs.length;
+            const clickedTabIndex = Math.floor(mouseX / tabWidth);
+            
+            if (clickedTabIndex >= 0 && clickedTabIndex < tabs.length) {
+                this.currentShopTab = tabs[clickedTabIndex];
+                this._populateShopItems();
+                return;
             }
         }
 
-        // If click was in shop area but not on an item, and currently placing a tower, cancel placement.
+        // Check item clicks
+        for (const item of this.shopItems) {
+            if (item.component.type === this.currentShopTab &&
+                mouseX >= item.x && mouseX <= item.x + item.width &&
+                mouseY >= item.y && mouseY <= item.y + item.height) {
+
+                if (this.playerCurrency >= item.component.cost) {
+                    // Select component
+                    this.selectedComponents[item.component.type] = item.component;
+                    console.log(`AuraCitadel: Selected ${item.component.type}:`, item.component.name);
+                    
+                    // Set default components if not selected
+                    if (!this.selectedComponents.base && item.component.type !== 'base') {
+                        const defaultBase = this.masterComponentList['base_standard'];
+                        if (this.unlockedComponents.includes('base_standard')) {
+                            this.selectedComponents.base = defaultBase;
+                        }
+                    }
+                    if (!this.selectedComponents.weapon && item.component.type !== 'weapon') {
+                        const defaultWeapon = this.masterComponentList['weapon_blaster'];
+                        if (this.unlockedComponents.includes('weapon_blaster')) {
+                            this.selectedComponents.weapon = defaultWeapon;
+                        }
+                    }
+                    if (!this.selectedComponents.modifier && item.component.type !== 'modifier') {
+                        const defaultMod = this.masterComponentList['mod_none'];
+                        if (this.unlockedComponents.includes('mod_none')) {
+                            this.selectedComponents.modifier = defaultMod;
+                        }
+                    }
+                    
+                    // Check if ready to place
+                    if (this._canBuildTower()) {
+                        this.isPlacingTower = true;
+                        AuraGameSDK.ui.showNotification({ 
+                            message: `Tower configuration ready! Click on map to place.`, 
+                            type: 'info' 
+                        });
+                    } else {
+                        const missingComponents = [];
+                        if (!this.selectedComponents.base) missingComponents.push('Base');
+                        if (!this.selectedComponents.weapon) missingComponents.push('Weapon');
+                        if (!this.selectedComponents.modifier) missingComponents.push('Modifier');
+                        
+                        if (missingComponents.length > 0) {
+                            AuraGameSDK.ui.showNotification({ 
+                                message: `Select: ${missingComponents.join(', ')}`, 
+                                type: 'info' 
+                            });
+                        } else {
+                            AuraGameSDK.ui.showNotification({ 
+                                message: `Need ${this._calculateTotalCost() - this.playerCurrency} more currency`, 
+                                type: 'warning' 
+                            });
+                        }
+                    }
+                } else {
+                    AuraGameSDK.ui.showNotification({ 
+                        message: `Not enough currency for ${item.component.name}`, 
+                        type: 'warning' 
+                    });
+                }
+                return;
+            }
+        }
+
+        // Click in shop area but not on item - cancel placement if active
         if (this.isPlacingTower) {
             console.log("AuraCitadel: Placement cancelled by clicking shop area.");
             AuraGameSDK.ui.showNotification({ message: 'Placement cancelled.', type: 'info' });
-            this.selectedShopItem = null;
             this.isPlacingTower = false;
-            this.currentGhostGridCoords = { x: -1, y: -1 }; // Reset ghost coords
-            return;
+            this.currentGhostGridCoords = { x: -1, y: -1 };
         }
-        // If click in shop area and not placing, do nothing further (e.g. don't try to place tower in shop)
         return;
     }
 
-    // Tower Placement Logic (if not handled by shop interaction above)
-    if (this.isPlacingTower && this.selectedShopItem) {
+    // Tower Placement Logic
+    if (this.isPlacingTower && this._canBuildTower()) {
         const gridX = Math.floor(mouseX / this.gridTileSize);
         const gridY = Math.floor(mouseY / this.gridTileSize);
 
-        // Validate grid coordinates and buildability
         if (gridX >= 0 && gridX < this.gridWidth && gridY >= 0 && gridY < this.gridHeight &&
             this.gameGrid[gridY][gridX].buildable && !this.gameGrid[gridY][gridX].hasTower) {
 
-            // For now, selectedShopItem is assumed to be a 'base'.
-            // Hardcoding 'weapon_blaster' and 'mod_none' as per subtask instructions.
-            // This will need to be updated when full tower configuration is implemented.
-            let baseId = null, weaponId = 'weapon_blaster', modId = 'mod_none';
-
-            if (this.selectedShopItem.type === 'base') {
-                baseId = this.selectedShopItem.id;
-            } else {
-                // This case should ideally not happen with current shop logic if only bases are purchasable
-                // Or, if other types are purchasable, this logic needs to be smarter.
-                // For now, let's assume the selected item IS the base.
-                console.warn("AuraCitadel: Selected shop item is not of type 'base'. Attempting to use it as base ID:", this.selectedShopItem.name);
-                baseId = this.selectedShopItem.id;
-            }
-
-            // Ensure a base component is selected before attempting to craft
-            if (!this.masterComponentList[baseId] || this.masterComponentList[baseId].type !== 'base') {
-                 console.error("AuraCitadel: Invalid or non-base component selected for tower placement:", baseId);
-                 AuraGameSDK.ui.showNotification({ message: `Invalid selection for base. Please select a Base component.`, type: 'error' });
-                 this.selectedShopItem = null;
-                 this.isPlacingTower = false;
-                 this.currentGhostGridCoords = { x: -1, y: -1 };
-                 return;
-            }
-
+            const baseId = this.selectedComponents.base.id;
+            const weaponId = this.selectedComponents.weapon.id;
+            const modId = this.selectedComponents.modifier.id;
 
             if (this._handlePlayerCrafting(baseId, weaponId, modId, gridX, gridY)) {
                 console.log("AuraCitadel: Tower placed at:", gridX, gridY);
-                AuraGameSDK.ui.showNotification({ message: `${this.selectedShopItem.name} placed!`, type: 'success' });
+                AuraGameSDK.ui.showNotification({ 
+                    message: `Tower placed successfully!`, 
+                    type: 'success' 
+                });
+                
+                // Reset placement but keep components selected for next tower
+                this.isPlacingTower = false;
+                this.currentGhostGridCoords = { x: -1, y: -1 };
             } else {
-                // _handlePlayerCrafting should manage its own notifications for specific failure reasons like cost
-                 AuraGameSDK.ui.showNotification({ message: `Failed to place ${this.selectedShopItem.name}.`, type: 'error' });
+                AuraGameSDK.ui.showNotification({ 
+                    message: `Failed to place tower.`, 
+                    type: 'error' 
+                });
             }
-            // Reset placement mode whether successful or not
-            this.selectedShopItem = null;
-            this.isPlacingTower = false;
-            this.currentGhostGridCoords = { x: -1, y: -1 };
         } else {
-            console.log("AuraCitadel: Cannot place tower at:", gridX, gridY, "Valid placement area or buildable check failed.");
-            AuraGameSDK.ui.showNotification({ message: 'Cannot build here! Invalid location or occupied.', type: 'warning' });
-            // Keep isPlacingTower = true to allow user to try another spot
+            AuraGameSDK.ui.showNotification({ 
+                message: 'Cannot build here! Invalid location or occupied.', 
+                type: 'warning' 
+            });
         }
     }
 };
 
+// Helper function to get component tooltip info
+AuraCitadelGame.prototype._getComponentTooltip = function(component) {
+    let tooltip = `${component.name}\nCost: ${component.cost}¤\n`;
+    
+    switch (component.type) {
+        case 'base':
+            if (component.health) tooltip += `Health: ${component.health}\n`;
+            if (component.siphonRate) tooltip += `Energy Siphon: ${component.siphonRate}/s\n`;
+            break;
+            
+        case 'weapon':
+            if (component.damage) tooltip += `Damage: ${component.damage}\n`;
+            if (component.range) tooltip += `Range: ${component.range} tiles\n`;
+            if (component.fireRate) tooltip += `Fire Rate: ${component.fireRate}/s\n`;
+            if (component.areaOfEffect) tooltip += `AoE Radius: ${component.areaOfEffect} tiles\n`;
+            if (component.slowAmount) tooltip += `Slow Effect: ${(component.slowAmount * 100).toFixed(0)}%\n`;
+            if (component.isUtility) tooltip += `Type: Utility\n`;
+            break;
+            
+        case 'modifier':
+            if (component.range_boost) tooltip += `Range Boost: +${component.range_boost} tiles\n`;
+            if (component.damage_multiplier) tooltip += `Damage Multiplier: x${component.damage_multiplier}\n`;
+            if (component.fire_rate_multiplier) tooltip += `Fire Rate Multiplier: x${component.fire_rate_multiplier}\n`;
+            break;
+    }
+    
+    return tooltip.trim();
+};
+
+// Function to populate shop items based on current tab
 AuraCitadelGame.prototype._populateShopItems = function() {
     this.shopItems = [];
-    const sUI = this.shopUIDrawInfo;
-    let currentX = sUI.x + sUI.itemPadding;
-    const itemY = sUI.y + sUI.itemPadding;
+    
+    const itemsPerRow = 3;
+    const itemWidth = 80;
+    const itemHeight = 80;
+    const itemSpacing = 10;
+    const startX = this.shopUIDrawInfo.x + 10;
+    const startY = this.shopUIDrawInfo.y + 50; // After tabs
+    
+    const componentsForTab = Object.values(this.masterComponentList).filter(component => 
+        component.type === this.currentShopTab && 
+        this.unlockedComponents.includes(component.id)
+    );
+    
+    componentsForTab.forEach((component, index) => {
+        const row = Math.floor(index / itemsPerRow);
+        const col = index % itemsPerRow;
+        
+        const x = startX + col * (itemWidth + itemSpacing);
+        const y = startY + row * (itemHeight + itemSpacing);
+        
+        this.shopItems.push({
+            component: component,
+            x: x,
+            y: y,
+            width: itemWidth,
+            height: itemHeight
+        });
+    });
+};
 
-    for (const componentId in this.masterComponentList) {
-        if (this.unlockedComponents.includes(componentId)) {
-            const component = this.masterComponentList[componentId];
+// Helper function to calculate total cost of selected components
+AuraCitadelGame.prototype._calculateTotalCost = function() {
+    let totalCost = 0;
+    
+    if (this.selectedComponents.base) {
+        totalCost += this.selectedComponents.base.cost;
+    }
+    if (this.selectedComponents.weapon) {
+        totalCost += this.selectedComponents.weapon.cost;
+    }
+    if (this.selectedComponents.modifier) {
+        totalCost += this.selectedComponents.modifier.cost;
+    }
+    
+    return totalCost;
+};
 
-            // Basic sequential positioning for now
-            // This will need refinement if there are too many items to fit
-            if (currentX + sUI.itemSize + sUI.itemPadding > sUI.x + sUI.width) {
-                // Simple overflow handling: log and skip.
-                // A more robust solution might involve multiple rows or scrolling.
-                console.warn("AuraCitadel: Too many shop items to display in a single row. Some items might be hidden.");
-                continue;
-            }
+// Helper function to check if player can build a tower
+AuraCitadelGame.prototype._canBuildTower = function() {
+    const totalCost = this._calculateTotalCost();
+    return this.playerCurrency >= totalCost && 
+           this.selectedComponents.base && 
+           this.selectedComponents.weapon;
+};
 
-            this.shopItems.push({
-                component: component,
-                x: currentX,
-                y: itemY,
-                width: sUI.itemSize,
-                height: sUI.itemSize
-            });
-            currentX += sUI.itemSize + sUI.itemPadding;
+// Initialize default component selections
+AuraCitadelGame.prototype._initializeDefaultComponents = function() {
+    // Set default base if available and unlocked
+    if (!this.selectedComponents.base) {
+        const defaultBase = this.masterComponentList['base_standard'];
+        if (defaultBase && this.unlockedComponents.includes('base_standard')) {
+            this.selectedComponents.base = defaultBase;
         }
     }
+    
+    // Set default weapon if available and unlocked
+    if (!this.selectedComponents.weapon) {
+        const defaultWeapon = this.masterComponentList['weapon_blaster'];
+        if (defaultWeapon && this.unlockedComponents.includes('weapon_blaster')) {
+            this.selectedComponents.weapon = defaultWeapon;
+        }
+    }
+    
+    // Modifier is optional, so no default needed
 };
