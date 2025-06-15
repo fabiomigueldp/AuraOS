@@ -105,9 +105,7 @@ const AuraGameSDK = {
                 console.error(`AuraGameSDK.progression.unlockComponent: Error unlocking component '${componentId}' for game '${AuraGameSDK._gameId}':`, error);
                 return Promise.reject(error);
             }
-        },
-
-        /**
+        },        /**
          * Retrieves the list of unlocked components for the current player.
          * @returns {Promise<string[]>} An array of unlocked component IDs.
          */
@@ -122,19 +120,26 @@ const AuraGameSDK = {
                 const playerId = 'AuraUser'; // Placeholder for player identification
                 const key = `${AuraGameSDK._gameId}_${playerId}`;
 
-                const progressionData = await AuraGameSDK._dbManager.getObject('player_progress', key);
-
-                if (progressionData && progressionData.unlockedItems) {
-                    return progressionData.unlockedItems;
+                const progressionData = await AuraGameSDK._dbManager.getObject('player_progress', key);                if (progressionData && progressionData.unlockedItems) {
+                    // Always ensure basic components are included
+                    const essentialComponents = ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
+                    const unlockedItems = [...progressionData.unlockedItems];
+                    
+                    essentialComponents.forEach(componentId => {
+                        if (!unlockedItems.includes(componentId)) {
+                            unlockedItems.push(componentId);
+                        }
+                    });
+                    
+                    return unlockedItems;
                 } else {
                     // Default components if no progression data is found
                     console.log(`AuraGameSDK.progression: No progression data found for game '${AuraGameSDK._gameId}'. Returning default components.`);
-                    return ['base_standard', 'weapon_blaster', 'mod_none'];
+                    return ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
                 }
-            } catch (error) {
-                console.error(`AuraGameSDK.progression.getUnlockedComponents: Error fetching unlocked components for game '${AuraGameSDK._gameId}':`, error);
+            } catch (error) {                console.error(`AuraGameSDK.progression.getUnlockedComponents: Error fetching unlocked components for game '${AuraGameSDK._gameId}':`, error);
                 // Return default components on error to allow game to potentially continue
-                return ['base_standard', 'weapon_blaster', 'mod_none'];
+                return ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
             }
         },
 

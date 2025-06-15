@@ -88,9 +88,8 @@ function AuraCitadelGame(canvas) {
         'weapon_blaster': { id: 'weapon_blaster', name: 'Blaster', type: 'weapon', cost: 30, damage: 10, range: DEFAULT_WEAPON_RANGE, fireRate: 1.5 },
         'weapon_pulser': { id: 'weapon_pulser', name: 'Pulser', type: 'weapon', cost: 45, damage: 5, range: DEFAULT_WEAPON_RANGE - 0.5, fireRate: 3, areaOfEffect: 1 },
         'weapon_slow_field': { id: 'weapon_slow_field', name: 'Slow Field Emitter', type: 'weapon', cost: 40, slowAmount: 0.3, range: DEFAULT_WEAPON_RANGE, fireRate: 0.5, isUtility: true }, // isUtility helps differentiate from damage towers
-        'weapon_sniper': {id: 'weapon_sniper', name: 'Sniper Cannon', type: 'weapon', cost: 60, damage: 35, range: DEFAULT_WEAPON_RANGE + 4, fireRate: 0.5 },
-
-        'mod_none': { id: 'mod_none', name: 'No Modifier', type: 'modifier', cost: 0 },
+        'weapon_sniper': {id: 'weapon_sniper', name: 'Sniper Cannon', type: 'weapon', cost: 60, damage: 35, range: DEFAULT_WEAPON_RANGE + 4, fireRate: 0.5 },        'mod_none': { id: 'mod_none', name: 'No Modifier', type: 'modifier', cost: 0 },
+        'mod_basic_enhancement': { id: 'mod_basic_enhancement', name: 'Basic Enhancement', type: 'modifier', cost: 15, damage_multiplier: 1.1, description: 'Slightly increases damage output' },
         'mod_range_increase': { id: 'mod_range_increase', name: 'Range Augment', type: 'modifier', cost: 25, range_boost: 1.5 }, // Boost in grid units
         'mod_damage_boost': { id: 'mod_damage_boost', name: 'Damage Amplifier', type: 'modifier', cost: 30, damage_multiplier: 1.25 },
         'mod_fire_rate_enhancer': { id: 'mod_fire_rate_enhancer', name: 'Rapid Reloader', type: 'modifier', cost: 35, fire_rate_multiplier: 1.25 }, // Multiplier for shots per second
@@ -138,17 +137,29 @@ AuraCitadelGame.prototype.start = async function() {
     this.towers = []; this.enemies = []; this.projectiles = [];
     this.waveSpawningComplete = true;
     this.gameState = "build_phase";    this.lastTimestamp = 0; // Initialize for the first game loop
-    this._setupInitialGameBoard();
-
-    try {
+    this._setupInitialGameBoard();    try {
         this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
+        // Ensure basic components are always available even if not in progression data
+        const essentialComponents = ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
+        essentialComponents.forEach(componentId => {
+            if (!this.unlockedComponents.includes(componentId)) {
+                this.unlockedComponents.push(componentId);
+            }
+        });
+        
+        // Auto-unlock essential components if they're missing from progression data
+        await this._ensureEssentialComponentsUnlocked();
     } catch (error) { 
+        console.warn('AuraCitadel: Error fetching unlocked components, using fallback:', error);
         this.unlockedComponents = [
             'base_standard', 'base_reinforced', 
             'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
-            'mod_none', 'mod_range_increase', 'mod_damage_boost'
+            'mod_none', 'mod_basic_enhancement', 'mod_range_increase', 'mod_damage_boost', 'mod_fire_rate_enhancer'
         ]; 
     }
+
+    // Ensure essential components are unlocked at game start
+    this._ensureEssentialComponentsUnlocked();
 
     try {
         AuraGameSDK.audio.playLoopMusic('music/tracks/game_start_or_calm_phase.mp3', 0.5);
@@ -192,11 +203,22 @@ AuraCitadelGame.prototype.continueGame = async function() { /* ... same as befor
 
             console.log("Aura Citadel: Game state restored.", loadedState);            try {
                 this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
+                // Ensure basic components are always available even if not in progression data
+                const essentialComponents = ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
+                essentialComponents.forEach(componentId => {
+                    if (!this.unlockedComponents.includes(componentId)) {
+                        this.unlockedComponents.push(componentId);
+                    }
+                });
+                
+                // Auto-unlock essential components if they're missing from progression data
+                await this._ensureEssentialComponentsUnlocked();
             } catch (error) { 
+                console.warn('AuraCitadel: Error fetching unlocked components, using fallback:', error);
                 this.unlockedComponents = [
                     'base_standard', 'base_reinforced', 
                     'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
-                    'mod_none', 'mod_range_increase', 'mod_damage_boost'
+                    'mod_none', 'mod_basic_enhancement', 'mod_range_increase', 'mod_damage_boost', 'mod_fire_rate_enhancer'
                 ]; 
             }
 
@@ -584,10 +606,46 @@ AuraCitadelGame.prototype._updateProjectiles = function() {
 };
 
 // --- Blueprint Unlocking ---
+// Helper function to get unlock progress
+AuraCitadelGame.prototype._getUnlockProgress = function() {
+    const allComponents = Object.keys(this.masterComponentList);
+    const unlockedCount = this.unlockedComponents.length;
+    const totalCount = allComponents.length;
+    
+    return {
+        unlocked: unlockedCount,
+        total: totalCount,
+        percentage: Math.round((unlockedCount / totalCount) * 100)
+    };
+};
+
+// Helper function to get components by type that are still locked
+AuraCitadelGame.prototype._getLockedComponentsByType = function() {
+    const allComponentIds = Object.keys(this.masterComponentList);
+    const currentlyUnlocked = new Set(this.unlockedComponents);
+    
+    const locked = {
+        base: [],
+        weapon: [],
+        modifier: []
+    };
+    
+    allComponentIds.forEach(id => {
+        if (!currentlyUnlocked.has(id)) {
+            const component = this.masterComponentList[id];
+            if (locked[component.type]) {
+                locked[component.type].push(id);
+            }
+        }
+    });
+    
+    return locked;
+};
+
 AuraCitadelGame.prototype._unlockRandomComponent = async function() {
     const allComponentIds = Object.keys(this.masterComponentList);
     const currentlyUnlocked = new Set(this.unlockedComponents);
-    const lockedComponents = allComponentIds.filter(id => !currentlyUnlocked.has(id) && this.masterComponentList[id].type !== 'modifier'); // Exclude modifiers or specific items if needed
+    const lockedComponents = allComponentIds.filter(id => !currentlyUnlocked.has(id));
 
     if (lockedComponents.length === 0) {
         console.log("Aura Citadel: All components already unlocked!");
@@ -595,15 +653,72 @@ AuraCitadelGame.prototype._unlockRandomComponent = async function() {
         return;
     }
 
-    const randomIndex = Math.floor(Math.random() * lockedComponents.length);
-    const chosenComponentId = lockedComponents[randomIndex];
+    // Smart unlock system: prioritize based on wave and current unlocks
+    const lockedByType = this._getLockedComponentsByType();
+    let chosenComponentId = null;
+    
+    // Early game (waves 1-5): prioritize weapons and bases
+    if (this.currentWave <= 5) {
+        const priorityComponents = [...lockedByType.weapon, ...lockedByType.base];
+        if (priorityComponents.length > 0) {
+            chosenComponentId = priorityComponents[Math.floor(Math.random() * priorityComponents.length)];
+        }
+    }
+    
+    // Mid-late game: include modifiers in selection
+    if (!chosenComponentId) {
+        const randomIndex = Math.floor(Math.random() * lockedComponents.length);
+        chosenComponentId = lockedComponents[randomIndex];
+    }
+    
     const component = this.masterComponentList[chosenComponentId];
 
     try {
         await AuraGameSDK.progression.unlockComponent(chosenComponentId);
         // Refresh local list
         this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
-        AuraGameSDK.ui.showNotification({ message: `Blueprint Unlocked: ${component.name}!`, type: 'success' });        try {
+        
+        // Show different messages based on component type
+        let unlockMessage = '';
+        switch (component.type) {
+            case 'base':
+                unlockMessage = `New Base Unlocked: ${component.name}!`;
+                break;
+            case 'weapon':
+                unlockMessage = `New Weapon Unlocked: ${component.name}!`;
+                break;
+            case 'modifier':
+                unlockMessage = `New Modifier Unlocked: ${component.name}!`;
+                break;
+            default:
+                unlockMessage = `Blueprint Unlocked: ${component.name}!`;
+        }
+        
+        AuraGameSDK.ui.showNotification({ message: unlockMessage, type: 'success' });
+        
+        // Show unlock progress
+        const progress = this._getUnlockProgress();
+        console.log(`Aura Citadel: Unlock progress: ${progress.unlocked}/${progress.total} (${progress.percentage}%)`);
+        
+        // Show special unlock messages for important milestones
+        if (progress.percentage === 100) {
+            AuraGameSDK.ui.showNotification({ 
+                message: '🎉 All blueprints discovered! Master Engineer achieved!', 
+                type: 'success' 
+            });
+        } else if (progress.percentage >= 75) {
+            AuraGameSDK.ui.showNotification({ 
+                message: '🔬 Advanced researcher! 75% blueprints discovered!', 
+                type: 'info' 
+            });
+        } else if (progress.percentage >= 50) {
+            AuraGameSDK.ui.showNotification({ 
+                message: '⚙️ Expert engineer! 50% blueprints discovered!', 
+                type: 'info' 
+            });
+        }
+
+        try {
             const blueprintSound = new Audio('gameassets/sounds/blueprint_unlocked.wav');
             blueprintSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.7;
             blueprintSound.play().catch(e => console.warn("Audio play failed:", e));
@@ -797,10 +912,13 @@ AuraCitadelGame.prototype._draw = function() {
     });
 
     // UI
-    ctx.fillStyle = AURA_COLORS.primaryText; ctx.font = '16px "Segoe UI", Arial, sans-serif'; // Aura-like font stack
-    ctx.fillText(`Wave: ${this.currentWave}`, 10, 25);
+    ctx.fillStyle = AURA_COLORS.primaryText; ctx.font = '16px "Segoe UI", Arial, sans-serif'; // Aura-like font stack    ctx.fillText(`Wave: ${this.currentWave}`, 10, 25);
     ctx.fillText(`Currency: ${this.playerCurrency}`, 10, 50);
     ctx.fillText(`Core Health: ${this.auraCoreHealth}`, 10, 75);
+    
+    // Show unlock progress
+    const progress = this._getUnlockProgress();
+    ctx.fillText(`Blueprints: ${progress.unlocked}/${progress.total} (${progress.percentage}%)`, 10, 100);
 
     // Draw Shop UI
     this._drawShopUI(ctx);
@@ -1185,8 +1303,7 @@ AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
                     // Select component
                     this.selectedComponents[item.component.type] = item.component;
                     console.log(`AuraCitadel: Selected ${item.component.type}:`, item.component.name);
-                    
-                    // Set default components if not selected
+                      // Set default components if not selected
                     if (!this.selectedComponents.base && item.component.type !== 'base') {
                         const defaultBase = this.masterComponentList['base_standard'];
                         if (this.unlockedComponents.includes('base_standard')) {
@@ -1372,7 +1489,8 @@ AuraCitadelGame.prototype._canBuildTower = function() {
     const totalCost = this._calculateTotalCost();
     return this.playerCurrency >= totalCost && 
            this.selectedComponents.base && 
-           this.selectedComponents.weapon;
+           this.selectedComponents.weapon &&
+           this.selectedComponents.modifier; // Modifier is now required
 };
 
 // Initialize default component selections
@@ -1382,6 +1500,14 @@ AuraCitadelGame.prototype._initializeDefaultComponents = function() {
         const defaultBase = this.masterComponentList['base_standard'];
         if (defaultBase && this.unlockedComponents.includes('base_standard')) {
             this.selectedComponents.base = defaultBase;
+        } else {
+            // Fallback to first available base
+            const availableBases = Object.values(this.masterComponentList).filter(comp => 
+                comp.type === 'base' && this.unlockedComponents.includes(comp.id)
+            );
+            if (availableBases.length > 0) {
+                this.selectedComponents.base = availableBases[0];
+            }
         }
     }
     
@@ -1390,8 +1516,70 @@ AuraCitadelGame.prototype._initializeDefaultComponents = function() {
         const defaultWeapon = this.masterComponentList['weapon_blaster'];
         if (defaultWeapon && this.unlockedComponents.includes('weapon_blaster')) {
             this.selectedComponents.weapon = defaultWeapon;
+        } else {
+            // Fallback to first available weapon
+            const availableWeapons = Object.values(this.masterComponentList).filter(comp => 
+                comp.type === 'weapon' && this.unlockedComponents.includes(comp.id)
+            );
+            if (availableWeapons.length > 0) {
+                this.selectedComponents.weapon = availableWeapons[0];
+            }
+        }
+    }
+      // Set default modifier (prefer basic enhancement over none) if available and unlocked
+    if (!this.selectedComponents.modifier) {
+        const preferredModifier = this.masterComponentList['mod_basic_enhancement'];
+        if (preferredModifier && this.unlockedComponents.includes('mod_basic_enhancement')) {
+            this.selectedComponents.modifier = preferredModifier;
+        } else {
+            const defaultModifier = this.masterComponentList['mod_none'];
+            if (defaultModifier && this.unlockedComponents.includes('mod_none')) {
+                this.selectedComponents.modifier = defaultModifier;
+            } else {
+                // Fallback to first available modifier
+                const availableModifiers = Object.values(this.masterComponentList).filter(comp => 
+                    comp.type === 'modifier' && this.unlockedComponents.includes(comp.id)
+                );
+                if (availableModifiers.length > 0) {
+                    this.selectedComponents.modifier = availableModifiers[0];
+                }
+            }
         }
     }
     
-    // Modifier is optional, so no default needed
+    console.log('AuraCitadel: Default components initialized:', {
+        base: this.selectedComponents.base?.name || 'None',
+        weapon: this.selectedComponents.weapon?.name || 'None',
+        modifier: this.selectedComponents.modifier?.name || 'None',
+        unlockedComponents: this.unlockedComponents
+    });
+};
+
+// Ensure essential components are unlocked at game start
+AuraCitadelGame.prototype._ensureEssentialComponentsUnlocked = async function() {
+    const essentialComponents = ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
+    let componentsAdded = false;
+    
+    try {
+        for (const componentId of essentialComponents) {
+            if (!this.unlockedComponents.includes(componentId)) {
+                console.log(`AuraCitadel: Auto-unlocking essential component: ${componentId}`);
+                await AuraGameSDK.progression.unlockComponent(componentId);
+                this.unlockedComponents.push(componentId);
+                componentsAdded = true;
+            }
+        }
+        
+        if (componentsAdded) {
+            console.log('AuraCitadel: Essential components auto-unlocked for first-time players');
+        }
+    } catch (error) {
+        console.warn('AuraCitadel: Failed to auto-unlock essential components:', error);
+        // Ensure they're at least in the local array
+        essentialComponents.forEach(componentId => {
+            if (!this.unlockedComponents.includes(componentId)) {
+                this.unlockedComponents.push(componentId);
+            }
+        });
+    }
 };
