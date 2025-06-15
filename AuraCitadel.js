@@ -130,15 +130,12 @@ AuraCitadelGame.prototype.start = async function() {
     this.auraCoreHealth = 100;
     this.towers = []; this.enemies = []; this.projectiles = [];
     this.waveSpawningComplete = true;
+    this.gameState = "build_phase";
     this._setupInitialGameBoard();
 
     try {
         this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
     } catch (error) { this.unlockedComponents = ['base_standard', 'weapon_blaster', 'mod_none']; }
-
-    if (this.unlockedComponents.includes('base_standard') && this.unlockedComponents.includes('weapon_blaster')) {
-        this._handlePlayerCrafting('base_standard', 'weapon_blaster', 'mod_none', 3, Math.floor(this.gridHeight / 2) - 2);
-    }
 
     try {
         AuraGameSDK.audio.playLoopMusic('music/tracks/game_start_or_calm_phase.mp3', 0.5);
@@ -146,7 +143,6 @@ AuraCitadelGame.prototype.start = async function() {
         console.warn('AuraCitadel: Could not play background music:', error);
     }
 
-    setTimeout(() => { if (this.gameRunning) this._initializeWave(1); }, 100);
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
     this._gameLoop();
     this._populateShopItems(); // Called after start
@@ -514,25 +510,29 @@ AuraCitadelGame.prototype._gameLoop = function() { /* ... same ... */
 AuraCitadelGame.prototype._update = function() {
     if (!this.gameRunning) return;
 
-    this._updateEnemies();
-    this._updateTowers();    // New
-    this._updateProjectiles(); // New
+    if (this.gameState === "combat_phase") {
+        this._updateEnemies();
+        this._updateTowers();
+        this._updateProjectiles();
+    }
 
-    if (this.waveSpawningComplete && this.enemies.length === 0 && this.auraCoreHealth > 0 && this.gameRunning) {
+    if (this.gameState === "combat_phase" && this.waveSpawningComplete && this.enemies.length === 0 && this.auraCoreHealth > 0 && this.gameRunning) {
         console.log(`Aura Citadel: Wave ${this.currentWave} cleared!`);
-        this.playerCurrency += (100 + this.currentWave * 10);
-        AuraGameSDK.ui.showNotification({ message: `Wave ${this.currentWave} cleared! Currency +${100 + this.currentWave * 10}`, type: 'success' });        this._saveGameState();
+        this.playerCurrency += (100 + this.currentWave * 10); // this.currentWave here is correct as it's the wave just cleared
+        AuraGameSDK.ui.showNotification({ message: `Wave ${this.currentWave} cleared! Currency +${100 + this.currentWave * 10}`, type: 'success' });
+
+        this._saveGameState(); // Save progress
+
+        this.gameState = "build_phase"; // Transition to build phase
+        this.waveSpawningComplete = false; // Reset for the next wave's spawning process
+
         try {
             AuraGameSDK.audio.playLoopMusic('music/tracks/build_phase.mp3', 0.4);
         } catch (error) {
             console.warn('AuraCitadel: Could not play build phase music:', error);
         }
-
-        const nextWave = this.currentWave + 1;
-        this.waveSpawningComplete = false;
-        setTimeout(() => {
-            if(this.gameRunning) this._initializeWave(nextWave);
-        }, 5000); // 5 second delay for build phase
+        console.log("Aura Citadel: Entering Build Phase. Click 'Start Wave' to begin wave " + (this.currentWave + 1));
+        // No more setTimeout to automatically start the next wave.
     }
 };
 
@@ -627,6 +627,11 @@ AuraCitadelGame.prototype._draw = function() {
 
     // Draw Shop UI
     this._drawShopUI(ctx);
+
+    // Draw Start Wave Button if in build phase
+    if (this.gameState === "build_phase") {
+        this._drawStartWaveButton(ctx);
+    }
 
     if (!this.gameRunning && this.auraCoreHealth <= 0) {
         ctx.fillStyle = AURA_COLORS.enemyDefault;
@@ -734,11 +739,56 @@ AuraCitadelGame.prototype._drawTowerGhost = function(ctx) {
     }
 };
 
+AuraCitadelGame.prototype._drawStartWaveButton = function(ctx) {
+    const buttonWidth = 150;
+    const buttonHeight = 50;
+    const buttonX = (this.canvas.width - buttonWidth) / 2;
+    const buttonY = this.shopUIDrawInfo.y - buttonHeight - 20; // Above shop UI
+
+    this.startWaveButtonRect = { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight };
+
+    // Draw Button Background
+    ctx.fillStyle = AURA_COLORS.highlightPrimary;
+    ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+    // Draw Button Text
+    ctx.fillStyle = AURA_COLORS.primaryText;
+    ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Start Wave", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2);
+
+    // Reset text alignment and baseline
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+};
+
 // --- Event Handlers ---
 AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
     const rect = this.canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
+
+    // Check for Start Wave button click
+    if (this.gameState === "build_phase" && this.startWaveButtonRect) {
+        const btn = this.startWaveButtonRect;
+        if (mouseX >= btn.x && mouseX <= btn.x + btn.width &&
+            mouseY >= btn.y && mouseY <= btn.y + btn.height) {
+
+            console.log("Aura Citadel: Start Wave button clicked.");
+            this.gameState = "combat_phase";
+
+            // currentWave should represent the wave that was just COMPLETED,
+            // or 0 if no waves have been completed yet.
+            // So, the wave to start is always currentWave + 1.
+            this._initializeWave(this.currentWave + 1);
+
+            this.selectedShopItem = null;
+            this.isPlacingTower = false;
+            this.currentGhostGridCoords = { x: -1, y: -1 };
+            return; // Exit after handling button click
+        }
+    }
 
     // Shop Interaction Logic
     if (mouseY >= this.shopUIDrawInfo.y) { // Click is within the shop panel's Y range
