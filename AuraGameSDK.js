@@ -397,11 +397,10 @@ const AuraGameSDK = {
                                 resolve();
                             })
                             .catch(reject);
-                    }, { once: true });
-
-                    this._currentAudio.addEventListener('error', (e) => {
-                        console.error(`AuraGameSDK.audio: Error loading music - ${musicPath}`, e);
-                        reject(new Error(`Failed to load music: ${musicPath}`));
+                    }, { once: true });                    this._currentAudio.addEventListener('error', (e) => {
+                        console.warn(`AuraGameSDK.audio: Error loading music - ${musicPath}`, e);
+                        console.warn('AuraGameSDK.audio: Continuing without music...');
+                        resolve(); // Resolve instead of reject to allow game to continue
                     }, { once: true });
 
                     // Start loading the audio
@@ -515,6 +514,52 @@ const AuraGameSDK = {
             if (this._currentAudio) {
                 this._currentAudio.volume = this._volume;
             }
+        },
+
+        /**
+         * Gets the current volume level.
+         * 
+         * Usage example:
+         * - const volume = AuraGameSDK.audio.getVolume();
+         * 
+         * @returns {number} Current volume level (0.0 to 1.0)
+         */
+        getVolume() {
+            return this._volume;
+        },
+
+        /**
+         * Skips to the next track in the playlist (if in playlist mode).
+         * 
+         * Usage example:
+         * - AuraGameSDK.audio.nextTrack();
+         */
+        nextTrack() {
+            if (!this._isPlaylistMode || this._playlist.length === 0) {
+                console.warn('AuraGameSDK.audio: nextTrack called but not in playlist mode');
+                return;
+            }
+
+            this._currentTrackIndex = (this._currentTrackIndex + 1) % this._playlist.length;
+            this._playTrackAtIndex(this._currentTrackIndex);
+        },
+
+        /**
+         * Skips to the previous track in the playlist (if in playlist mode).
+         * 
+         * Usage example:
+         * - AuraGameSDK.audio.previousTrack();
+         */
+        previousTrack() {
+            if (!this._isPlaylistMode || this._playlist.length === 0) {
+                console.warn('AuraGameSDK.audio: previousTrack called but not in playlist mode');
+                return;
+            }
+
+            this._currentTrackIndex = this._currentTrackIndex === 0 
+                ? this._playlist.length - 1 
+                : this._currentTrackIndex - 1;
+            this._playTrackAtIndex(this._currentTrackIndex);
         },
 
         /**
@@ -776,6 +821,7 @@ const AuraGameSDK = {
 
     ui: {
         _cssInjected: false,
+        _notificationCounter: 0,
 
         /**
          * Injects the necessary CSS for UI components into the document's head.
@@ -838,6 +884,70 @@ const AuraGameSDK = {
             document.head.appendChild(styleSheet);
             this._cssInjected = true;
             console.log("AuraGameSDK.ui: CSS injected.");
+        },
+
+        /**
+         * Injects notification-specific CSS.
+         * @private
+         */
+        _injectNotificationCSS() {
+            if (this._notificationCSSInjected) return;
+
+            const notificationStyles = `
+                .aura-notification {
+                    background-color: #333;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 6px;
+                    margin-bottom: 10px;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+                    border-left: 4px solid #555;
+                    font-family: Arial, sans-serif;
+                    font-size: 14px;
+                    max-width: 300px;
+                    word-wrap: break-word;
+                    animation: aura-notification-slide-in 0.3s ease-out;
+                }
+                .aura-notification-info {
+                    border-left-color: #00BFFF;
+                }
+                .aura-notification-success {
+                    border-left-color: #32CD32;
+                }
+                .aura-notification-warning {
+                    border-left-color: #FFD700;
+                }
+                .aura-notification-error {
+                    border-left-color: #FF6347;
+                }
+                .aura-notification-fade-out {
+                    animation: aura-notification-fade-out 0.3s ease-out forwards;
+                }
+                @keyframes aura-notification-slide-in {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes aura-notification-fade-out {
+                    from {
+                        opacity: 1;
+                    }
+                    to {
+                        opacity: 0;
+                    }
+                }
+            `;
+            const styleSheet = document.createElement("style");
+            styleSheet.type = "text/css";
+            styleSheet.innerText = notificationStyles;
+            document.head.appendChild(styleSheet);
+            this._notificationCSSInjected = true;
+            console.log("AuraGameSDK.ui: Notification CSS injected.");
         },
 
         /**
@@ -968,6 +1078,51 @@ const AuraGameSDK = {
             } else {
                 console.error(`AuraGameSDK.ui.hideModal: Modal with id "${id}" not found.`);
             }
+        },
+
+        /**
+         * Shows a notification message to the user.
+         * @param {object} options - Notification options.
+         * @param {string} options.message - The message to display.
+         * @param {string} [options.type='info'] - Type of notification ('info', 'success', 'warning', 'error').
+         * @param {number} [options.duration=3000] - Duration in milliseconds before auto-hide.
+         */
+        showNotification(options = {}) {
+            if (!options.message) {
+                console.error('AuraGameSDK.ui.showNotification: message is required.');
+                return;
+            }
+
+            this._injectCSS(); // Ensure CSS is injected
+            this._injectNotificationCSS(); // Ensure notification-specific CSS is injected
+
+            const notificationId = `aura-notification-${++this._notificationCounter}`;
+            const type = options.type || 'info';
+            const duration = options.duration || 3000;
+
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            notification.className = `aura-notification aura-notification-${type}`;
+            notification.textContent = options.message;
+
+            // Position notification at top-right
+            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000;';
+
+            document.body.appendChild(notification);
+
+            // Auto-hide after duration
+            setTimeout(() => {
+                if (document.getElementById(notificationId)) {
+                    notification.classList.add('aura-notification-fade-out');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300); // Wait for fade-out animation
+                }
+            }, duration);
+
+            console.log(`AuraGameSDK.ui: Notification shown - ${options.message}`);
         }
     }
 };
