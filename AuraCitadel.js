@@ -42,7 +42,7 @@ function AuraCitadelGame(canvas) {
     this.gameRunning = false;
     this.animationFrameId = null;
     this.currentWave = 0;
-    this.playerCurrency = 100;
+    this.playerCurrency = 75;
     this.auraCoreHealth = 100;
     this.towers = [];
     this.enemies = [];
@@ -51,6 +51,9 @@ function AuraCitadelGame(canvas) {
     this.enemyPath = [];
     this.unlockedComponents = [];
     this.waveSpawningComplete = true;
+    this.waveSpawnInstructions = []; // Added for spawn instructions
+    this.timeSinceLastSpawn = 0; // Added for spawn timing
+    this.lastTimestamp = 0; // For deltaTime calculation
 
     // Shop and Tower Placement UI / State
     this.shopUIDrawInfo = {
@@ -126,11 +129,12 @@ AuraCitadelGame.prototype.start = async function() {
     console.log("Aura Citadel: Starting game...");
     this.gameRunning = true;
     this.currentWave = 0;
-    this.playerCurrency = 100;
+    this.playerCurrency = 75;
     this.auraCoreHealth = 100;
     this.towers = []; this.enemies = []; this.projectiles = [];
     this.waveSpawningComplete = true;
     this.gameState = "build_phase";
+    this.lastTimestamp = 0; // Initialize for the first game loop
     this._setupInitialGameBoard();
 
     try {
@@ -280,7 +284,8 @@ AuraCitadelGame.prototype._gameOver = async function() { /* ... same as before .
 
 // --- Wave & Enemy Management ---
 AuraCitadelGame.prototype._initializeWave = function(waveNumber) { /* ... play music ... */
-    console.log(`Aura Citadel: Initializing wave ${waveNumber}...`);    AuraGameSDK.ui.showNotification({ message: `Wave ${waveNumber} starting!`, type: 'info' });
+    console.log(`Aura Citadel: Initializing wave ${waveNumber}...`);
+    AuraGameSDK.ui.showNotification({ message: `Wave ${waveNumber} starting!`, type: 'info' });
     try {
         AuraGameSDK.audio.playLoopMusic('music/tracks/wave_battle.mp3', 0.6);
     } catch (error) {
@@ -288,20 +293,57 @@ AuraCitadelGame.prototype._initializeWave = function(waveNumber) { /* ... play m
     }
 
     this.currentWave = waveNumber;
-    this.enemies = [];
-    this.waveSpawningComplete = false;
+    this.enemies = []; // Clear existing enemies, though spawning is now instruction-based
+    this.waveSpawnInstructions = []; // Clear previous instructions
+    this.waveSpawningComplete = false; // Set to false, actual spawning will occur over time
+    this.timeSinceLastSpawn = 0; // Reset spawn timer
 
     const numEnemies = 5 + waveNumber * 2;
     const enemyHealth = 20 + waveNumber * 5;
     const enemySpeed = 1 + waveNumber * 0.05; // Adjusted speed scaling
 
     for (let i = 0; i < numEnemies; i++) {
-        const newGlitch = this._createGlitch('basic', enemyHealth, enemySpeed, waveNumber);
-        if (newGlitch) this.enemies.push(newGlitch);
+        const spawnInstruction = {
+            type: 'basic', // For now, all are basic
+            health: enemyHealth,
+            speed: enemySpeed,
+            wave: waveNumber,
+            delay: (i === 0 ? 500 : 1000) // 500ms for the first, 1000ms for subsequent
+        };
+        this.waveSpawnInstructions.push(spawnInstruction);
     }
-    this.waveSpawningComplete = true;
-    console.log(`Aura Citadel: Spawned ${this.enemies.length} glitches for wave ${waveNumber}.`);
+
+    // Note: this.waveSpawningComplete = true; is removed from here.
+    // It will be set to true in the _update loop once all instructions are processed.
+    console.log(`Aura Citadel: Prepared ${this.waveSpawnInstructions.length} spawn instructions for wave ${waveNumber}.`);
 };
+
+AuraCitadelGame.prototype._handleSpawning = function() {
+    if (this.waveSpawnInstructions.length === 0) {
+        if (!this.waveSpawningComplete) { // Ensure this only logs once
+            this.waveSpawningComplete = true;
+            console.log("Aura Citadel: All enemies for the wave have spawned.");
+        }
+        return;
+    }
+
+    const currentInstruction = this.waveSpawnInstructions[0];
+    if (this.timeSinceLastSpawn >= currentInstruction.delay) {
+        const spawnDetails = this.waveSpawnInstructions.shift();
+        const newGlitch = this._createGlitch(spawnDetails.type, spawnDetails.health, spawnDetails.speed, spawnDetails.wave);
+        if (newGlitch) {
+            this.enemies.push(newGlitch);
+        }
+        console.log(`Aura Citadel: Spawning enemy type ${spawnDetails.type} after ${this.timeSinceLastSpawn.toFixed(0)}ms delay. Target delay: ${spawnDetails.delay}ms.`);
+        this.timeSinceLastSpawn = 0; // Reset timer for the next spawn
+
+        if (this.waveSpawnInstructions.length === 0) {
+            this.waveSpawningComplete = true;
+            console.log("Aura Citadel: All enemies for the wave have now spawned (last one).");
+        }
+    }
+};
+
 AuraCitadelGame.prototype._updateEnemies = function() { /* ... same as before ... */
     if (!this.enemyPath || this.enemyPath.length === 0) return;
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -404,7 +446,7 @@ AuraCitadelGame.prototype._updateProjectiles = function() {
 
             if (target.health <= 0) {
                 const enemyIndex = this.enemies.findIndex(e => e.id === target.id);
-                if (enemyIndex !== -1) this.enemies.splice(enemyIndex, 1);                this.playerCurrency += 5; // Currency for kill
+                if (enemyIndex !== -1) this.enemies.splice(enemyIndex, 1);                this.playerCurrency += 3; // Currency for kill (Adjusted for balance)
                 
                 try {
                     const deathSound = new Audio('gameassets/sounds/enemy_death.wav');
@@ -502,15 +544,24 @@ AuraCitadelGame.prototype._gameLoop = function() { /* ... same ... */
         this.animationFrameId = null;
         return;
     }
-    this._update();
+
+    const now = Date.now();
+    const deltaTime = (now - (this.lastTimestamp || now)) / 1000; // deltaTime in seconds
+    this.lastTimestamp = now;
+
+    this._update(deltaTime);
     this._draw();
     this.animationFrameId = requestAnimationFrame(this._gameLoop.bind(this));
 };
 
-AuraCitadelGame.prototype._update = function() {
+AuraCitadelGame.prototype._update = function(deltaTime) {
     if (!this.gameRunning) return;
 
     if (this.gameState === "combat_phase") {
+        if (!this.waveSpawningComplete) {
+            this.timeSinceLastSpawn += deltaTime * 1000; // Convert deltaTime to ms
+            this._handleSpawning();
+        }
         this._updateEnemies();
         this._updateTowers();
         this._updateProjectiles();
