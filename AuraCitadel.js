@@ -33,6 +33,12 @@ function AuraCitadelGame(canvas) {
     AuraGameSDK.init('aura-citadel', canvas);
     this.canvas = canvas;
 
+    // Event Listeners
+    this._handleCanvasMouseDown = this._handleCanvasMouseDown.bind(this);
+    this._handleCanvasMouseMove = this._handleCanvasMouseMove.bind(this);
+    this.canvas.addEventListener('mousedown', this._handleCanvasMouseDown);
+    this.canvas.addEventListener('mousemove', this._handleCanvasMouseMove);
+
     this.gameRunning = false;
     this.animationFrameId = null;
     this.currentWave = 0;
@@ -45,6 +51,22 @@ function AuraCitadelGame(canvas) {
     this.enemyPath = [];
     this.unlockedComponents = [];
     this.waveSpawningComplete = true;
+
+    // Shop and Tower Placement UI / State
+    this.shopUIDrawInfo = {
+        x: 0,
+        y: this.canvas.height - 100, // Assuming shop height is 100px
+        width: this.canvas.width,
+        height: 100,
+        backgroundColor: AURA_COLORS.uiBackground,
+        itemSize: 60, // Size of each shop item icon
+        itemPadding: 10,
+        textColor: AURA_COLORS.primaryText
+    };
+    this.shopItems = []; // To store objects representing clickable shop items
+    this.selectedShopItem = null; // To store the component object selected from the shop
+    this.isPlacingTower = false; // Boolean to indicate if player is currently placing a tower
+    this.currentGhostGridCoords = { x: -1, y: -1 }; // For tower placement ghost
 
     // Define default ranges and fire rates if not specified in component
     const DEFAULT_WEAPON_RANGE = 3; // in grid units
@@ -72,6 +94,7 @@ function AuraCitadelGame(canvas) {
 
     console.log(`AuraCitadelGame: Initializing with grid ${this.gridWidth}x${this.gridHeight}`);
     this._setupInitialGameBoard();
+    this._populateShopItems(); // Called after constructor setup
 }
 
 // --- Enemy Glitch Logic ---
@@ -126,6 +149,7 @@ AuraCitadelGame.prototype.start = async function() {
     setTimeout(() => { if (this.gameRunning) this._initializeWave(1); }, 100);
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
     this._gameLoop();
+    this._populateShopItems(); // Called after start
 };
 
 AuraCitadelGame.prototype.stop = function() { /* ... same as before ... */
@@ -136,6 +160,11 @@ AuraCitadelGame.prototype.stop = function() { /* ... same as before ... */
         this.animationFrameId = null;
     }
     AuraGameSDK.audio.stop(); // Stop any looping music
+
+    // Remove event listeners
+    this.canvas.removeEventListener('mousedown', this._handleCanvasMouseDown);
+    this.canvas.removeEventListener('mousemove', this._handleCanvasMouseMove);
+
     console.log("Aura Citadel: Game stopped.");
 };
 AuraCitadelGame.prototype.isRunning = function() { return this.gameRunning; };
@@ -167,14 +196,28 @@ AuraCitadelGame.prototype.continueGame = async function() { /* ... same as befor
             this._gameLoop();
             AuraGameSDK.audio.playLoopMusic('music/game_resume_or_calm_phase.mp3', 0.5);
             console.log("Aura Citadel: Resuming from wave " + this.currentWave);
+            this._populateShopItems(); // Called after state restoration in continueGame
 
         } else {
             console.log("Aura Citadel: No saved state found, starting new game.");
-            await this.start();
+            await this.start(); // _populateShopItems will be called by start()
         }
     } catch (error) {
         console.error("Aura Citadel: Error during continueGame:", error);
-        await this.start();
+        await this.start(); // _populateShopItems will be called by start()
+    }
+};
+
+AuraCitadelGame.prototype._handleCanvasMouseMove = function(event) {
+    if (this.isPlacingTower && this.selectedShopItem) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const gridX = Math.floor(mouseX / this.gridTileSize);
+        const gridY = Math.floor(mouseY / this.gridTileSize);
+
+        this.currentGhostGridCoords = { x: gridX, y: gridY };
     }
 };
 
@@ -551,6 +594,9 @@ AuraCitadelGame.prototype._draw = function() {
         }
     });
 
+    // Draw Tower Ghost (if placing)
+    this._drawTowerGhost(ctx);
+
     // Projectiles
     this.projectiles.forEach(proj => {
         ctx.fillStyle = proj.spriteColor;
@@ -578,6 +624,10 @@ AuraCitadelGame.prototype._draw = function() {
     ctx.fillText(`Wave: ${this.currentWave}`, 10, 25);
     ctx.fillText(`Currency: ${this.playerCurrency}`, 10, 50);
     ctx.fillText(`Core Health: ${this.auraCoreHealth}`, 10, 75);
+
+    // Draw Shop UI
+    this._drawShopUI(ctx);
+
     if (!this.gameRunning && this.auraCoreHealth <= 0) {
         ctx.fillStyle = AURA_COLORS.enemyDefault;
         ctx.font = 'bold 48px "Segoe UI", Arial, sans-serif';
@@ -590,3 +640,222 @@ AuraCitadelGame.prototype._draw = function() {
 // Global Accessibility
 window.AuraCitadelGame = AuraCitadelGame;
 console.log('AuraCitadel.js loaded and AuraCitadelGame is now globally accessible.');
+
+// --- UI Drawing Methods ---
+AuraCitadelGame.prototype._drawShopUI = function(ctx) {
+    const sUI = this.shopUIDrawInfo;
+
+    // Draw Shop Panel Background
+    ctx.fillStyle = sUI.backgroundColor;
+    ctx.fillRect(sUI.x, sUI.y, sUI.width, sUI.height);
+
+    // Draw Shop Items
+    ctx.font = '12px "Segoe UI", Arial, sans-serif'; // Smaller font for item details
+    this.shopItems.forEach(item => {
+        // Determine item color by component type
+        switch (item.component.type) {
+            case 'base':
+                ctx.fillStyle = AURA_COLORS.towerBase;
+                break;
+            case 'weapon':
+                ctx.fillStyle = AURA_COLORS.towerWeapon;
+                break;
+            case 'modifier':
+                ctx.fillStyle = AURA_COLORS.highlightPrimary;
+                break;
+            default:
+                ctx.fillStyle = AURA_COLORS.gridLines; // Default color if type is unknown
+        }
+        ctx.fillRect(item.x, item.y, item.width, item.height);
+
+        // Draw item name and cost
+        ctx.fillStyle = sUI.textColor;
+        ctx.textAlign = "center";
+        // Adjust text position to be below the item box
+        const textY = item.y + item.height + sUI.itemPadding + 5; // +5 for a bit of space from item bottom
+
+        ctx.fillText(item.component.name, item.x + item.width / 2, textY);
+        ctx.fillText(`Cost: ${item.component.cost}`, item.x + item.width / 2, textY + 14); // 14px for next line
+
+        ctx.textAlign = "left"; // Reset alignment
+    });
+};
+
+AuraCitadelGame.prototype._drawTowerGhost = function(ctx) {
+    if (this.isPlacingTower && this.selectedShopItem && this.currentGhostGridCoords.x !== -1) {
+        const gridX = this.currentGhostGridCoords.x;
+        const gridY = this.currentGhostGridCoords.y;
+
+        // Boundary Check
+        if (gridX < 0 || gridX >= this.gridWidth || gridY < 0 || gridY >= this.gridHeight) {
+            // Optionally, you could draw the ghost red at the edge of the screen or clamped to grid,
+            // but for now, just don't draw if mouse is way off-grid.
+            // If you want to show it even if slightly off-grid, adjust this check or how gridX/Y are clamped.
+            return;
+        }
+
+        // Ensure grid cell exists (it should if boundary check passed, but good for safety)
+        if (!this.gameGrid[gridY] || !this.gameGrid[gridY][gridX]) {
+            return;
+        }
+        const cell = this.gameGrid[gridY][gridX];
+        const isBuildable = cell.buildable && !cell.hasTower;
+
+        // Draw Ghost Base
+        ctx.globalAlpha = 0.5; // Transparency for the base
+        ctx.fillStyle = isBuildable ? 'green' : 'red';
+        ctx.fillRect(
+            gridX * this.gridTileSize,
+            gridY * this.gridTileSize,
+            this.gridTileSize,
+            this.gridTileSize
+        );
+        // No need to reset globalAlpha here if the icon also uses it or if it's reset after both.
+
+        // Draw Ghost "Icon" (representing selected item)
+        let itemColor = AURA_COLORS.towerBase; // Default for 'base' type
+        if (this.selectedShopItem.type === 'weapon') {
+            itemColor = AURA_COLORS.towerWeapon;
+        } else if (this.selectedShopItem.type === 'modifier') {
+            itemColor = AURA_COLORS.highlightPrimary;
+        }
+        // If selectedShopItem.type is 'base', itemColor remains AURA_COLORS.towerBase.
+
+        ctx.globalAlpha = 0.7; // Different alpha for the icon, or could be same as base.
+        const iconSize = this.gridTileSize / 2;
+        ctx.fillStyle = itemColor;
+        ctx.fillRect(
+            gridX * this.gridTileSize + (this.gridTileSize - iconSize) / 2,
+            gridY * this.gridTileSize + (this.gridTileSize - iconSize) / 2,
+            iconSize,
+            iconSize
+        );
+        ctx.globalAlpha = 1.0; // Reset global alpha after all ghost drawing
+    }
+};
+
+// --- Event Handlers ---
+AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    // Shop Interaction Logic
+    if (mouseY >= this.shopUIDrawInfo.y) { // Click is within the shop panel's Y range
+        for (const item of this.shopItems) {
+            if (mouseX >= item.x && mouseX <= item.x + item.width &&
+                mouseY >= item.y && mouseY <= item.y + item.height) {
+
+                // Clicked on a shop item
+                if (this.playerCurrency >= item.component.cost) {
+                    this.selectedShopItem = item.component;
+                    this.isPlacingTower = true;
+                    console.log("AuraCitadel: Selected item:", this.selectedShopItem.name);
+                    AuraGameSDK.ui.showNotification({ message: `Selected: ${this.selectedShopItem.name}. Click on grid to place.`, type: 'info' });
+                } else {
+                    console.log("AuraCitadel: Not enough currency for:", item.component.name);
+                    AuraGameSDK.ui.showNotification({ message: `Not enough currency for ${item.component.name}`, type: 'warning' });
+                    this.selectedShopItem = null;
+                    this.isPlacingTower = false;
+                }
+                return; // Processed shop click
+            }
+        }
+
+        // If click was in shop area but not on an item, and currently placing a tower, cancel placement.
+        if (this.isPlacingTower) {
+            console.log("AuraCitadel: Placement cancelled by clicking shop area.");
+            AuraGameSDK.ui.showNotification({ message: 'Placement cancelled.', type: 'info' });
+            this.selectedShopItem = null;
+            this.isPlacingTower = false;
+            this.currentGhostGridCoords = { x: -1, y: -1 }; // Reset ghost coords
+            return;
+        }
+        // If click in shop area and not placing, do nothing further (e.g. don't try to place tower in shop)
+        return;
+    }
+
+    // Tower Placement Logic (if not handled by shop interaction above)
+    if (this.isPlacingTower && this.selectedShopItem) {
+        const gridX = Math.floor(mouseX / this.gridTileSize);
+        const gridY = Math.floor(mouseY / this.gridTileSize);
+
+        // Validate grid coordinates and buildability
+        if (gridX >= 0 && gridX < this.gridWidth && gridY >= 0 && gridY < this.gridHeight &&
+            this.gameGrid[gridY][gridX].buildable && !this.gameGrid[gridY][gridX].hasTower) {
+
+            // For now, selectedShopItem is assumed to be a 'base'.
+            // Hardcoding 'weapon_blaster' and 'mod_none' as per subtask instructions.
+            // This will need to be updated when full tower configuration is implemented.
+            let baseId = null, weaponId = 'weapon_blaster', modId = 'mod_none';
+
+            if (this.selectedShopItem.type === 'base') {
+                baseId = this.selectedShopItem.id;
+            } else {
+                // This case should ideally not happen with current shop logic if only bases are purchasable
+                // Or, if other types are purchasable, this logic needs to be smarter.
+                // For now, let's assume the selected item IS the base.
+                console.warn("AuraCitadel: Selected shop item is not of type 'base'. Attempting to use it as base ID:", this.selectedShopItem.name);
+                baseId = this.selectedShopItem.id;
+            }
+
+            // Ensure a base component is selected before attempting to craft
+            if (!this.masterComponentList[baseId] || this.masterComponentList[baseId].type !== 'base') {
+                 console.error("AuraCitadel: Invalid or non-base component selected for tower placement:", baseId);
+                 AuraGameSDK.ui.showNotification({ message: `Invalid selection for base. Please select a Base component.`, type: 'error' });
+                 this.selectedShopItem = null;
+                 this.isPlacingTower = false;
+                 this.currentGhostGridCoords = { x: -1, y: -1 };
+                 return;
+            }
+
+
+            if (this._handlePlayerCrafting(baseId, weaponId, modId, gridX, gridY)) {
+                console.log("AuraCitadel: Tower placed at:", gridX, gridY);
+                AuraGameSDK.ui.showNotification({ message: `${this.selectedShopItem.name} placed!`, type: 'success' });
+            } else {
+                // _handlePlayerCrafting should manage its own notifications for specific failure reasons like cost
+                 AuraGameSDK.ui.showNotification({ message: `Failed to place ${this.selectedShopItem.name}.`, type: 'error' });
+            }
+            // Reset placement mode whether successful or not
+            this.selectedShopItem = null;
+            this.isPlacingTower = false;
+            this.currentGhostGridCoords = { x: -1, y: -1 };
+        } else {
+            console.log("AuraCitadel: Cannot place tower at:", gridX, gridY, "Valid placement area or buildable check failed.");
+            AuraGameSDK.ui.showNotification({ message: 'Cannot build here! Invalid location or occupied.', type: 'warning' });
+            // Keep isPlacingTower = true to allow user to try another spot
+        }
+    }
+};
+
+AuraCitadelGame.prototype._populateShopItems = function() {
+    this.shopItems = [];
+    const sUI = this.shopUIDrawInfo;
+    let currentX = sUI.x + sUI.itemPadding;
+    const itemY = sUI.y + sUI.itemPadding;
+
+    for (const componentId in this.masterComponentList) {
+        if (this.unlockedComponents.includes(componentId)) {
+            const component = this.masterComponentList[componentId];
+
+            // Basic sequential positioning for now
+            // This will need refinement if there are too many items to fit
+            if (currentX + sUI.itemSize + sUI.itemPadding > sUI.x + sUI.width) {
+                // Simple overflow handling: log and skip.
+                // A more robust solution might involve multiple rows or scrolling.
+                console.warn("AuraCitadel: Too many shop items to display in a single row. Some items might be hidden.");
+                continue;
+            }
+
+            this.shopItems.push({
+                component: component,
+                x: currentX,
+                y: itemY,
+                width: sUI.itemSize,
+                height: sUI.itemSize
+            });
+            currentX += sUI.itemSize + sUI.itemPadding;
+        }
+    }
+};
