@@ -39,8 +39,7 @@ function AuraCitadelGame(canvas) {
     this.canvas.addEventListener('mousedown', this._handleCanvasMouseDown);
     this.canvas.addEventListener('mousemove', this._handleCanvasMouseMove);
 
-    this.gameRunning = false;
-    this.animationFrameId = null;
+    this.gameRunning = false;    this.animationFrameId = null;
     this.currentWave = 0;
     this.playerCurrency = 750;
     this.auraCoreHealth = 100;
@@ -51,9 +50,10 @@ function AuraCitadelGame(canvas) {
     this.enemyPath = [];
     this.unlockedComponents = [];
     this.waveSpawningComplete = true;
-    this.waveSpawnInstructions = []; // Added for spawn instructions
-    this.timeSinceLastSpawn = 0; // Added for spawn timing
-    this.lastTimestamp = 0; // For deltaTime calculation    // Shop and Tower Placement UI / State
+    this.waveSpawnInstructions = []; // Added for spawn instructions    this.timeSinceLastSpawn = 0; // Added for spawn timing
+    this.lastTimestamp = 0; // For deltaTime calculation
+
+    // Shop and Tower Placement UI / State
     this.shopUIDrawInfo = {
         x: 0,
         y: this.canvas.height - 150, // Increased height for better component selection
@@ -132,15 +132,15 @@ AuraCitadelGame.prototype._createProjectile = function(startX, startY, targetEne
 // --- Game Lifecycle & Control ---
 AuraCitadelGame.prototype.start = async function() {
     console.log("Aura Citadel: Starting game...");
-    this.gameRunning = true;
-    this.currentWave = 0;
+    this.gameRunning = true;    this.currentWave = 0;
     this.playerCurrency = 750;
     this.auraCoreHealth = 100;
     this.towers = []; this.enemies = []; this.projectiles = [];
     this.waveSpawningComplete = true;
-    this.gameState = "build_phase";
-    this.lastTimestamp = 0; // Initialize for the first game loop
-    this._setupInitialGameBoard();    try {
+    this.gameState = "build_phase";    this.lastTimestamp = 0; // Initialize for the first game loop
+    this._setupInitialGameBoard();
+
+    try {
         this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
     } catch (error) { 
         this.unlockedComponents = [
@@ -528,9 +528,7 @@ AuraCitadelGame.prototype._updateProjectiles = function() {
 
             // Damage primary target
             primaryTarget.health -= proj.damage;
-            let primaryTargetKilled = false;
             if (primaryTarget.health <= 0) {
-                primaryTargetKilled = true;
                 const enemyIndex = this.enemies.findIndex(e => e.id === primaryTarget.id);
                 if (enemyIndex !== -1) this.enemies.splice(enemyIndex, 1);
                 this.playerCurrency += 3;
