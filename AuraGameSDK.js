@@ -361,282 +361,234 @@ const AuraGameSDK = {
     },
 
     audio: {
-        _currentAudio: null,
+        _musicAudio: null,
         _playlist: [],
         _currentTrackIndex: 0,
         _isLooping: false,
         _isPlaylistMode: false,
-        _volume: 0.7,
+        _musicVolume: 0.7,
+        _sfxVolume: 0.7,
+        _sfxAudioPool: [],
+        _sfxPoolSize: 15,
+        _preloadedAudioPaths: new Set(),
 
-        /**
-         * Plays a single music track in loop mode.
-         * Perfect for background music in games that need continuous audio.
-         * 
-         * Usage examples:
-         * - AuraGameSDK.audio.playLoopMusic('music/tracks/game_theme.mp3');
-         * - AuraGameSDK.audio.playLoopMusic('music/tracks/beethoven_-_fur_elise.mp3', 0.5);
-         * 
-         * @param {string} musicPath - Path to the music file (relative to the root or absolute URL)
-         * @param {number} [volume=0.7] - Volume level (0.0 to 1.0)
-         * @returns {Promise<void>} Promise that resolves when music starts playing
-         */
-        async playLoopMusic(musicPath, volume = 0.7) {
+        setMusicVolume(level) {
+            this._musicVolume = Math.max(0, Math.min(1, level));
+            if (this._musicAudio) {
+                this._musicAudio.volume = this._musicVolume;
+            }
+        },
+
+        getMusicVolume() {
+            return this._musicVolume;
+        },
+
+        setSfxVolume(level) {
+            this._sfxVolume = Math.max(0, Math.min(1, level));
+        },
+
+        getSfxVolume() {
+            return this._sfxVolume;
+        },
+
+        setVolume(volume) {
+            this.setMusicVolume(volume);
+        },
+
+        getVolume() {
+            return this.getMusicVolume();
+        },
+
+        playSfx(path, volumeScale = 1.0) {
+            if (!path) {
+                console.error('AuraGameSDK.audio.playSfx: path is required.');
+                return;
+            }
+
+            let sfxAudio = this._sfxAudioPool.find(audioObj => audioObj.isAvailable);
+
+            if (!sfxAudio) {
+                if (this._sfxAudioPool.length < this._sfxPoolSize) {
+                    sfxAudio = new Audio();
+                    sfxAudio.isAvailable = true;
+                    this._sfxAudioPool.push(sfxAudio);
+                } else {
+                    sfxAudio = this._sfxAudioPool.find(audioObj => audioObj.ended || (audioObj.paused && audioObj.currentTime === 0));
+                    if (!sfxAudio) {
+                        sfxAudio = this._sfxAudioPool[0];
+                        if (sfxAudio && !sfxAudio.paused) {
+                            sfxAudio.pause();
+                            sfxAudio.currentTime = 0;
+                        }
+                    }
+                     if (sfxAudio) sfxAudio.isAvailable = true;
+                }
+            }
+
+            if (!sfxAudio) {
+                console.error('AuraGameSDK.audio.playSfx: Could not find or create an audio object for SFX.');
+                return;
+            }
+
+            sfxAudio.isAvailable = false;
+            sfxAudio.src = path;
+            const finalVolume = Math.max(0, Math.min(1, this._sfxVolume * volumeScale));
+            sfxAudio.volume = finalVolume;
+
+            sfxAudio.onended = null;
+            sfxAudio.onerror = null;
+
+            sfxAudio.onended = () => {
+                sfxAudio.isAvailable = true;
+                sfxAudio.currentTime = 0;
+            };
+            sfxAudio.onerror = (e) => {
+                console.error('AuraGameSDK.audio.playSfx: Error playing sound ' + path + ':', e);
+                sfxAudio.isAvailable = true;
+            };
+
+            const playPromise = sfxAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn('AuraGameSDK.audio.playSfx: Playback failed for ' + path + '. Error: ' + error.message + '. Marking audio as available.');
+                    sfxAudio.isAvailable = true;
+                });
+            }
+        },
+
+        async playLoopMusic(musicPath, volume = null) {
             try {
-                // Stop any currently playing audio
                 this.stop();
 
-                // Create new audio element
-                this._currentAudio = new Audio(musicPath);
-                this._currentAudio.loop = true;
-                this._currentAudio.volume = Math.max(0, Math.min(1, volume));
-                this._volume = this._currentAudio.volume;
+                if (volume !== null) {
+                    this.setMusicVolume(volume);
+                }
+
+                this._musicAudio = new Audio(musicPath);
+                this._musicAudio.loop = true;
+                this._musicAudio.volume = this._musicVolume;
                 this._isLooping = true;
                 this._isPlaylistMode = false;
 
-                // Wait for the audio to be ready and play
                 return new Promise((resolve, reject) => {
-                    this._currentAudio.addEventListener('canplaythrough', () => {
-                        this._currentAudio.play()
+                    const currentMusicAudio = this._musicAudio;
+                    const onCanPlayThrough = () => {
+                        currentMusicAudio.play()
                             .then(() => {
-                                console.log(`AuraGameSDK.audio: Started looping music - ${musicPath}`);
                                 resolve();
                             })
-                            .catch(reject);
-                    }, { once: true });                    this._currentAudio.addEventListener('error', (e) => {
-                        console.warn(`AuraGameSDK.audio: Error loading music - ${musicPath}`, e);
-                        console.warn('AuraGameSDK.audio: Continuing without music...');
-                        resolve(); // Resolve instead of reject to allow game to continue
-                    }, { once: true });
-
-                    // Start loading the audio
-                    this._currentAudio.load();
+                            .catch(err => {
+                                console.error('AuraGameSDK.audio.playLoopMusic: Error playing ' + musicPath + ':', err);
+                                reject(err);
+                            });
+                    };
+                    const onError = (e) => {
+                        console.warn('AuraGameSDK.audio: Error loading music - ' + musicPath, e);
+                        resolve();
+                    };
+                    currentMusicAudio.addEventListener('canplaythrough', onCanPlayThrough, { once: true });
+                    currentMusicAudio.addEventListener('error', onError, { once: true });
+                    currentMusicAudio.load();
                 });
             } catch (error) {
                 console.error('AuraGameSDK.audio.playLoopMusic error:', error);
-                throw error;
+                return Promise.reject(error);
             }
         },
 
-        /**
-         * Plays a playlist of music tracks in sequence.
-         * Perfect for games that need varied background music or different tracks for different game states.
-         * 
-         * Usage examples:
-         * - AuraGameSDK.audio.playPlaylist(['music/tracks/level1.mp3', 'music/tracks/level2.mp3']);
-         * - AuraGameSDK.audio.playPlaylist([
-         *     'music/tracks/beethoven_-_fur_elise.mp3',
-         *     'music/tracks/bennett_-_vois_sur_ton_chemin.mp3'
-         *   ], 0.6, true);
-         * 
-         * @param {string[]} musicPaths - Array of paths to music files
-         * @param {number} [volume=0.7] - Volume level (0.0 to 1.0)
-         * @param {boolean} [shuffle=false] - Whether to shuffle the playlist
-         * @returns {Promise<void>} Promise that resolves when first track starts playing
-         */
-        async playPlaylist(musicPaths, volume = 0.7, shuffle = false) {
+        async playPlaylist(musicPaths, volume = null, shuffle = false) {
             try {
                 if (!Array.isArray(musicPaths) || musicPaths.length === 0) {
-                    throw new Error('Playlist must be a non-empty array of music paths');
+                    return Promise.reject(new Error('Playlist must be a non-empty array of music paths'));
                 }
-
-                // Stop any currently playing audio
                 this.stop();
 
-                // Setup playlist
+                if (volume !== null) {
+                    this.setMusicVolume(volume);
+                }
+
                 this._playlist = shuffle ? this._shuffleArray([...musicPaths]) : [...musicPaths];
                 this._currentTrackIndex = 0;
-                this._volume = Math.max(0, Math.min(1, volume));
                 this._isPlaylistMode = true;
                 this._isLooping = false;
 
-                console.log(`AuraGameSDK.audio: Starting playlist with ${this._playlist.length} tracks`);
-                
-                // Start playing the first track
                 return this._playTrackAtIndex(0);
             } catch (error) {
                 console.error('AuraGameSDK.audio.playPlaylist error:', error);
-                throw error;
+                return Promise.reject(error);
             }
         },
 
-        /**
-         * Stops all audio playback and clears the current audio/playlist.
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.stop();
-         */
         stop() {
-            if (this._currentAudio) {
-                this._currentAudio.pause();
-                this._currentAudio.src = '';
-                this._currentAudio = null;
+            if (this._musicAudio) {
+                this._musicAudio.pause();
+                this._musicAudio.src = '';
+                this._musicAudio.onended = null;
+                this._musicAudio.onerror = null;
+                this._musicAudio.oncanplaythrough = null;
+                this._musicAudio = null;
             }
             this._playlist = [];
             this._currentTrackIndex = 0;
             this._isLooping = false;
             this._isPlaylistMode = false;
-            console.log('AuraGameSDK.audio: Stopped all audio playback');
+
+            this._sfxAudioPool.forEach(audioObj => {
+                if (!audioObj.paused) {
+                    audioObj.pause();
+                }
+                audioObj.currentTime = 0;
+                audioObj.isAvailable = true;
+                audioObj.onended = null;
+                audioObj.onerror = null;
+            });
         },
 
-        /**
-         * Pauses the currently playing audio.
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.pause();
-         */
         pause() {
-            if (this._currentAudio && !this._currentAudio.paused) {
-                this._currentAudio.pause();
-                console.log('AuraGameSDK.audio: Audio paused');
+            if (this._musicAudio && !this._musicAudio.paused) {
+                this._musicAudio.pause();
             }
         },
 
-        /**
-         * Resumes the currently paused audio.
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.resume();
-         */
         resume() {
-            if (this._currentAudio && this._currentAudio.paused) {
-                this._currentAudio.play().catch(error => {
-                    console.error('AuraGameSDK.audio: Error resuming audio:', error);
+            if (this._musicAudio && this._musicAudio.paused) {
+                this._musicAudio.play().catch(error => {
+                    console.error('AuraGameSDK.audio: Error resuming music:', error);
                 });
             }
         },
 
-        /**
-         * Sets the volume for the currently playing audio.
-         * 
-         * Usage examples:
-         * - AuraGameSDK.audio.setVolume(0.5); // 50% volume
-         * - AuraGameSDK.audio.setVolume(1.0); // 100% volume
-         * 
-         * @param {number} volume - Volume level (0.0 to 1.0)
-         */
-        setVolume(volume) {
-            this._volume = Math.max(0, Math.min(1, volume));
-            if (this._currentAudio) {
-                this._currentAudio.volume = this._volume;
-            }
-        },
-
-        /**
-         * Gets the current volume level.
-         * 
-         * Usage example:
-         * - const volume = AuraGameSDK.audio.getVolume();
-         * 
-         * @returns {number} Current volume level (0.0 to 1.0)
-         */
-        getVolume() {
-            return this._volume;
-        },
-
-        /**
-         * Skips to the next track in the playlist (if in playlist mode).
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.nextTrack();
-         */
         nextTrack() {
             if (!this._isPlaylistMode || this._playlist.length === 0) {
-                console.warn('AuraGameSDK.audio: nextTrack called but not in playlist mode');
                 return;
             }
-
             this._currentTrackIndex = (this._currentTrackIndex + 1) % this._playlist.length;
             this._playTrackAtIndex(this._currentTrackIndex);
         },
 
-        /**
-         * Skips to the previous track in the playlist (if in playlist mode).
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.previousTrack();
-         */
         previousTrack() {
             if (!this._isPlaylistMode || this._playlist.length === 0) {
-                console.warn('AuraGameSDK.audio: previousTrack called but not in playlist mode');
                 return;
             }
-
             this._currentTrackIndex = this._currentTrackIndex === 0 
                 ? this._playlist.length - 1 
                 : this._currentTrackIndex - 1;
             this._playTrackAtIndex(this._currentTrackIndex);
         },
 
-        /**
-         * Gets the current volume level.
-         * 
-         * Usage example:
-         * - const volume = AuraGameSDK.audio.getVolume();
-         * 
-         * @returns {number} Current volume level (0.0 to 1.0)
-         */
-        getVolume() {
-            return this._volume;
-        },
-
-        /**
-         * Skips to the next track in the playlist (if in playlist mode).
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.nextTrack();
-         */
-        nextTrack() {
-            if (!this._isPlaylistMode || this._playlist.length === 0) {
-                console.warn('AuraGameSDK.audio: nextTrack called but not in playlist mode');
-                return;
-            }
-
-            this._currentTrackIndex = (this._currentTrackIndex + 1) % this._playlist.length;
-            this._playTrackAtIndex(this._currentTrackIndex);
-        },
-
-        /**
-         * Skips to the previous track in the playlist (if in playlist mode).
-         * 
-         * Usage example:
-         * - AuraGameSDK.audio.previousTrack();
-         */
-        previousTrack() {
-            if (!this._isPlaylistMode || this._playlist.length === 0) {
-                console.warn('AuraGameSDK.audio: previousTrack called but not in playlist mode');
-                return;
-            }
-
-            this._currentTrackIndex = this._currentTrackIndex === 0 
-                ? this._playlist.length - 1 
-                : this._currentTrackIndex - 1;
-            this._playTrackAtIndex(this._currentTrackIndex);
-        },
-
-        /**
-         * Gets information about the currently playing audio.
-         * 
-         * Usage example:
-         * - const info = AuraGameSDK.audio.getCurrentTrackInfo();
-         * - console.log(`Now playing: ${info.name} (${info.currentTime}/${info.duration})`);
-         * 
-         * @returns {object|null} Object with track information or null if nothing is playing
-         */
         getCurrentTrackInfo() {
-            if (!this._currentAudio) {
+            if (!this._musicAudio || !this._musicAudio.src) {
                 return null;
             }
-
-            const pathParts = this._currentAudio.src.split('/');
+            const pathParts = this._musicAudio.src.split('/');
             const fileName = pathParts[pathParts.length - 1];
-
             return {
                 name: fileName,
-                src: this._currentAudio.src,
-                currentTime: this._currentAudio.currentTime,
-                duration: this._currentAudio.duration || 0,
-                volume: this._currentAudio.volume,
-                paused: this._currentAudio.paused,
+                src: this._musicAudio.src,
+                currentTime: this._musicAudio.currentTime,
+                duration: this._musicAudio.duration || 0,
+                volume: this._musicAudio.volume,
+                paused: this._musicAudio.paused,
                 isLooping: this._isLooping,
                 isPlaylistMode: this._isPlaylistMode,
                 playlistIndex: this._isPlaylistMode ? this._currentTrackIndex : null,
@@ -644,66 +596,59 @@ const AuraGameSDK = {
             };
         },
 
-        /**
-         * Internal method to play a track at a specific index in the playlist.
-         * @private
-         */
         async _playTrackAtIndex(index) {
             if (index < 0 || index >= this._playlist.length) {
-                console.error(`AuraGameSDK.audio: Invalid track index ${index}`);
-                return;
+                console.error('AuraGameSDK.audio: Invalid track index ' + index);
+                return Promise.reject(new Error('Invalid track index ' + index));
             }
 
             try {
                 const trackPath = this._playlist[index];
                 
-                // Stop current audio
-                if (this._currentAudio) {
-                    this._currentAudio.pause();
-                    this._currentAudio.src = '';
+                if (this._musicAudio) {
+                    this._musicAudio.pause();
+                    this._musicAudio.src = '';
+                    this._musicAudio.onended = null;
+                    this._musicAudio.onerror = null;
+                    this._musicAudio.oncanplaythrough = null;
                 }
 
-                // Create new audio for the track
-                this._currentAudio = new Audio(trackPath);
-                this._currentAudio.volume = this._volume;
-                this._currentAudio.loop = false; // Playlist tracks don't loop individually
+                this._musicAudio = new Audio(trackPath);
+                this._musicAudio.volume = this._musicVolume;
+                this._musicAudio.loop = false;
 
-                // Setup event listener for when track ends
-                this._currentAudio.addEventListener('ended', () => {
-                    console.log(`AuraGameSDK.audio: Track ended - ${trackPath}`);
-                    // Auto-play next track in playlist
+                const currentMusicAudio = this._musicAudio;
+
+                currentMusicAudio.onended = () => {
                     this.nextTrack();
-                });
+                };
 
-                // Wait for audio to be ready and play
                 return new Promise((resolve, reject) => {
-                    this._currentAudio.addEventListener('canplaythrough', () => {
-                        this._currentAudio.play()
+                    const onCanPlayThrough = () => {
+                        currentMusicAudio.play()
                             .then(() => {
-                                console.log(`AuraGameSDK.audio: Playing track ${index + 1}/${this._playlist.length} - ${trackPath}`);
                                 resolve();
                             })
-                            .catch(reject);
-                    }, { once: true });
+                            .catch(err => {
+                                console.error('AuraGameSDK.audio._playTrackAtIndex: Error playing ' + trackPath + ':', err);
+                                reject(err);
+                            });
+                    };
+                    const onError = (e) => {
+                        console.error('AuraGameSDK.audio: Error loading track - ' + trackPath, e);
+                        reject(new Error('Failed to load track: ' + trackPath));
+                    };
 
-                    this._currentAudio.addEventListener('error', (e) => {
-                        console.error(`AuraGameSDK.audio: Error loading track - ${trackPath}`, e);
-                        reject(new Error(`Failed to load track: ${trackPath}`));
-                    }, { once: true });
-
-                    // Start loading the audio
-                    this._currentAudio.load();
+                    currentMusicAudio.addEventListener('canplaythrough', onCanPlayThrough, { once: true });
+                    currentMusicAudio.addEventListener('error', onError, { once: true });
+                    currentMusicAudio.load();
                 });
             } catch (error) {
-                console.error(`AuraGameSDK.audio: Error playing track at index ${index}:`, error);
-                throw error;
+                console.error('AuraGameSDK.audio: Error playing track at index ' + index + ':', error);
+                return Promise.reject(error);
             }
         },
 
-        /**
-         * Internal method to shuffle an array.
-         * @private
-         */
         _shuffleArray(array) {
             const shuffled = [...array];
             for (let i = shuffled.length - 1; i > 0; i--) {
@@ -729,10 +674,41 @@ const AuraGameSDK = {
                 const img = new Image();
                 img.onload = () => resolve(img);
                 img.onerror = (err) => {
-                    console.error(`Error loading image: ${url}`, err);
-                    reject(new Error(`Failed to load image: ${url}`));
+                    console.error('Error loading image: ' + url, err);
+                    reject(new Error('Failed to load image: ' + url));
                 };
                 img.src = url;
+            });
+        },
+        preloadAudio(paths) {
+            if (!Array.isArray(paths)) {
+                console.error('AuraGameSDK.assets.preloadAudio: paths must be an array.');
+                return;
+            }
+            paths.forEach(path => {
+                if (AuraGameSDK.audio._preloadedAudioPaths.has(path)) {
+                    return;
+                }
+                const alreadyInPool = AuraGameSDK.audio._sfxAudioPool.some(audioObj => audioObj.originalSrc === path);
+                if (alreadyInPool) {
+                    AuraGameSDK.audio._preloadedAudioPaths.add(path);
+                    return;
+                }
+
+                if (AuraGameSDK.audio._sfxAudioPool.length < AuraGameSDK.audio._sfxPoolSize) {
+                    const audio = new Audio(path);
+                    audio.originalSrc = path;
+                    audio.isAvailable = true;
+                    audio.preload = 'auto';
+                    audio.load();
+                    AuraGameSDK.audio._sfxAudioPool.push(audio);
+                    AuraGameSDK.audio._preloadedAudioPaths.add(path);
+                } else {
+                    const tempAudio = new Audio(path);
+                    tempAudio.preload = 'auto';
+                    tempAudio.load();
+                    AuraGameSDK.audio._preloadedAudioPaths.add(path);
+                }
             });
         }
     },

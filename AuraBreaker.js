@@ -107,11 +107,7 @@ function AuraBreakerGame(canvas) {
                         ballDY = -ballDY;
                         b.status = 0;
                         score += 10;
-                        try {
-                            const sound = new Audio('gameassets/sounds/breaker_brick_hit.wav');
-                            sound.volume = AuraGameSDK.audio.getVolume() * 0.4;
-                            sound.play().catch(e => console.warn("AuraBreaker: Brick hit sound play failed:", e));
-                        } catch (e) { console.error("AuraBreaker: Error creating brick hit Audio object:", e); }
+                        AuraGameSDK.audio.playSfx('gameassets/sounds/breaker_brick_hit.wav', 0.4);
                         if (score === brickRowCount * brickColumnCount * 10) {
                             AuraGameSDK.ui.showNotification('Congratulations!', 'You cleared all bricks!', 'success');
                             // For now, just reset. Could add levels later.
@@ -127,27 +123,15 @@ function AuraBreakerGame(canvas) {
         // Ball movement and wall collision
         if (ballX + ballDX > canvas.width - ballRadius || ballX + ballDX < ballRadius) {
             ballDX = -ballDX;
-            try {
-                const sound = new Audio('gameassets/sounds/breaker_wall_bounce.wav');
-                sound.volume = AuraGameSDK.audio.getVolume() * 0.5;
-                sound.play().catch(e => console.warn("AuraBreaker: Wall bounce sound play failed:", e));
-            } catch (e) { console.error("AuraBreaker: Error creating wall bounce Audio object:", e); }
+            AuraGameSDK.audio.playSfx('gameassets/sounds/breaker_wall_bounce.wav', 0.5);
         }
         if (ballY + ballDY < ballRadius) {
             ballDY = -ballDY;
-            try {
-                const sound = new Audio('gameassets/sounds/breaker_wall_bounce.wav');
-                sound.volume = AuraGameSDK.audio.getVolume() * 0.5;
-                sound.play().catch(e => console.warn("AuraBreaker: Wall bounce sound play failed:", e));
-            } catch (e) { console.error("AuraBreaker: Error creating wall bounce Audio object:", e); }
+            AuraGameSDK.audio.playSfx('gameassets/sounds/breaker_wall_bounce.wav', 0.5);
         } else if (ballY + ballDY > canvas.height - ballRadius - paddleHeight - 5) { // Check paddle collision
             if (ballX > paddleX && ballX < paddleX + paddleWidth) {
                 ballDY = -ballDY;
-                try {
-                    const sound = new Audio('gameassets/sounds/breaker_paddle_hit.wav');
-                    sound.volume = AuraGameSDK.audio.getVolume() * 0.7;
-                    sound.play().catch(e => console.warn("AuraBreaker: Paddle hit sound play failed:", e));
-                } catch (e) { console.error("AuraBreaker: Error creating paddle hit Audio object:", e); }
+                AuraGameSDK.audio.playSfx('gameassets/sounds/breaker_paddle_hit.wav', 0.7);
                 // Optional: Add slight angle change based on where it hits paddle
                 let deltaX = ballX - (paddleX + paddleWidth / 2);
                 ballDX = deltaX * 0.2; // Max change to ballDX based on hit point
@@ -157,11 +141,7 @@ function AuraBreakerGame(canvas) {
 
             } else { // Ball missed paddle
                 lives--;
-                try {
-                    const sound = new Audio('gameassets/sounds/breaker_life_lost.wav');
-                    sound.volume = AuraGameSDK.audio.getVolume();
-                    sound.play().catch(e => console.warn("AuraBreaker: Life lost sound play failed:", e));
-                } catch (e) { console.error("AuraBreaker: Error creating life lost Audio object:", e); }
+                AuraGameSDK.audio.playSfx('gameassets/sounds/breaker_life_lost.wav', 1.0);
                 if (lives <= 0) {
                     gameOver(false); // Lose
                     return; // Stop update loop
