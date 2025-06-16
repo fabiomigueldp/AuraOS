@@ -75,6 +75,7 @@ function AuraCitadelGame(canvas) {
     this.isPlacingTower = false; // Boolean to indicate if player is currently placing a tower
     this.currentGhostGridCoords = { x: -1, y: -1 }; // For tower placement ghost
     this.currentShopTab = 'base'; // Current shop tab: 'base', 'weapon', 'modifier'
+    this.tooltip = null; // For displaying component tooltips
 
     // Define default ranges and fire rates if not specified in component
     const DEFAULT_WEAPON_RANGE = 3; // in grid units
@@ -129,6 +130,28 @@ AuraCitadelGame.prototype._createProjectile = function(startX, startY, targetEne
 };
 
 // --- Game Lifecycle & Control ---
+
+AuraCitadelGame.prototype._loadAndVerifyComponents = async function() {
+    try {
+        this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
+        // The existing _ensureEssentialComponentsUnlocked function, which is called next,
+        // should handle adding essential components if they are missing from the fetched list.
+    } catch (error) { 
+        console.warn('AuraCitadel: Error fetching unlocked components, using fallback:', error);
+        // Set a comprehensive list for fallback.
+        this.unlockedComponents = [
+            'base_standard', 'base_reinforced', 
+            'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
+            'mod_none', 'mod_basic_enhancement', 'mod_range_increase', 'mod_damage_boost', 'mod_fire_rate_enhancer'
+        ]; 
+    }
+    // Always ensure essential components are processed after attempting to load or setting fallback.
+    // This function (_ensureEssentialComponentsUnlocked) is expected to iterate through
+    // essentialComponents and add them to this.unlockedComponents if not already present,
+    // and also call AuraGameSDK.progression.unlockComponent for them if needed.
+    await this._ensureEssentialComponentsUnlocked();
+};
+
 AuraCitadelGame.prototype.start = async function() {
     console.log("Aura Citadel: Starting game...");
     this.gameRunning = true;    this.currentWave = 0;
@@ -137,29 +160,8 @@ AuraCitadelGame.prototype.start = async function() {
     this.towers = []; this.enemies = []; this.projectiles = [];
     this.waveSpawningComplete = true;
     this.gameState = "build_phase";    this.lastTimestamp = 0; // Initialize for the first game loop
-    this._setupInitialGameBoard();    try {
-        this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
-        // Ensure basic components are always available even if not in progression data
-        const essentialComponents = ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
-        essentialComponents.forEach(componentId => {
-            if (!this.unlockedComponents.includes(componentId)) {
-                this.unlockedComponents.push(componentId);
-            }
-        });
-        
-        // Auto-unlock essential components if they're missing from progression data
-        await this._ensureEssentialComponentsUnlocked();
-    } catch (error) { 
-        console.warn('AuraCitadel: Error fetching unlocked components, using fallback:', error);
-        this.unlockedComponents = [
-            'base_standard', 'base_reinforced', 
-            'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
-            'mod_none', 'mod_basic_enhancement', 'mod_range_increase', 'mod_damage_boost', 'mod_fire_rate_enhancer'
-        ]; 
-    }
-
-    // Ensure essential components are unlocked at game start
-    this._ensureEssentialComponentsUnlocked();
+    this._setupInitialGameBoard();
+    await this._loadAndVerifyComponents();
 
     try {
         AuraGameSDK.audio.playLoopMusic('music/tracks/game_start_or_calm_phase.mp3', 0.5);
@@ -201,26 +203,8 @@ AuraCitadelGame.prototype.continueGame = async function() { /* ... same as befor
             this.towers = loadedState.towers.map(t => ({...t, lastFireTime: 0, targetEnemyId: null })) || [];
             this.waveSpawningComplete = true;
 
-            console.log("Aura Citadel: Game state restored.", loadedState);            try {
-                this.unlockedComponents = await AuraGameSDK.progression.getUnlockedComponents();
-                // Ensure basic components are always available even if not in progression data
-                const essentialComponents = ['base_standard', 'weapon_blaster', 'mod_none', 'mod_basic_enhancement'];
-                essentialComponents.forEach(componentId => {
-                    if (!this.unlockedComponents.includes(componentId)) {
-                        this.unlockedComponents.push(componentId);
-                    }
-                });
-                
-                // Auto-unlock essential components if they're missing from progression data
-                await this._ensureEssentialComponentsUnlocked();
-            } catch (error) { 
-                console.warn('AuraCitadel: Error fetching unlocked components, using fallback:', error);
-                this.unlockedComponents = [
-                    'base_standard', 'base_reinforced', 
-                    'weapon_blaster', 'weapon_pulser', 'weapon_slow_field', 'weapon_sniper',
-                    'mod_none', 'mod_basic_enhancement', 'mod_range_increase', 'mod_damage_boost', 'mod_fire_rate_enhancer'
-                ]; 
-            }
+            console.log("Aura Citadel: Game state restored.", loadedState);
+            await this._loadAndVerifyComponents();
 
             this.gameRunning = true;
             this._setupInitialGameBoard();
@@ -242,15 +226,36 @@ AuraCitadelGame.prototype.continueGame = async function() { /* ... same as befor
 };
 
 AuraCitadelGame.prototype._handleCanvasMouseMove = function(event) {
-    if (this.isPlacingTower && this._canBuildTower()) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
+    const rect = this.canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
 
+    if (this.isPlacingTower && this._canBuildTower()) {
         const gridX = Math.floor(mouseX / this.gridTileSize);
         const gridY = Math.floor(mouseY / this.gridTileSize);
-
         this.currentGhostGridCoords = { x: gridX, y: gridY };
+    }
+
+    // Tooltip logic
+    this.tooltip = null; // Reset tooltip by default
+    // Check if mouse is within shop UI bounds (specifically item area, below tabs)
+    if (mouseY >= this.shopUIDrawInfo.y + this.shopUIDrawInfo.tabHeight &&
+        mouseY <= this.shopUIDrawInfo.y + this.shopUIDrawInfo.height &&
+        mouseX >= this.shopUIDrawInfo.x && mouseX <= this.shopUIDrawInfo.x + this.shopUIDrawInfo.width) {
+        for (const item of this.shopItems) {
+            if (item.component.type === this.currentShopTab &&
+                mouseX >= item.x && mouseX <= item.x + item.width &&
+                mouseY >= item.y && mouseY <= item.y + item.height) {
+
+                const tooltipText = this._getComponentTooltip(item.component);
+                this.tooltip = {
+                    text: tooltipText,
+                    x: mouseX + 15, // Position tooltip near cursor
+                    y: mouseY + 15
+                };
+                break; // Found the item, no need to check others
+            }
+        }
     }
 };
 
@@ -377,7 +382,7 @@ AuraCitadelGame.prototype._handleSpawning = function() {
     }
 };
 
-AuraCitadelGame.prototype._updateEnemies = function() {
+AuraCitadelGame.prototype._updateEnemies = function(deltaTime) { // deltaTime will be passed from _update(deltaTime)
     if (!this.enemyPath || this.enemyPath.length === 0) return;
     const now = Date.now();
 
@@ -388,9 +393,9 @@ AuraCitadelGame.prototype._updateEnemies = function() {
             continue;
         }
 
-        let currentSpeed = enemy.speed; // Base speed for this frame
+        let currentSpeed = enemy.speed; // Base speed
 
-        // Process status effects
+        // Process status effects (already time-aware via 'now')
         if (enemy.statusEffects && enemy.statusEffects.length > 0) {
             let activeSlowEffect = null;
             enemy.statusEffects = enemy.statusEffects.filter(effect => {
@@ -399,10 +404,10 @@ AuraCitadelGame.prototype._updateEnemies = function() {
                 }
                 if (effect.type === 'slow_field_effect') {
                     if (!activeSlowEffect || effect.slowMultiplier < activeSlowEffect.slowMultiplier) {
-                        activeSlowEffect = effect; // Find the most potent active slow effect
+                        activeSlowEffect = effect;
                     }
                 }
-                return true; // Keep non-expired effects and non-slow effects
+                return true;
             });
 
             if (activeSlowEffect) {
@@ -410,13 +415,15 @@ AuraCitadelGame.prototype._updateEnemies = function() {
             }
         }
 
+        const effectiveSpeed = currentSpeed * deltaTime * 60; // Apply deltaTime
+
         const targetTile = this.enemyPath[enemy.pathIndex];
         const targetX = (targetTile.x + 0.5) * this.gridTileSize;
         const targetY = (targetTile.y + 0.5) * this.gridTileSize;
         const dx = targetX - enemy.x, dy = targetY - enemy.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < currentSpeed) { // Use currentSpeed for movement calculation
+        if (distance < effectiveSpeed) { // Use effectiveSpeed for movement calculation
             enemy.pathIndex++;
             if (enemy.pathIndex >= this.enemyPath.length) {
                 this.auraCoreHealth -= 10;
@@ -426,9 +433,10 @@ AuraCitadelGame.prototype._updateEnemies = function() {
                 continue;
             }
         } else {
-            if (distance > 0) // Avoid division by zero if enemy is already at target (e.g. due to very low speed)
-                 enemy.x += (dx / distance) * currentSpeed;
-                 enemy.y += (dy / distance) * currentSpeed;
+            if (distance > 0) { // Avoid division by zero
+                 enemy.x += (dx / distance) * effectiveSpeed;
+                 enemy.y += (dy / distance) * effectiveSpeed;
+            }
         }
     }
 };
@@ -767,9 +775,9 @@ AuraCitadelGame.prototype._update = function(deltaTime) {
             this.timeSinceLastSpawn += deltaTime * 1000; // Convert deltaTime to ms
             this._handleSpawning();
         }
-        this._updateEnemies();
-        this._updateTowers();
-        this._updateProjectiles();
+        this._updateEnemies(deltaTime); // Pass deltaTime here
+        this._updateTowers(); // This might also need deltaTime if towers have time-dependent logic beyond cooldowns
+        this._updateProjectiles(); // This might also need deltaTime if projectiles have complex movement
     }
 
     if (this.gameState === "combat_phase" && this.waveSpawningComplete && this.enemies.length === 0 && this.auraCoreHealth > 0 && this.gameRunning) {
@@ -915,6 +923,51 @@ AuraCitadelGame.prototype._draw = function() {
 
     // Draw Slow Field visual effects
     this._drawSlowFieldEffects(ctx);
+
+    // Draw Tooltip
+    if (this.tooltip && this.tooltip.text) {
+        // const ctx = this.canvas.getContext('2d'); // Already available
+        const lines = this.tooltip.text.split('\n');
+        const lineHeight = 14; // Adjust as needed
+        const padding = 5;
+        let tooltipWidth = 0;
+
+        ctx.font = '12px "Segoe UI", Arial, sans-serif'; // Set font for measuring
+        lines.forEach(line => {
+            const lineWidth = ctx.measureText(line).width;
+            if (lineWidth > tooltipWidth) {
+                tooltipWidth = lineWidth;
+            }
+        });
+        tooltipWidth += padding * 2;
+        const tooltipHeight = lines.length * lineHeight + padding * 2;
+
+        let tooltipX = this.tooltip.x;
+        let tooltipY = this.tooltip.y;
+
+        // Adjust position if tooltip goes off-screen
+        if (tooltipX + tooltipWidth > this.canvas.width) {
+            tooltipX -= (tooltipX + tooltipWidth - this.canvas.width);
+        }
+        if (tooltipY + tooltipHeight > this.canvas.height) {
+            tooltipY -= (tooltipY + tooltipHeight - this.canvas.height);
+        }
+         if (tooltipX < 0) tooltipX = 0;
+         if (tooltipY < 0) tooltipY = 0;
+
+
+        // Draw background
+        ctx.fillStyle = 'rgba(30, 30, 30, 0.85)'; // Semi-transparent dark background
+        ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+
+        // Draw text
+        ctx.fillStyle = '#E0E0E0'; // Light text color
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top'; // Ensure text starts from top of its line box
+        lines.forEach((line, index) => {
+            ctx.fillText(line, tooltipX + padding, tooltipY + padding + index * lineHeight);
+        });
+    }
 };
 
 // Visual effects and range indicators
@@ -1228,14 +1281,8 @@ AuraCitadelGame.prototype._drawStartWaveButton = function(ctx) {
 };
 
 // --- Event Handlers ---
-AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
-    if (!this.gameRunning || this.gameState !== "build_phase") return;
 
-    const rect = this.canvas.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    // Start Wave Button Logic
+AuraCitadelGame.prototype._handleClick_StartWaveButton = function(mouseX, mouseY) {
     if (this.startWaveButtonRect) {
         const btn = this.startWaveButtonRect;
         if (mouseX >= btn.x && mouseX <= btn.x + btn.width &&
@@ -1248,26 +1295,31 @@ AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
             this.selectedComponents = { base: null, weapon: null, modifier: null };
             this.isPlacingTower = false;
             this.currentGhostGridCoords = { x: -1, y: -1 };
-            return;
+            return true; // Click handled
         }
     }
+    return false; // Click not handled
+};
 
-    // Shop Interaction Logic
-    if (mouseY >= this.shopUIDrawInfo.y) {
-        // Check tab clicks
-        if (mouseY <= this.shopUIDrawInfo.y + this.shopUIDrawInfo.tabHeight) {
-            const tabs = ['base', 'weapon', 'modifier'];
-            const tabWidth = this.shopUIDrawInfo.width / tabs.length;
-            const clickedTabIndex = Math.floor(mouseX / tabWidth);
-            
-            if (clickedTabIndex >= 0 && clickedTabIndex < tabs.length) {
-                this.currentShopTab = tabs[clickedTabIndex];
-                this._populateShopItems();
-                return;
-            }
+AuraCitadelGame.prototype._handleClick_ShopTab = function(mouseX, mouseY) {
+    // Check tab clicks - only if mouse is within the tab bar height
+    if (mouseY <= this.shopUIDrawInfo.y + this.shopUIDrawInfo.tabHeight) {
+        const tabs = ['base', 'weapon', 'modifier'];
+        const tabWidth = this.shopUIDrawInfo.width / tabs.length;
+        const clickedTabIndex = Math.floor(mouseX / tabWidth);
+
+        if (clickedTabIndex >= 0 && clickedTabIndex < tabs.length) {
+            this.currentShopTab = tabs[clickedTabIndex];
+            this._populateShopItems();
+            return true; // Click handled
         }
+    }
+    return false; // Click not handled
+};
 
-        // Check item clicks
+AuraCitadelGame.prototype._handleClick_ShopItem = function(mouseX, mouseY) {
+    // Check item clicks - mouse must be below tab bar but within shop UI
+    if (mouseY > this.shopUIDrawInfo.y + this.shopUIDrawInfo.tabHeight) {
         for (const item of this.shopItems) {
             if (item.component.type === this.currentShopTab &&
                 mouseX >= item.x && mouseX <= item.x + item.width &&
@@ -1328,21 +1380,14 @@ AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
                         type: 'warning' 
                     });
                 }
-                return;
+                return true; // Click handled (item was clicked)
             }
         }
-
-        // Click in shop area but not on item - cancel placement if active
-        if (this.isPlacingTower) {
-            console.log("AuraCitadel: Placement cancelled by clicking shop area.");
-            AuraGameSDK.ui.showNotification({ message: 'Placement cancelled.', type: 'info' });
-            this.isPlacingTower = false;
-            this.currentGhostGridCoords = { x: -1, y: -1 };
-        }
-        return;
     }
+    return false; // Click not handled (no item clicked or outside item area)
+};
 
-    // Tower Placement Logic
+AuraCitadelGame.prototype._handleClick_MapForPlacement = function(mouseX, mouseY) {
     if (this.isPlacingTower && this._canBuildTower()) {
         const gridX = Math.floor(mouseX / this.gridTileSize);
         const gridY = Math.floor(mouseY / this.gridTileSize);
@@ -1362,11 +1407,14 @@ AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
                 });
                 
                 // Reset placement but keep components selected for next tower
-                this.isPlacingTower = false;
-                this.currentGhostGridCoords = { x: -1, y: -1 };
+                // This behavior is slightly different, if user wants to build multiple towers of same type
+                // this.isPlacingTower = false;
+                // this.currentGhostGridCoords = { x: -1, y: -1 };
+                // For now, let's keep isPlacingTower true to allow multiple placements.
+                // To cancel, user can click the shop or select another component.
             } else {
                 AuraGameSDK.ui.showNotification({ 
-                    message: `Failed to place tower.`, 
+                    message: `Failed to place tower. Not enough currency or invalid components.`,
                     type: 'error' 
                 });
             }
@@ -1376,6 +1424,44 @@ AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
                 type: 'warning' 
             });
         }
+        return true; // Attempted placement, so click is considered "handled" for map area
+    }
+    return false; // Not placing tower or cannot build
+};
+
+AuraCitadelGame.prototype._handleCanvasMouseDown = function(event) {
+    if (!this.gameRunning || this.gameState !== "build_phase") return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    if (this._handleClick_StartWaveButton(mouseX, mouseY)) return;
+
+    // Shop Interaction Logic
+    if (mouseY >= this.shopUIDrawInfo.y) {
+        if (this._handleClick_ShopTab(mouseX, mouseY)) return;
+        if (this._handleClick_ShopItem(mouseX, mouseY)) return;
+
+        // Click in shop area but not on an item/tab - cancel placement if active
+        if (this.isPlacingTower) {
+            console.log("AuraCitadel: Placement cancelled by clicking shop area (not on item/tab).");
+            AuraGameSDK.ui.showNotification({ message: 'Placement cancelled.', type: 'info' });
+            this.isPlacingTower = false;
+            this.currentGhostGridCoords = { x: -1, y: -1 };
+        }
+        return; // Click was in shop area, further processing stops.
+    }
+
+    // Tower Placement Logic (only if click was outside shop area)
+    if (this._handleClick_MapForPlacement(mouseX, mouseY)) {
+        // If map placement was handled, and the user might want to place another tower,
+        // we don't necessarily reset isPlacingTower here.
+        // The _handleClick_MapForPlacement itself will manage state like successful placement.
+        // If a tower was successfully placed, isPlacingTower might remain true for rapid building.
+        // If it failed, user might try again.
+        // If user wants to cancel, they click the shop.
+        return;
     }
 };
 
