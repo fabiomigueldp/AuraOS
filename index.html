@@ -26,8 +26,8 @@
     <script src="AuraBreaker.js"></script>
     <script src="AuraOS/AuraSnake.js"></script>
     <script src="AuraOS/AuraPong.js"></script>
-    <script src="AuraOS/AuraTetris.js"></script>
-    <script src="AuraOS/AuraWhack.js"></script>
+    <script src="AuraOS/AuraTetris.js"></script>    <script src="AuraOS/AuraWhack.js"></script>
+    <script src="AuraOS/AuraTimber.js"></script>
     <script src="AuraInvaders.js"></script>
     <script src="AuraPaint.js"></script>
     <script src="AuraCitadel.js"></script> <!-- Added AuraCitadel.js -->
@@ -2331,10 +2331,9 @@
             white-space: nowrap; /* Prevent text wrapping in cells */
             overflow: hidden;
             text-overflow: ellipsis; /* Show ellipsis for overflowed text */
-        }
-        .task-manager-table-container td:last-child,
+        }        .task-manager-table-container td:last-child,
         .task-manager-table-container th:last-child {
-             /* No specific style for last child currently needed, but good selector */
+            border-right: none; /* Remove border from last column */
         }
 
 
@@ -2381,10 +2380,10 @@
         /* --- Game Center Styles --- */
         #game-center .window-body { /* Target the window-body of game-center specifically */
             padding: 0; /* Remove default window-body padding if container handles it */
-        }
-
-        .game-center-container {
-            /* Basic structure already inline, can add more specific overall styles here if needed */
+        }        .game-center-container {
+            display: flex;
+            height: 100%;
+            background: transparent;
         }
 
         .game-library-sidebar {
@@ -2504,12 +2503,14 @@
         .light-theme .game-item.active .game-item-title {
             color: var(--highlight-primary);
             font-weight: 600;
-        }
-
-
-        .game-content-area {
-            /* flex-grow, padding, box-sizing, display, flex-direction, align-items, justify-content are inline */
-            /* Can add specific background or other properties if needed, but often transparent to show window glass */
+        }        .game-content-area {
+            flex-grow: 1;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .game-content-area .initial-message { /* For the "Select a game" text */
@@ -4666,12 +4667,12 @@
             const windowEl = document.getElementById(windowId);
             if (!windowEl) return;
 
-            if (window.windowManager) window.windowManager.unregisterWindow(windowEl);
-
-            // Cleanup game instances when closing Game Center
+            if (window.windowManager) window.windowManager.unregisterWindow(windowEl);            // Cleanup game instances when closing Game Center
             if (appId === 'game-center' && window.currentGameInstance) {
-                // Stop the game if it's running
-                if (typeof window.currentGameInstance.stop === 'function' && 
+                // Use destroy method for AuraWhack, stop for others
+                if (typeof window.currentGameInstance.destroy === 'function') {
+                    window.currentGameInstance.destroy();
+                } else if (typeof window.currentGameInstance.stop === 'function' && 
                     typeof window.currentGameInstance.isRunning === 'function' && 
                     window.currentGameInstance.isRunning()) {
                     window.currentGameInstance.stop();
@@ -5863,13 +5864,10 @@
                     });
                     albumArt.addEventListener('mouseleave', () => {
                         albumArt.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)';
-                    });
-
-                    const volumeIcon = body.querySelector('.volume-icon');
-                    const volumeSliderContainer = body.querySelector('.volume-slider-container');
-                    const volumeSlider = body.querySelector('#volumeSlider');
+                    });                    const volumeIcon = body.querySelector('.volume-icon');
+                    const volumeSliderContainer = body.querySelector('.volume-slider-container');                    const musicVolumeSlider = body.querySelector('#volumeSlider');
                     let hideVolumeSliderTimeout;
-                    audio.volume = volumeSlider.value;
+                    audio.volume = musicVolumeSlider.value;
 
                     const shuffleBtn = body.querySelector('#shuffle-btn');
                     const repeatBtn = body.querySelector('#repeat-btn');
@@ -7526,13 +7524,20 @@
                         console.error('Aura3DViewerApp class not found. Ensure AuraOS/Aura3DViewer.js is loaded correctly.');
                         body.innerHTML = '<p style="color:red; padding:10px;">Error: Aura 3D Viewer App module not loaded.</p>';
                     }
-                    break;
-                case 'aura-paint': // Added case for AuraPaint
+                    break;                case 'aura-paint': // Added case for AuraPaint
                     if (typeof AuraPaintApp === 'function') {
                         new AuraPaintApp(body, data);
                     } else {
                         console.error('AuraPaintApp class not found. Ensure AuraPaint.js is loaded.');
                         body.innerHTML = '<p style="color: red; padding: 10px;">Error: AuraPaint application module not loaded.</p>';
+                    }
+                    break;
+                case 'aura-flow': // Added case for AuraFlow
+                    if (typeof AuraFlowApp === 'function') {
+                        new AuraFlowApp(body, data);
+                    } else {
+                        console.error('AuraFlowApp class not found. Ensure AuraFlow.js is loaded.');
+                        body.innerHTML = '<p style="color: red; padding: 10px;">Error: AuraFlow application module not loaded.</p>';
                     }
                     break;
                 case 'game-center':
@@ -7593,15 +7598,26 @@
                             iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><path d="M16 4l-4 8h8zm-6 10h12v2H10zm-4 4h20v2H6zm2 4h16v2H8zM4 28h24v2H4z"/></svg>',
                             banner: 'gameassets/aurainvaders.png',
                             description: 'Defend Earth from alien invaders! Shoot down waves of enemies before they reach the ground. How many waves can you survive in this retro space shooter?'
-                        },
-                  
-                        {
+                        },                        {
                             id: 'aura-citadel',
                             title: 'Aura Citadel',
                             // Placeholder SVG icon, replace with actual or better one later
                             iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><path d="M16 2L2 8v10l14 6 14-6V8L16 2zm0 2.76L26.94 9 16 13.24 5.06 9 16 4.76zM4 10.34l12 5.14 12-5.14v7.32L16 22.8l-12-5.14v-7.32z"/></svg>',
                             banner: 'gameassets/auracitadel.png', // Placeholder banner
                             description: 'Defend the Aura Core from waves of glitches by building and upgrading powerful towers. A strategic tower defense game.'
+                        },                        {
+                            id: 'aura-whack',
+                            title: 'Aura Whack',
+                            iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><circle cx="8" cy="24" r="3"/><circle cx="16" cy="24" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="12" cy="16" r="3"/><circle cx="20" cy="16" r="3"/><circle cx="16" cy="8" r="3"/><path d="M16 2l2 4h4l-2 2 2 4-4-2-4 2 2-4-2-2h4z"/></svg>',
+                            banner: 'gameassets/aurawhack.png',
+                            description: 'Test your reflexes in this classic whack-a-mole game! Hit the moles as they pop up from their holes. How many can you whack before time runs out?'
+                        },
+                        {
+                            id: 'aura-timber',
+                            title: 'Aura Timber',
+                            iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><path d="M16 2l-2 4v8l2-2 2 2V6l-2-4zm-4 14v12h8V16h-8zm-2 0H6v12h4V16zm12 0v12h4V16h-4zm-6-2h4V8h-4v6z"/></svg>',
+                            banner: 'gameassets/auratimber.png',
+                            description: 'Test your reflexes in this fast-paced tree-chopping game! Chop wood while avoiding branches. Time is running out - how high can you score?'
                         },
                     ];
 
@@ -7649,12 +7665,44 @@
                                     if (canvasHeight > containerHeight) {
                                         canvasHeight = containerHeight;
                                         canvasWidth = canvasHeight * (4/3);
-                                    }
-                                } else if (gameData.id === 'aura-snake') {
+                                    }                                } else if (gameData.id === 'aura-snake') {
                                     // For snake, let's try to make it more square-ish, fitting within container
                                     const smallerDim = Math.min(containerWidth * 0.9, containerHeight);
                                     canvasWidth = smallerDim;
+                                    canvasHeight = smallerDim;                                } else if (gameData.id === 'aura-whack') {
+                                    // For whack-a-mole, use a square canvas for the 3x3 grid
+                                    const smallerDim = Math.min(containerWidth * 0.85, containerHeight);
+                                    canvasWidth = smallerDim;
                                     canvasHeight = smallerDim;
+                                } else if (gameData.id === 'aura-timber') {
+                                    // For timber, use a portrait orientation optimized for tree cutting
+                                    const margin = 20;
+                                    const availableWidth = containerWidth - margin;
+                                    const availableHeight = containerHeight - margin;
+                                    
+                                    // Timber ideal proportions: slightly taller than wide for tree visibility
+                                    const timberRatio = 3 / 4; // width/height ratio
+                                    
+                                    // Try width-based sizing first
+                                    let optimalWidth = availableWidth;
+                                    let optimalHeight = optimalWidth / timberRatio;
+                                    
+                                    // If too tall, constrain by height
+                                    if (optimalHeight > availableHeight) {
+                                        optimalHeight = availableHeight;
+                                        optimalWidth = optimalHeight * timberRatio;
+                                    }
+                                    
+                                    // Ensure minimum playable size
+                                    const minWidth = 400;
+                                    const minHeight = minWidth / timberRatio;
+                                    
+                                    canvasWidth = Math.max(optimalWidth, minWidth);
+                                    canvasHeight = Math.max(optimalHeight, minHeight);
+                                    
+                                    // Final bounds check
+                                    if (canvasWidth > availableWidth) canvasWidth = availableWidth;
+                                    if (canvasHeight > availableHeight) canvasHeight = availableHeight;
                                 } else if (gameData.id === 'aura-tetris') {
                                     // Tetris optimization: maximize space usage while keeping good proportions
                                     const margin = 20;
@@ -7791,6 +7839,12 @@
         // Store observer reference for cleanup
         currentGameInstance._resizeObserver = tetrisResizeObserver;
     }
+} else if (typeof AuraWhackGame === 'function' && gameData.id === 'aura-whack') {
+    currentGameInstance = new AuraWhackGame(canvas);
+    // Don't auto-start - let the player see the menu first
+} else if (typeof AuraTimberGame === 'function' && gameData.id === 'aura-timber') {
+    currentGameInstance = new AuraTimberGame(canvas);
+    currentGameInstance.start();
                                 } else {
                                     console.error("Game function not found or ID mismatch for:", gameData.id);
                                     gameContentArea.innerHTML = "<p>Error: Could not load game.</p>";
@@ -7798,11 +7852,13 @@
 
                                 const exitButton = gameContentArea.querySelector('.exit-game-button');
                                 if (exitButton) {
-                                    exitButton.addEventListener('click', () => {
-                                        if (window.currentGameInstance) { // Use window.currentGameInstance as per prompt, assuming it's the global ref
+                                    exitButton.addEventListener('click', () => {                                        if (window.currentGameInstance) { // Use window.currentGameInstance as per prompt, assuming it's the global ref
                                             try {
-                                                // Stop the game
-                                                if (typeof window.currentGameInstance.stop === 'function') {
+                                                // Use destroy method for AuraWhack, stop for others
+                                                if (typeof window.currentGameInstance.destroy === 'function') {
+                                                    window.currentGameInstance.destroy();
+                                                    console.log('Game instance destroyed via Game Center exit.');
+                                                } else if (typeof window.currentGameInstance.stop === 'function') {
                                                     window.currentGameInstance.stop();
                                                     console.log('Game instance stopped via Game Center exit.');
                                                 } else {
@@ -7830,10 +7886,12 @@
                                                 // Release the instance
                                                 window.currentGameInstance = null;
                                                 console.log('window.currentGameInstance set to null via Game Center exit.');
-                                            }
-                                        } else if (currentGameInstance) { // Fallback to local var if window.currentGameInstance was not used/found
+                                            }                                        } else if (currentGameInstance) { // Fallback to local var if window.currentGameInstance was not used/found
                                              try {
-                                                if (typeof currentGameInstance.stop === 'function') {
+                                                if (typeof currentGameInstance.destroy === 'function') {
+                                                    currentGameInstance.destroy();
+                                                    console.log('Local game instance destroyed via Game Center exit.');
+                                                } else if (typeof currentGameInstance.stop === 'function') {
                                                     currentGameInstance.stop();
                                                     console.log('Local game instance stopped via Game Center exit.');
                                                 }
@@ -7973,12 +8031,14 @@
                             console.error(`Error fetching high scores for ${gameId}:`, error);
                             scoresDisplayDiv.innerHTML = `<p style="color: var(--red-accent); text-align:center;">Error loading scores. ${error.message || ''}</p>`;
                         }
-                    }
-
-                    function showLeaderboardsView() {
+                    }                    function showLeaderboardsView() {
                         // Clear previous game instance if any
                         if (window.currentGameInstance) {
-                             if (typeof window.currentGameInstance.stop === 'function') window.currentGameInstance.stop();
+                             if (typeof window.currentGameInstance.destroy === 'function') {
+                                 window.currentGameInstance.destroy();
+                             } else if (typeof window.currentGameInstance.stop === 'function') {
+                                 window.currentGameInstance.stop();
+                             }
                              if (typeof window.currentGameInstance.cleanup === 'function') window.currentGameInstance.cleanup();
                              if (window.currentGameInstance._resizeObserver) { // Specific for Tetris
                                 window.currentGameInstance._resizeObserver.disconnect();
@@ -8034,10 +8094,13 @@
                     });
                     gameListDiv.appendChild(leaderboardsTab);
 
-                    // --- Settings View Functionality ---
-                    function showSettingsView() {
+                    // --- Settings View Functionality ---                    function showSettingsView() {
                         if (window.currentGameInstance) {
-                            if (typeof window.currentGameInstance.stop === 'function') window.currentGameInstance.stop();
+                            if (typeof window.currentGameInstance.destroy === 'function') {
+                                window.currentGameInstance.destroy();
+                            } else if (typeof window.currentGameInstance.stop === 'function') {
+                                window.currentGameInstance.stop();
+                            }
                             if (typeof window.currentGameInstance.cleanup === 'function') window.currentGameInstance.cleanup();
                             if (window.currentGameInstance._resizeObserver) { // Specific for Tetris
                                 window.currentGameInstance._resizeObserver.disconnect();
@@ -8093,21 +8156,10 @@
                         <span class="game-item-title">Settings</span>
                     `;
                     settingsTab.addEventListener('click', () => {
-                        showSettingsView();
-                    });
+                        showSettingsView();                    });
+                    
                     gameListDiv.appendChild(settingsTab);
-
-                    break;
-                case 'aura-flow': // Added case for AuraFlow
-                    if (typeof AuraFlowApp === 'function') {
-                        new AuraFlowApp(body, data);
-                    } else {
-                        console.error('AuraFlowApp class not found. Ensure AuraFlow.js is loaded.');
-                        body.innerHTML = '<p style="color: red; padding: 10px;">Error: AuraFlow application module not loaded.</p>';
-                    }
-                    break;
-            }
-        }
+                }
         
         // --- (Old initializeTerminal and its helpers will be removed from here) ---
 

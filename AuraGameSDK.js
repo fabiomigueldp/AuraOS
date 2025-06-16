@@ -798,11 +798,12 @@ const AuraGameSDK = {
             console.error(errorMsg, dbError);
             return Promise.reject(errorMsg);
         }
-    },
-
-    ui: {
+    },    ui: {
         _cssInjected: false,
         _notificationCounter: 0,
+        _notificationContainer: null,
+        _notificationCSSInjected: false,
+        _activeNotifications: [],
 
         /**
          * Injects the necessary CSS for UI components into the document's head.
@@ -865,48 +866,191 @@ const AuraGameSDK = {
             document.head.appendChild(styleSheet);
             this._cssInjected = true;
             console.log("AuraGameSDK.ui: CSS injected.");
+        },        /**
+         * Creates and returns the notification container.
+         * @private
+         */
+        _getNotificationContainer() {
+            if (!this._notificationContainer || !document.body.contains(this._notificationContainer)) {
+                this._notificationContainer = document.createElement('div');
+                this._notificationContainer.id = 'aura-notification-container';
+                this._notificationContainer.className = 'aura-notification-container';
+                document.body.appendChild(this._notificationContainer);
+            }
+            return this._notificationContainer;
+        },
+
+        /**
+         * Removes a notification from the active list.
+         * @private
+         */
+        _removeNotificationFromList(notificationId) {
+            this._activeNotifications = this._activeNotifications.filter(n => n.id !== notificationId);
+            this._repositionNotifications();
+        },        /**
+         * Repositions all active notifications to avoid overlap.
+         * @private
+         */
+        _repositionNotifications() {
+            const container = this._getNotificationContainer();
+            const notifications = container.querySelectorAll('.aura-notification');
+            
+            notifications.forEach((notification, index) => {
+                const offset = index * 64; // 56px height + 8px margin - more compact
+                notification.style.transform = `translateY(${offset}px)`;
+            });
         },
 
         /**
          * Injects notification-specific CSS.
          * @private
-         */
-        _injectNotificationCSS() {
-            if (this._notificationCSSInjected) return;
-
-            const notificationStyles = `
+         */        _injectNotificationCSS() {
+            if (this._notificationCSSInjected) return;            const notificationStyles = `
+                .aura-notification-container {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    pointer-events: none;
+                    width: 340px;
+                }
+                
                 .aura-notification {
-                    background-color: #333;
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 6px;
-                    margin-bottom: 10px;
-                    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-                    border-left: 4px solid #555;
-                    font-family: Arial, sans-serif;
-                    font-size: 14px;
-                    max-width: 300px;
+                    background: rgba(255, 255, 255, 0.98);
+                    color: #2c3e50;
+                    padding: 14px 18px;
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                    font-size: 13px;
+                    font-weight: 400;
+                    line-height: 1.4;
+                    max-width: 340px;
+                    min-height: 48px;
                     word-wrap: break-word;
+                    pointer-events: auto;
+                    backdrop-filter: blur(12px);
+                    position: relative;
+                    overflow: hidden;
+                    transition: all 0.2s ease-out;
                     animation: aura-notification-slide-in 0.3s ease-out;
                 }
+                
+                .aura-notification::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 3px;
+                    height: 100%;
+                    background: #e0e6ed;
+                    transition: background 0.2s ease;
+                }
+                
+                .aura-notification:hover {
+                    transform: translateX(-2px);
+                    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.15);
+                }
+                
                 .aura-notification-info {
-                    border-left-color: #00BFFF;
+                    border-left: 3px solid #74b9ff;
                 }
+                
+                .aura-notification-info::before {
+                    background: #74b9ff;
+                }
+                
                 .aura-notification-success {
-                    border-left-color: #32CD32;
+                    border-left: 3px solid #00b894;
                 }
+                
+                .aura-notification-success::before {
+                    background: #00b894;
+                }
+                
                 .aura-notification-warning {
-                    border-left-color: #FFD700;
+                    border-left: 3px solid #fdcb6e;
                 }
+                
+                .aura-notification-warning::before {
+                    background: #fdcb6e;
+                }
+                
                 .aura-notification-error {
-                    border-left-color: #FF6347;
+                    border-left: 3px solid #fd79a8;
                 }
+                
+                .aura-notification-error::before {
+                    background: #fd79a8;
+                }
+                
                 .aura-notification-fade-out {
-                    animation: aura-notification-fade-out 0.3s ease-out forwards;
+                    animation: aura-notification-fade-out 0.25s ease-out forwards;
                 }
+                
+                .aura-notification-close {
+                    position: absolute;
+                    top: 6px;
+                    right: 6px;
+                    background: rgba(0, 0, 0, 0.05);
+                    border: none;
+                    border-radius: 4px;
+                    width: 20px;
+                    height: 20px;
+                    color: #636e72;
+                    cursor: pointer;
+                    font-size: 12px;
+                    line-height: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.15s ease;
+                    opacity: 0.6;
+                }
+                
+                .aura-notification-close:hover {
+                    background: rgba(0, 0, 0, 0.1);
+                    opacity: 1;
+                    transform: scale(1.05);
+                }
+                
+                .aura-notification-content {
+                    padding-right: 28px;
+                    font-weight: 400;
+                    letter-spacing: 0.01em;
+                }
+                
+                .aura-notification-progress {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    height: 2px;
+                    background: rgba(0, 0, 0, 0.1);
+                    transition: width linear;
+                    border-radius: 0 0 8px 8px;
+                }
+                
+                .aura-notification-info .aura-notification-progress {
+                    background: rgba(116, 185, 255, 0.3);
+                }
+                
+                .aura-notification-success .aura-notification-progress {
+                    background: rgba(0, 184, 148, 0.3);
+                }
+                
+                .aura-notification-warning .aura-notification-progress {
+                    background: rgba(253, 203, 110, 0.3);
+                }
+                
+                .aura-notification-error .aura-notification-progress {
+                    background: rgba(253, 121, 168, 0.3);
+                }
+                
                 @keyframes aura-notification-slide-in {
                     from {
-                        transform: translateX(100%);
+                        transform: translateX(110%);
                         opacity: 0;
                     }
                     to {
@@ -914,12 +1058,49 @@ const AuraGameSDK = {
                         opacity: 1;
                     }
                 }
+                
                 @keyframes aura-notification-fade-out {
                     from {
                         opacity: 1;
+                        transform: translateX(0) scale(1);
                     }
                     to {
                         opacity: 0;
+                        transform: translateX(50%) scale(0.95);
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .aura-notification-container {
+                        left: 12px;
+                        right: 12px;
+                        width: auto;
+                    }
+                    
+                    .aura-notification {
+                        max-width: none;
+                        margin-bottom: 6px;
+                    }
+                }
+                
+                @media (prefers-color-scheme: dark) {
+                    .aura-notification {
+                        background: rgba(45, 52, 64, 0.95);
+                        color: #ecf0f1;
+                        border: 1px solid rgba(255, 255, 255, 0.08);
+                    }
+                    
+                    .aura-notification-close {
+                        background: rgba(255, 255, 255, 0.05);
+                        color: #bdc3c7;
+                    }
+                    
+                    .aura-notification-close:hover {
+                        background: rgba(255, 255, 255, 0.1);
+                    }
+                    
+                    .aura-notification-progress {
+                        background: rgba(255, 255, 255, 0.1);
                     }
                 }
             `;
@@ -928,7 +1109,7 @@ const AuraGameSDK = {
             styleSheet.innerText = notificationStyles;
             document.head.appendChild(styleSheet);
             this._notificationCSSInjected = true;
-            console.log("AuraGameSDK.ui: Notification CSS injected.");
+            console.log("AuraGameSDK.ui: Enhanced notification CSS injected.");
         },
 
         /**
@@ -1059,14 +1240,14 @@ const AuraGameSDK = {
             } else {
                 console.error(`AuraGameSDK.ui.hideModal: Modal with id "${id}" not found.`);
             }
-        },
-
-        /**
+        },        /**
          * Shows a notification message to the user.
          * @param {object} options - Notification options.
          * @param {string} options.message - The message to display.
          * @param {string} [options.type='info'] - Type of notification ('info', 'success', 'warning', 'error').
-         * @param {number} [options.duration=3000] - Duration in milliseconds before auto-hide.
+         * @param {number} [options.duration=3500] - Duration in milliseconds before auto-hide (0 for persistent).
+         * @param {boolean} [options.closeable=true] - Whether the notification can be manually closed.
+         * @param {boolean} [options.showProgress=true] - Whether to show progress bar for timed notifications.
          */
         showNotification(options = {}) {
             if (!options.message) {
@@ -1079,31 +1260,189 @@ const AuraGameSDK = {
 
             const notificationId = `aura-notification-${++this._notificationCounter}`;
             const type = options.type || 'info';
-            const duration = options.duration || 3000;
+            const duration = options.duration !== undefined ? options.duration : 3500;
+            const closeable = options.closeable !== false;
+            const showProgress = options.showProgress !== false && duration > 0;
 
+            const container = this._getNotificationContainer();
+            
             const notification = document.createElement('div');
             notification.id = notificationId;
             notification.className = `aura-notification aura-notification-${type}`;
-            notification.textContent = options.message;
+            
+            // Create notification content
+            const content = document.createElement('div');
+            content.className = 'aura-notification-content';
+            content.textContent = options.message;
+            notification.appendChild(content);
 
-            // Position notification at top-right
-            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000;';
+            // Add close button if closeable
+            if (closeable) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'aura-notification-close';
+                closeBtn.innerHTML = '×';
+                closeBtn.setAttribute('aria-label', 'Close notification');
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this._closeNotification(notificationId);
+                });
+                notification.appendChild(closeBtn);
+            }
 
-            document.body.appendChild(notification);
+            // Add progress bar if enabled and timed
+            if (showProgress && duration > 0) {
+                const progressBar = document.createElement('div');
+                progressBar.className = 'aura-notification-progress';
+                progressBar.style.width = '100%';
+                notification.appendChild(progressBar);
+                
+                // Animate progress bar
+                setTimeout(() => {
+                    progressBar.style.transition = `width ${duration}ms linear`;
+                    progressBar.style.width = '0%';
+                }, 50);
+            }
 
-            // Auto-hide after duration
-            setTimeout(() => {
-                if (document.getElementById(notificationId)) {
-                    notification.classList.add('aura-notification-fade-out');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300); // Wait for fade-out animation
+            // Add to active notifications list
+            this._activeNotifications.push({
+                id: notificationId,
+                element: notification,
+                timestamp: Date.now()
+            });
+
+            // Append to container and reposition
+            container.appendChild(notification);
+            this._repositionNotifications();
+
+            // Auto-hide after duration (if not persistent)
+            if (duration > 0) {
+                setTimeout(() => {
+                    this._closeNotification(notificationId);
+                }, duration);
+            }
+
+            // Add click handler for interaction
+            notification.addEventListener('click', () => {
+                if (options.onClick && typeof options.onClick === 'function') {
+                    options.onClick();
                 }
-            }, duration);
+            });
 
-            console.log(`AuraGameSDK.ui: Notification shown - ${options.message}`);
+            console.log(`AuraGameSDK.ui: Enhanced notification shown - ${options.message}`);
+            
+            return notificationId; // Return ID for manual control
+        },
+
+        /**
+         * Closes a specific notification.
+         * @param {string} notificationId - The ID of the notification to close.
+         */
+        closeNotification(notificationId) {
+            this._closeNotification(notificationId);
+        },
+
+        /**
+         * Internal method to close a notification.
+         * @private
+         */
+        _closeNotification(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification && notification.parentNode) {
+                notification.classList.add('aura-notification-fade-out');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                    this._removeNotificationFromList(notificationId);
+                }, 400); // Wait for fade-out animation
+            }
+        },
+
+        /**
+         * Closes all active notifications.
+         */
+        closeAllNotifications() {
+            [...this._activeNotifications].forEach(notification => {
+                this._closeNotification(notification.id);
+            });
+        },        /**
+         * Shows a success notification with optimized settings.
+         * @param {string} message - The success message to display.
+         * @param {object} [options] - Additional options.
+         */
+        showSuccess(message, options = {}) {
+            return this.showNotification({
+                message,
+                type: 'success',
+                duration: 2500,
+                ...options
+            });
+        },
+
+        /**
+         * Shows an error notification with optimized settings.
+         * @param {string} message - The error message to display.
+         * @param {object} [options] - Additional options.
+         */
+        showError(message, options = {}) {
+            return this.showNotification({
+                message,
+                type: 'error',
+                duration: 4500, // Slightly longer for errors
+                ...options
+            });
+        },
+
+        /**
+         * Shows a warning notification with optimized settings.
+         * @param {string} message - The warning message to display.
+         * @param {object} [options] - Additional options.
+         */
+        showWarning(message, options = {}) {
+            return this.showNotification({
+                message,
+                type: 'warning',
+                duration: 3500,
+                ...options
+            });
+        },
+
+        /**
+         * Shows an info notification with optimized settings.
+         * @param {string} message - The info message to display.
+         * @param {object} [options] - Additional options.
+         */
+        showInfo(message, options = {}) {
+            return this.showNotification({
+                message,
+                type: 'info',
+                duration: 3000,
+                ...options
+            });
+        },
+
+        /**
+         * Shows a persistent notification that won't auto-close.
+         * @param {string} message - The message to display.
+         * @param {string} [type='info'] - Type of notification.
+         * @param {object} [options] - Additional options.
+         */
+        showPersistent(message, type = 'info', options = {}) {
+            return this.showNotification({
+                message,
+                type,
+                duration: 0, // Persistent
+                closeable: true,
+                ...options
+            });
+        },
+
+        /**
+         * Gets the count of active notifications.
+         * @returns {number} Number of active notifications.
+         */
+        getActiveNotificationCount() {
+            return this._activeNotifications.length;
         }
     }
 };
