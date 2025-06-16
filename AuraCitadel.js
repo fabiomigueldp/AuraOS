@@ -514,13 +514,7 @@ AuraCitadelGame.prototype._updateTowers = function() {
                     ));
                     tower.lastFireTime = now;
                     tower.targetEnemyId = target.id;
-                    try {
-                        const fireSound = new Audio('gameassets/sounds/tower_fire.wav');
-                        fireSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.5;
-                        fireSound.play().catch(e => console.warn("Audio play failed:", e));
-                    } catch (error) {
-                        console.warn('AuraCitadel: Could not load fire sound:', error);
-                    }
+                    AuraGameSDK.audio.playSfx('gameassets/sounds/tower_fire.wav', 0.5);
                 } else {
                     tower.targetEnemyId = null;
                 }
@@ -554,11 +548,7 @@ AuraCitadelGame.prototype._updateProjectiles = function() {
                 const enemyIndex = this.enemies.findIndex(e => e.id === primaryTarget.id);
                 if (enemyIndex !== -1) this.enemies.splice(enemyIndex, 1);
                 this.playerCurrency += 3;
-                try {
-                    const deathSound = new Audio('gameassets/sounds/enemy_death.wav');
-                    deathSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.3;
-                    deathSound.play().catch(e => console.warn("Audio play failed:", e));
-                } catch (error) { console.warn('AuraCitadel: Could not load death sound:', error); }
+                AuraGameSDK.audio.playSfx('gameassets/sounds/enemy_death.wav', 0.3);
                 if (Math.random() < 0.1) this._unlockRandomComponent();
             }
 
@@ -585,11 +575,7 @@ AuraCitadelGame.prototype._updateProjectiles = function() {
                                     this.enemies.splice(otherEnemyIndex, 1);
                                 }
                                 this.playerCurrency += 3;
-                                try {
-                                    const deathSound = new Audio('gameassets/sounds/enemy_death.wav');
-                                    deathSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.3;
-                                    deathSound.play().catch(e => console.warn("Audio play failed:", e));
-                                } catch (error) { console.warn('AuraCitadel: Could not load death sound:', error); }
+                                AuraGameSDK.audio.playSfx('gameassets/sounds/enemy_death.wav', 0.3);
                                 if (Math.random() < 0.1) this._unlockRandomComponent();
                             }
                         }
@@ -718,13 +704,7 @@ AuraCitadelGame.prototype._unlockRandomComponent = async function() {
             });
         }
 
-        try {
-            const blueprintSound = new Audio('gameassets/sounds/blueprint_unlocked.wav');
-            blueprintSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.7;
-            blueprintSound.play().catch(e => console.warn("Audio play failed:", e));
-        } catch (error) {
-            console.warn('AuraCitadel: Could not load blueprint sound:', error);
-        }
+        AuraGameSDK.audio.playSfx('gameassets/sounds/blueprint_unlocked.wav', 0.7);
 
     } catch (error) {
         console.error(`Aura Citadel: Error unlocking component ${chosenComponentId}:`, error);
@@ -753,13 +733,7 @@ AuraCitadelGame.prototype._handlePlayerCrafting = function(baseId, weaponId, mod
         const newTower = { baseId, weaponId, modifierId, x: gridX, y: gridY, uniqueId: generateUniqueId(), lastFireTime: 0, targetEnemyId: null };
         this.towers.push(newTower);
         this.gameGrid[gridY][gridX].hasTower = true;
-        this.gameGrid[gridY][gridX].buildable = false;        try {
-            const placeSound = new Audio('gameassets/sounds/tower_place.wav');
-            placeSound.volume = AuraGameSDK.audio.getVolume ? AuraGameSDK.audio.getVolume() : 0.5;
-            placeSound.play().catch(e => console.warn("Audio play failed:", e));
-        } catch (error) {
-            console.warn('AuraCitadel: Could not load place sound:', error);
-        }
+        this.gameGrid[gridY][gridX].buildable = false;        AuraGameSDK.audio.playSfx('gameassets/sounds/tower_place.wav', 0.5);
         console.log(`Aura Citadel: Crafted tower ${newTower.uniqueId} at (${gridX},${gridY}). Cost: ${totalCost}.`);
         return true;
     } else {
