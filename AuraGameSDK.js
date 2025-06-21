@@ -264,29 +264,34 @@ const AuraGameSDK = {
         }
     },
 
-    leaderboard: {
-        /**
+    leaderboard: {        /**
          * Submits a new score for the current game to the leaderboard.
          * @param {string} playerName - The name of the player.
          * @param {number} score - The score achieved by the player.
          * @returns {Promise<void>} A Promise that resolves on successful submission, or rejects on error.
          */
         async submitScore(playerName, score) {
+            console.log(`🎯 AuraGameSDK.leaderboard.submitScore called - Game: ${AuraGameSDK._gameId}, Player: ${playerName}, Score: ${score}`);
+            
             try {
+                console.log(`⏳ Ensuring AuraGameSDK is ready for score submission...`);
                 await AuraGameSDK._ensureReady();
+                console.log(`✅ AuraGameSDK is ready for score submission`);
             } catch (error) {
-                console.error(`AuraGameSDK.leaderboard.submitScore: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Cannot submit score. Error: ${error}`);
+                console.error(`❌ AuraGameSDK.leaderboard.submitScore: Pre-condition check failed for game ${AuraGameSDK._gameId || 'N/A'}. Cannot submit score. Error: ${error}`);
                 return Promise.reject(error);
             }
 
             if (!AuraGameSDK._gameId) {
-                console.error('AuraGameSDK.leaderboard.submitScore: SDK not initialized with a gameId. Call init() first.');
+                console.error('❌ AuraGameSDK.leaderboard.submitScore: SDK not initialized with a gameId. Call init() first.');
                 return Promise.reject('AuraGameSDK not initialized. Call init() first.');
             }
             if (typeof playerName !== 'string' || !playerName.trim()) {
+                console.error('❌ Invalid player name:', playerName);
                 return Promise.reject('Player name must be a non-empty string.');
             }
             if (typeof score !== 'number' || isNaN(score)) {
+                console.error('❌ Invalid score:', score);
                 return Promise.reject('Score must be a valid number.');
             }
 
@@ -296,17 +301,18 @@ const AuraGameSDK = {
                 score: score,
                 timestamp: Date.now()
             };
+            
+            console.log(`💾 Preparing to save score entry:`, scoreEntry);
+            
             try {
                 // 'high_scores' uses autoIncrement, so dbManager.setObject will add a new entry.
                 await AuraGameSDK._dbManager.setObject('high_scores', scoreEntry);
-                console.log(`Score submitted for ${AuraGameSDK._gameId}:`, scoreEntry);
+                console.log(`✅ Score submitted successfully for ${AuraGameSDK._gameId}:`, scoreEntry);
             } catch (error) {
-                console.error(`Error submitting score for ${AuraGameSDK._gameId}:`, error);
+                console.error(`❌ Error submitting score for ${AuraGameSDK._gameId}:`, error);
                 return Promise.reject(error);
             }
-        },
-
-        /**
+        },/**
          * Gets the top N scores for the current game from the leaderboard.
          * Scores are returned in descending order (highest score first).
          * @param {string} gameId - The ID of the game for which to fetch scores.
@@ -314,30 +320,40 @@ const AuraGameSDK = {
          * @returns {Promise<Array<object>>} A Promise that resolves with an array of score objects, or an empty array if none are found or an error occurs.
          */
         async getHighScores(gameId, limit = 10) {
+            console.log(`🔍 AuraGameSDK.leaderboard.getHighScores called for gameId: ${gameId}, limit: ${limit}`);
+            
             try {
+                console.log(`⏳ Ensuring AuraGameSDK is ready...`);
                 await AuraGameSDK._ensureReady();
+                console.log(`✅ AuraGameSDK is ready`);
             } catch (error) {
-                console.error(`AuraGameSDK.leaderboard.getHighScores: Pre-condition check failed for game ${gameId}. Cannot get high scores. Error: ${error}`);
+                console.error(`❌ AuraGameSDK.leaderboard.getHighScores: Pre-condition check failed for game ${gameId}. Cannot get high scores. Error: ${error}`);
                 return Promise.resolve([]);
             }
 
             // Parameter validation
             if (typeof gameId !== 'string' || !gameId.trim()) {
-                 console.error('AuraGameSDK.leaderboard.getHighScores: gameId must be a non-empty string.');
+                 console.error('❌ AuraGameSDK.leaderboard.getHighScores: gameId must be a non-empty string.');
                  return Promise.resolve([]);
             }
 
             return new Promise((resolve) => {
                 try {
+                    console.log(`🗃️ Creating database transaction for high_scores...`);
                     // _ensureReady guarantees AuraGameSDK._dbManager and AuraGameSDK._dbManager.db are available.
                     const transaction = AuraGameSDK._dbManager.db.transaction(['high_scores'], 'readonly');
                     const store = transaction.objectStore('high_scores');
+                    
+                    console.log(`📊 Accessing 'by_game' index...`);
                     const index = store.index('by_game'); // Use the 'by_game' index
 
+                    console.log(`🔎 Requesting scores for gameId: ${gameId}`);
                     const request = index.getAll(gameId); // Get all scores for the current gameId
 
                     request.onsuccess = (event) => {
                         const scores = event.target.result || [];
+                        console.log(`📋 Raw scores from database for ${gameId}:`, scores);
+                        
                         // Sort by score descending, then by timestamp ascending (for ties)
                         scores.sort((a, b) => {
                             if (b.score === a.score) {
@@ -345,15 +361,18 @@ const AuraGameSDK = {
                             }
                             return b.score - a.score;
                         });
-                        resolve(scores.slice(0, limit));
+                        
+                        const limitedScores = scores.slice(0, limit);
+                        console.log(`✅ Returning ${limitedScores.length} scores for ${gameId}:`, limitedScores);
+                        resolve(limitedScores);
                     };
 
                     request.onerror = (event) => {
-                        console.error(`Error fetching high scores for ${gameId}:`, event.target.error);
+                        console.error(`❌ Error fetching high scores for ${gameId}:`, event.target.error);
                         resolve([]); // Resolve with empty array on DB error
                     };
                 } catch (error) {
-                    console.error(`Critical error in getHighScores for ${gameId}:`, error);
+                    console.error(`💥 Critical error in getHighScores for ${gameId}:`, error);
                     resolve([]); // Resolve with empty array on critical error
                 }
             });
@@ -1448,4 +1467,5 @@ const AuraGameSDK = {
 };
 
 // Make it globally accessible (optional, depending on module system)
-// window.AuraGameSDK = AuraGameSDK;
+window.AuraGameSDK = AuraGameSDK;
+window.auraGameSDK = AuraGameSDK; // Also expose with lowercase for compatibility

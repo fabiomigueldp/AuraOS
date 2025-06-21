@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Center - AuraOS</title>
+    
+    <!-- Game Center specific styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Game Center will be dynamically populated by the main controller -->
+    <div id="game-center-root">
+        <p>Loading Game Center...</p>
+    </div>
+
+    <!-- Import the modular Game Center -->
+    <script type="module">
+        import { initializeGameCenter } from './js/GameCenter.js';
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const rootElement = document.getElementById('game-center-root');
+            if (rootElement) {
+                // For standalone usage (this would be different when integrated with AuraOS)
+                console.log('Game Center standalone mode');
+            }
+        });
+        
+        // Export for AuraOS integration
+        window.GameCenterApp = {
+            initialize: initializeGameCenter
+        };
+    </script>
+</body>
+</html>

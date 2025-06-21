@@ -82,24 +82,18 @@ class PerlinNoise {
 }
 
 
-class AuraFlowApp {
-    constructor(windowBody, appData) {
-        console.log('AuraFlowApp constructor: Check 1: typeof window.d3 =', typeof window.d3);
-        if (typeof window.d3 !== 'undefined') {
-            console.log('AuraFlowApp constructor: Check 1: typeof window.d3.Delaunay =', typeof window.d3.Delaunay);
-        }
+class AuraFlowApp {    constructor(windowBody, appData) {
+        console.log("AuraFlow constructor started");
+        
         this.windowBody = windowBody;
         this.appData = appData;
 
         // Initialize Perlin Noise generator
         this.perlinNoise = new PerlinNoise();
 
-
         // Common properties
-        this.nodes = []; // For Connected Fibers
-        this.particles = []; // For Particle Flow
+        this.nodes = []; // For Connected Fibers        this.particles = []; // For Particle Flow
         this.seedPoints = []; // For Voronoi
-        this.voronoiDiagram = null;
         this.mouseX = null;
         this.mouseY = null;
         this.controlPanel = null;
@@ -114,12 +108,7 @@ class AuraFlowApp {
         ];
         this.animationFrameId = null;
         this.isVisible = true; // For IntersectionObserver
-        this.visibilityObserver = null;
-        this.resizeObserver = null; // For canvas resize
-
-        this.voronoiLoadRetries = 0;
-        this.maxVoronoiLoadRetries = 100; // Approx 10 seconds if delay is 100ms
-
+        this.visibilityObserver = null;        this.resizeObserver = null; // For canvas resize
 
         // --- Particle Flow Settings ---
         this.noiseScale = 0.01; // User configurable, persisted
@@ -155,24 +144,15 @@ class AuraFlowApp {
         // Set initial mode
         this.currentMode = 'particleFlow';
         // this.currentMode = 'connectedFibers';
-        // this.currentMode = 'voronoi';
-
-
-        console.log("AuraFlowApp instance created");
-        
-        // Use requestAnimationFrame to ensure DOM is ready
+        // this.currentMode = 'voronoi';        console.log("AuraFlowApp instance created");        // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
-            console.log('AuraFlowApp rAF before initUI: typeof window.d3 =', typeof window.d3);
-            if (typeof window.d3 !== 'undefined') {
-                console.log('AuraFlowApp rAF before initUI: typeof window.d3.Delaunay =', typeof window.d3.Delaunay);
-            }
             this.initUI();
             
             this._loadAppSettings().then(() => {
                 this._initializeCurrentMode(); // This also applies palette
                 this.startAnimation();
                 this._updateControlPanelValues();
-            }).catch(error => {
+            }).catch((error) => {
                 console.error("Error loading AuraFlow settings, using defaults:", error);
                 this._initializeCurrentMode();
                 this.startAnimation();
@@ -185,8 +165,7 @@ class AuraFlowApp {
             this._boundCleanupEventListeners = this._cleanupEventListeners.bind(this);
             windowElement.addEventListener('aura:close', this._boundCleanupEventListeners);
         } else {
-            console.warn("AuraFlowApp: Could not find parent .window element to attach close listener.");
-        }
+            console.warn("AuraFlowApp: Could not find parent .window element to attach close listener.");        }
     }
 
     async _saveAppSettings() {
@@ -397,23 +376,24 @@ class AuraFlowApp {
             this.controlPanel.style.transform = 'translateY(10px)';
             this.controlPanel.style.pointerEvents = 'none';
         }, 3000); // Hide after 3 seconds
-    }
-
-    _initializeCurrentMode() {
+    }    _initializeCurrentMode() {
+        console.log(`_initializeCurrentMode: Initializing mode "${this.currentMode}"`);
+        
         if (this.currentMode === 'particleFlow') {
             this.initializeParticleFlow();
         } else if (this.currentMode === 'connectedFibers') {
             this.initializeConnectedFibers();
         } else if (this.currentMode === 'voronoi') {
+            console.log('_initializeCurrentMode: Initializing Voronoi mode');
             this.initializeVoronoi();
         }
-        this._updateControlPanelVisibility();
-        this._applyCurrentPaletteToMode();
+        this._updateControlPanelVisibility();        this._applyCurrentPaletteToMode();
     }
 
     _handleModeChange(event) {
         this.currentMode = event.target.value;
         console.log(`Mode changed to: ${this.currentMode}`);
+        
         this._saveAppSettings();
         this._initializeCurrentMode();
         if (this.animationFrameId) {
@@ -1249,48 +1229,8 @@ class AuraFlowApp {
         if (this.currentMode === 'particleFlow') {
             this.animateParticleFlow();
         } else if (this.currentMode === 'connectedFibers') {
-            this.animateConnectedFibers();
-        } else if (this.currentMode === 'voronoi') {
-            console.log('Voronoi Mode: Checking for d3 library. typeof window.d3:', typeof window.d3, 'd3.Delaunay:', (typeof window.d3 !== 'undefined' && window.d3 ? typeof window.d3.Delaunay : 'd3 or d3.Delaunay undefined'));
-            if (typeof window.d3 !== 'undefined' && typeof window.d3.Delaunay !== 'undefined') {
-                this.voronoiLoadRetries = 0; // Reset retries on successful load
-                this.animateVoronoi();
-            } else {
-                if (this.voronoiLoadRetries < this.maxVoronoiLoadRetries) {
-                    this.voronoiLoadRetries++;
-                    console.warn(`AuraFlow: d3-delaunay not yet loaded. Retry ${this.voronoiLoadRetries}/${this.maxVoronoiLoadRetries}. Retrying in 100ms...`);
-                    if (this.canvas && this.ctx) {
-                        const windowEl = this.windowBody.closest('.window');
-                        if (windowEl && windowEl.id === this.appData.windowId && this.isVisible) { // Check if AuraFlow is active for this window
-                            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Clear previous frame/message
-                            this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                            this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
-                            this.ctx.fillStyle = 'white';
-                            this.ctx.font = '16px Arial';
-                            this.ctx.textAlign = 'center';
-                            this.ctx.fillText(`Voronoi: Waiting for library... (Attempt ${this.voronoiLoadRetries}/${this.maxVoronoiLoadRetries})`, this.canvas.width / 2, this.canvas.height / 2);
-                        }
-                    }
-                    setTimeout(() => {
-                        this.startAnimation();
-                    }, 100);
-                } else {
-                    console.error(`AuraFlow: d3-delaunay failed to load after ${this.maxVoronoiLoadRetries} retries.`);
-                    if (this.canvas && this.ctx) {
-                        // Ensure this part only executes if the window is still the active AuraFlow window
-                        const windowEl = this.windowBody.closest('.window');
-                        if (windowEl && windowEl.id === this.appData.windowId && this.isVisible) {
-                            this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                            this.ctx.fillRect(0,0, this.canvas.width, this.canvas.height);
-                            this.ctx.fillStyle = 'white';
-                            this.ctx.font = '16px Arial';
-                            this.ctx.textAlign = 'center';
-                            this.ctx.fillText("Voronoi library (d3-delaunay) could not be loaded.", this.canvas.width / 2, this.canvas.height / 2 - 10);
-                            this.ctx.fillText("Please check internet or refresh.", this.canvas.width/2, this.canvas.height/2 + 10);
-                        }
-                    }
-                }
-            }
+            this.animateConnectedFibers();        } else if (this.currentMode === 'voronoi') {
+            this.animateVoronoi();
         } else {
             console.warn(`Animation mode "${this.currentMode}" not recognized.`);
         }
@@ -1410,9 +1350,7 @@ class AuraFlowApp {
         }
 
         console.log(`${this.numSeedPoints} seed points initialized for Voronoi. Mouse seed index: ${this.mouseSeedIndex}`);
-    }
-
-    animateVoronoi() {
+    }    animateVoronoi() {
         // Background drawing logic based on mode
         if (this.backgroundDrawMode === 'clear') {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -1421,7 +1359,7 @@ class AuraFlowApp {
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         } // else 'persistent': do nothing to the background
 
-        this.time += 0.01; // Time for scanLines animation
+        this.time += 0.01; // Time for animation
 
         // Update seed points
         this.seedPoints.forEach((point, index) => {
@@ -1437,102 +1375,156 @@ class AuraFlowApp {
             } else {
                 point.update(); // Update non-mouse-controlled points
             }
-            // All points should pulse, regardless of mouse control
-            // point.pulsePhase is updated within point.update(), so no need to call it separately here
-            // if we ensure point.update() is called for the mouse-controlled point when it's not moving.
-            // Let's adjust SeedPoint.update() or call pulsePhase update here explicitly for the mouse seed.
-            if (index === this.mouseSeedIndex) { // Ensure mouse seed also pulses
+            // Ensure mouse seed also pulses
+            if (index === this.mouseSeedIndex) {
                  point.pulsePhase += 0.02;
             }
         });
 
-        const pointsForDelaunay = this.seedPoints.map(p => [p.x, p.y]);
-        const uniquePoints = Array.from(new Set(pointsForDelaunay.map(p => `${p[0]},${p[1]}`))).map(s => s.split(',').map(Number));
+        // Draw Voronoi diagram using pixel-based approach
+        this._drawVoronoiDiagram();
 
-        if (uniquePoints.length < 3) {
-            this.seedPoints.forEach(p => p.draw(this.ctx)); // Draw points if no valid diagram
-            if (this.isVisible) this.animationFrameId = requestAnimationFrame(this.animateVoronoi.bind(this));
-            return;
-        }
+        // Draw seed points on top
+        this.seedPoints.forEach(p => p.draw(this.ctx));
 
-        const delaunay = d3.Delaunay.from(pointsForDelaunay);
-        this.voronoiDiagram = delaunay.voronoi([0, 0, this.canvas.width, this.canvas.height]);
-
-        for (let i = 0; i < this.seedPoints.length; i++) {
-            const point = this.seedPoints[i];
-            const cell = this.voronoiDiagram.cellPolygon(i);
-
-            if (cell) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(cell[0][0], cell[0][1]);
-                for (let k = 1; k < cell.length; k++) {
-                    this.ctx.lineTo(cell[k][0], cell[k][1]);
-                }
-                this.ctx.closePath();
-
-                // Calculate bounding box for gradient and scanlines
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                if (this.voronoiFillStyle === 'gradient' || this.voronoiFillStyle === 'scanLines') {
-                    for (const p_coord of cell) { // Renamed p to p_coord to avoid conflict
-                        if (p_coord[0] < minX) minX = p_coord[0];
-                        if (p_coord[0] > maxX) maxX = p_coord[0];
-                        if (p_coord[1] < minY) minY = p_coord[1];
-                        if (p_coord[1] > maxY) maxY = p_coord[1];
-                    }
-                }
-
-                // Fill style logic
-                if (this.voronoiFillStyle === 'pulsingSolid') {
-                    this.ctx.fillStyle = point.getPulsingColor();
-                    this.ctx.fill();
-                } else if (this.voronoiFillStyle === 'gradient') {
-                    const palette = this.palettes[this.currentPaletteIndex];
-                    // Simpler secondary color selection using point's index
-                    const secondaryColor = this._getThemeColor(palette.colors[(i + 1) % palette.colors.length]);
-
-                    const gradient = this.ctx.createLinearGradient(minX, minY, maxX, maxY);
-                    gradient.addColorStop(0, point.baseColor);
-                    gradient.addColorStop(1, secondaryColor);
-                    this.ctx.fillStyle = gradient;
-                    this.ctx.fill();
-                } else if (this.voronoiFillStyle === 'scanLines') {
-                    this.ctx.save();
-                    this.ctx.clip(); // Clip to the cell path
-
-                    const lineColor = point.getPulsingColor();
-                    const lineThickness = 2;
-                    const lineSpacing = 4; // Space between lines
-                    const totalSpacing = lineThickness + lineSpacing;
-
-                    // Use this.time for animation, ensuring it's updated each frame.
-                    // point.pulsePhase can also be used for individual offsets if desired.
-                    const timeOffset = (this.time * 50) % totalSpacing;
-
-
-                    this.ctx.strokeStyle = lineColor;
-                    this.ctx.lineWidth = lineThickness;
-
-                    if (isFinite(minX) && isFinite(minY) && isFinite(maxX) && isFinite(maxY)) {
-                        for (let y = minY - totalSpacing + timeOffset; y < maxY + totalSpacing; y += totalSpacing) {
-                            this.ctx.beginPath();
-                            this.ctx.moveTo(minX, y);
-                            this.ctx.lineTo(maxX, y);
-                            this.ctx.stroke();
-                        }
-                    }
-                    this.ctx.restore();
-                }
-
-                // Cell Border
-                this.ctx.strokeStyle = this.voronoiCellBorderColor;
-                this.ctx.lineWidth = 1;
-                this.ctx.stroke();
-            }
-        }
         if (this.isVisible) this.animationFrameId = requestAnimationFrame(this.animateVoronoi.bind(this));
     }
 
-    // _updateSeedPointWithPerlin removed as it's no longer used.
+    _drawVoronoiDiagram() {
+        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+        const data = imageData.data;
+
+        // For each pixel, find the closest seed point and color accordingly
+        for (let y = 0; y < this.canvas.height; y += 2) { // Sample every 2 pixels for performance
+            for (let x = 0; x < this.canvas.width; x += 2) {
+                let minDistance = Infinity;
+                let closestPointIndex = 0;
+
+                // Find closest seed point
+                for (let i = 0; i < this.seedPoints.length; i++) {
+                    const dx = x - this.seedPoints[i].x;
+                    const dy = y - this.seedPoints[i].y;
+                    const distance = dx * dx + dy * dy; // Using squared distance for performance
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestPointIndex = i;
+                    }
+                }
+
+                // Get color for this region
+                const point = this.seedPoints[closestPointIndex];
+                const color = this._getVoronoiCellColor(point, x, y, minDistance);
+                
+                // Fill a 2x2 block for performance
+                this._fillPixelBlock(data, x, y, color, this.canvas.width, this.canvas.height);
+            }
+        }
+
+        this.ctx.putImageData(imageData, 0, 0);
+    }
+
+    _getVoronoiCellColor(point, x, y, distance) {
+        if (this.voronoiFillStyle === 'pulsingSolid') {
+            return this._parseColor(point.getPulsingColor());
+        } else if (this.voronoiFillStyle === 'gradient') {
+            // Create a distance-based gradient effect
+            const maxDistance = 100; // Adjust this for gradient range
+            const factor = Math.min(distance / (maxDistance * maxDistance), 1);
+            const baseColor = this._parseColor(point.baseColor);
+            return {
+                r: Math.floor(baseColor.r * (1 - factor * 0.3)),
+                g: Math.floor(baseColor.g * (1 - factor * 0.3)),
+                b: Math.floor(baseColor.b * (1 - factor * 0.3)),
+                a: 255
+            };
+        } else if (this.voronoiFillStyle === 'scanLines') {
+            // Create scan line effect
+            const lineSpacing = 4;
+            const animated = (y + this.time * 50) % lineSpacing;
+            const intensity = animated < 2 ? 1 : 0.3;
+            const baseColor = this._parseColor(point.getPulsingColor());
+            return {
+                r: Math.floor(baseColor.r * intensity),
+                g: Math.floor(baseColor.g * intensity),
+                b: Math.floor(baseColor.b * intensity),
+                a: 255
+            };
+        }
+        
+        // Default
+        return this._parseColor(point.baseColor);
+    }
+
+    _parseColor(colorString) {
+        // Simple color parser for HSL and RGB
+        if (colorString.includes('hsl')) {
+            // Convert HSL to RGB (simplified)
+            const match = colorString.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+            if (match) {
+                const h = parseInt(match[1]) / 360;
+                const s = parseInt(match[2]) / 100;
+                const l = parseInt(match[3]) / 100;
+                const [r, g, b] = this._hslToRgb(h, s, l);
+                return { r: Math.floor(r * 255), g: Math.floor(g * 255), b: Math.floor(b * 255), a: 255 };
+            }
+        } else if (colorString.includes('rgb')) {
+            const match = colorString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (match) {
+                return { 
+                    r: parseInt(match[1]), 
+                    g: parseInt(match[2]), 
+                    b: parseInt(match[3]), 
+                    a: 255 
+                };
+            }
+        } else if (colorString.startsWith('#')) {
+            const hex = colorString.slice(1);
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            return { r, g, b, a: 255 };
+        }
+        
+        // Default white
+        return { r: 255, g: 255, b: 255, a: 255 };
+    }
+
+    _hslToRgb(h, s, l) {
+        let r, g, b;
+
+        if (s === 0) {
+            r = g = b = l; // achromatic
+        } else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+
+        return [r, g, b];
+    }
+
+    _fillPixelBlock(data, x, y, color, width, height) {
+        for (let dy = 0; dy < 2 && y + dy < height; dy++) {
+            for (let dx = 0; dx < 2 && x + dx < width; dx++) {
+                const index = ((y + dy) * width + (x + dx)) * 4;
+                data[index] = color.r;
+                data[index + 1] = color.g;
+                data[index + 2] = color.b;                data[index + 3] = color.a;
+            }
+        }
+    }
 }
 
 class SeedPoint {

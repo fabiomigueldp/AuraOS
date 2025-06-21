@@ -1,16 +1,23 @@
-class AuraWhackGame {
-    constructor(canvas) {
+class AuraWhackGame {    constructor(canvas) {
+        console.log('AuraWhack constructor called with canvas:', canvas);
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
-        AuraGameSDK.init('aura-whack', this.canvas);
-
-        // Fetch CSS Variables
+        
+        // Validate canvas and context
+        if (!this.canvas || !this.ctx) {
+            console.error('AuraWhack: Failed to initialize canvas or context');
+            return;
+        }
+        
+        console.log('Canvas context:', this.ctx);
+        console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+        
+        AuraGameSDK.init('aura-whack', this.canvas);// Fetch CSS Variables
         const styles = getComputedStyle(document.documentElement);
         this.holeColor = styles.getPropertyValue('--subtle-text-color').trim() || '#555';
-        this.moleColor = styles.getPropertyValue('--highlight-secondary').trim() || '#FF6347';
-        this.specialMoleColor = styles.getPropertyValue('--highlight-primary').trim() || '#8a63d2';
+        this.moleColor = styles.getPropertyValue('--highlight-secondary').trim() || '#FF6347';        this.specialMoleColor = styles.getPropertyValue('--highlight-primary').trim() || '#8a63d2';
         this.textColor = styles.getPropertyValue('--text-color').trim() || '#f0f0f5';
-        this.backgroundColor = styles.getPropertyValue('--background-color').trim() || '#100f18';        // Game state
+        this.backgroundColor = styles.getPropertyValue('--background-color').trim() || '#100f18';// Game state
         this.gameState = 'menu'; // 'menu', 'playing', 'paused', 'gameOver'
         this.gameRunning = false;
         this.score = 0;
@@ -64,9 +71,8 @@ class AuraWhackGame {
         this.gameLoop = this.gameLoop.bind(this);
         this.boundHandleCanvasClick = this.handleCanvasClick.bind(this);
         this.boundHandleKeyPress = this.handleKeyPress.bind(this);
-        this.boundHandleMouseMove = this.handleMouseMove.bind(this);
-
-        // Start the game loop for menu animations
+        this.boundHandleMouseMove = this.handleMouseMove.bind(this);        // Start the game loop for menu animations
+        console.log('Starting gameLoop for menu animations...');
         this.gameLoop(performance.now());
         
         // Add global event listeners for menu
@@ -151,10 +157,10 @@ class AuraWhackGame {
         this.gameState = 'menu';
 
         // Cancel animation frame to stop the game loop completely
-        if (this.animationFrameId) {
+        if (this.animationFrameId && this.animationFrameId !== true) {
             cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
         }
+        this.animationFrameId = false; // Use false to stop the loop
 
         // Remove all event listeners to prevent ghost interactions
         this.canvas.removeEventListener('mousedown', this.boundHandleCanvasClick);
@@ -228,9 +234,11 @@ class AuraWhackGame {
         };
     }    // --- Game Loop ---
     gameLoop(currentTime) {
-        // Stop the loop if the game has been completely stopped
+        console.log('GameLoop called, gameState:', this.gameState, 'animationFrameId:', this.animationFrameId);
+        
+        // Initialize animationFrameId if it's the first call
         if (this.animationFrameId === null) {
-            return;
+            this.animationFrameId = true; // Set to non-null value to allow the loop to continue
         }
 
         if (!this.gameRunning && this.gameState === 'menu') {
@@ -255,13 +263,10 @@ class AuraWhackGame {
                 this.updateGameOverAnimations(currentTime);
                 this.updateEffects(currentTime);
                 break;
-        }
-
-        // Always draw
-        this.draw();
-
-        // Only continue the loop if not stopped
-        if (this.animationFrameId !== null) {
+        }        // Always draw
+        console.log('About to call draw() method...');
+        this.draw();        // Only continue the loop if not stopped
+        if (this.animationFrameId !== null && this.animationFrameId !== false) {
             this.animationFrameId = requestAnimationFrame(this.gameLoop);
         }
     }
@@ -405,9 +410,7 @@ class AuraWhackGame {
             effect.y -= 2;
             effect.alpha = effect.life / effect.maxLife;
             return effect.life > 0;
-        });
-
-        // Update particles
+        });        // Update particles
         this.particles = this.particles.filter(particle => {
             particle.x += particle.vx;
             particle.y += particle.vy;
@@ -417,15 +420,19 @@ class AuraWhackGame {
             return particle.life > 0;
         });
     }    draw() {
+        console.log('draw() method called, gameState:', this.gameState);
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        console.log('Canvas cleared');
 
         // Draw background
         this.drawBackground();
+        console.log('Background drawn');
 
         // Draw based on game state
         switch (this.gameState) {
             case 'menu':
+                console.log('Drawing menu...');
                 this.drawMenu();
                 break;
             case 'playing':
@@ -440,6 +447,7 @@ class AuraWhackGame {
                 this.drawGameOverOverlay();
                 break;
         }
+        console.log('draw() method completed');
     }
 
     drawBackground() {
@@ -470,10 +478,11 @@ class AuraWhackGame {
             this.ctx.moveTo(0, y);
             this.ctx.lineTo(this.canvas.width, y);
             this.ctx.stroke();
-        }
-    }    drawMenu() {
+        }    }    drawMenu() {
+        console.log('drawMenu() called');
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
+        console.log('Center position:', centerX, centerY);
 
         // Draw retro title with glow effect
         this.ctx.save();
@@ -485,7 +494,9 @@ class AuraWhackGame {
         this.ctx.font = 'bold 68px "Courier New", monospace';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
+        console.log('About to draw title with color:', this.specialMoleColor);
         this.ctx.fillText('AURA WHACK', centerX, centerY - 140);
+        console.log('Title drawn');
         
         this.ctx.restore();
 
@@ -495,6 +506,7 @@ class AuraWhackGame {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('━━━ RETRO ARCADE EDITION ━━━', centerX, centerY - 95);
+        console.log('Subtitle drawn with color:', this.textColor);
 
         // Instructions with retro box styling - maior para melhor espaçamento
         this.drawRetroBox(centerX - 240, centerY - 60, 480, 140, false);

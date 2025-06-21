@@ -1,0 +1,350 @@
+/**
+ * Game Center Styles
+ * 
+ * Comprehensive styles for the Game Center application including
+ * dark/light theme support, responsive design, and game-specific styling.
+ */
+
+/* Main Container */
+.game-center-container {
+    display: flex;
+    height: 100%;
+    background: transparent;
+}
+
+/* Sidebar Styles */
+.game-library-sidebar {
+    width: 220px;
+    height: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.dark-theme .game-library-sidebar {
+    background: rgba(40, 40, 42, 0.8);
+    border-right: 1px solid var(--glass-border);
+}
+
+.light-theme .game-library-sidebar {
+    background: rgba(242, 242, 247, 0.75);
+    border-right: 1px solid rgba(0,0,0,0.08);
+    color: var(--text-color);
+}
+
+.game-library-sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--glass-border);
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.light-theme .game-library-sidebar h3 {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Game List */
+.game-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Scrollbar Styles */
+.game-list::-webkit-scrollbar { 
+    width: 6px; 
+}
+
+.game-list::-webkit-scrollbar-track { 
+    background: transparent; 
+}
+
+.game-list::-webkit-scrollbar-thumb { 
+    background: rgba(255, 255, 255, 0.1); 
+    border-radius: 3px; 
+    border: 1px solid rgba(255, 255, 255, 0.05); 
+}
+
+.game-list::-webkit-scrollbar-thumb:hover { 
+    background: rgba(255, 255, 255, 0.2); 
+}
+
+.light-theme .game-list::-webkit-scrollbar-thumb { 
+    background: rgba(0, 0, 0, 0.1); 
+    border-color: rgba(0, 0, 0, 0.05); 
+}
+
+.light-theme .game-list::-webkit-scrollbar-thumb:hover { 
+    background: rgba(0, 0, 0, 0.2); 
+}
+
+.game-list { 
+    scrollbar-width: thin; 
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent; 
+}
+
+.light-theme .game-list { 
+    scrollbar-color: rgba(0, 0, 0, 0.1) transparent; 
+}
+
+/* Game Item Styles */
+.game-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    border-radius: var(--ui-corner-radius-small, 8px);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    gap: 10px;
+    border: 1px solid transparent;
+}
+
+.game-item .game-item-icon svg {
+    width: 32px;
+    height: 32px;
+    fill: var(--icon-fill);
+    flex-shrink: 0;
+}
+
+.game-item .game-item-icon img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.game-item .game-item-title {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.light-theme .game-item .game-item-title {
+    color: var(--text-color);
+}
+
+/* Hover and Active States */
+.dark-theme .game-item:hover {
+    background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.1);
+}
+
+.dark-theme .game-item.active {
+    background-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.25);
+    border-color: rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.4);
+    color: white;
+}
+
+.dark-theme .game-item.active .game-item-title {
+    color: white;
+    font-weight: 600;
+}
+
+.light-theme .game-item:hover {
+    background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.08);
+}
+
+.light-theme .game-item.active {
+    background-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.2);
+    border-color: rgba(var(--highlight-primary-rgb-light, 0, 122, 255), 0.3);
+    color: var(--highlight-primary);
+}
+
+.light-theme .game-item.active .game-item-title {
+    color: var(--highlight-primary);
+    font-weight: 600;
+}
+
+/* Content Area */
+.game-content-area {
+    flex-grow: 1;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-content-area .initial-message {
+    color: var(--subtle-text-color);
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+/* Game Detail View */
+.game-detail-view {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.game-banner {
+    width: 100%;
+    height: 200px;
+    background-color: var(--subtle-text-color);
+    background-size: cover;
+    background-position: center;
+    border-radius: var(--ui-corner-radius-small);
+    margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
+.game-info-debajo-banner {
+    padding: 0px 10px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.game-title-detail {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.light-theme .game-title-detail {
+    color: var(--text-color);
+}
+
+.game-description {
+    font-size: 0.95rem;
+    color: var(--subtle-text-color);
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.light-theme .game-description {
+    color: var(--subtle-text-color);
+}
+
+/* Play Button */
+.play-button {
+    background-color: var(--highlight-primary);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--ui-corner-radius-small);
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    display: inline-block;
+    margin-bottom: 25px;
+}
+
+.play-button:hover {
+    background-color: color-mix(in srgb, var(--highlight-primary) 85%, black);
+    transform: scale(1.03);
+}
+
+.play-button:active {
+    transform: scale(0.98);
+}
+
+.light-theme .play-button {
+    background-color: var(--highlight-primary);
+}
+
+.light-theme .play-button:hover {
+    background-color: color-mix(in srgb, var(--highlight-primary) 85%, #333);
+}
+
+/* Leaderboard Section */
+.leaderboard-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.light-theme .leaderboard-section {
+    border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+.leaderboard-section h3 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.light-theme .leaderboard-section h3 {
+    color: var(--text-color);
+}
+
+.leaderboard-section p {
+    color: var(--subtle-text-color);
+    font-style: italic;
+}
+
+/* Game Canvas View */
+.game-canvas-view {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+}
+
+/* Canvas Styles */
+#auraBreakerCanvas,
+#aura-snakeCanvas,
+#aura-pongCanvas,
+#aura-tetrisCanvas,
+#aura-invadersCanvas,
+#aura-citadelCanvas,
+#aura-whackCanvas,
+#aura-timberCanvas {
+    background-color: #111;
+    border-radius: var(--ui-corner-radius-small, 8px);
+    display: block;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+#aura-tetrisCanvas {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+/* Exit Game Button */
+.exit-game-button {
+    margin-top: 15px;
+    padding: 8px 18px;
+    background-color: var(--red-accent);
+    color: white;
+    border: none;
+    border-radius: var(--ui-corner-radius-small, 8px);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.exit-game-button:hover {
+    background-color: color-mix(in srgb, var(--red-accent) 80%, black);
+    transform: scale(1.05);
+}
+
+.exit-game-button:active {
+    transform: scale(0.97);
+}
+
+/* Window Body Override */
+#game-center .window-body {
+    padding: 0;
+}
