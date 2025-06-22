@@ -7051,22 +7051,35 @@
                             const bodyContent = doc.body.innerHTML;
                             body.innerHTML = bodyContent;
                             
+                            // Reset the clock app loaded flag to allow re-initialization for new instances
+                            window.clockAppLoaded = undefined;
+                            
                             // Load and execute the Clock app's JavaScript
-                            const script = document.createElement('script');
-                            script.src = 'apps/Clock/js/main.js';
-                            script.onload = () => {
-                                console.log('Clock app JavaScript loaded successfully');
-                            };
-                            script.onerror = () => {
-                                console.error('Failed to load Clock app JavaScript');
-                            };
-                            document.head.appendChild(script);
+                            // Check if the script is already loaded to prevent duplicate declarations
+                            let existingScript = document.head.querySelector('script[src="apps/Clock/js/main.js"]');
+                            if (!existingScript) {
+                                const script = document.createElement('script');
+                                script.src = 'apps/Clock/js/main.js';
+                                script.onload = () => {
+                                    console.log('Clock app JavaScript loaded successfully');
+                                };
+                                script.onerror = () => {
+                                    console.error('Failed to load Clock app JavaScript');
+                                };
+                                document.head.appendChild(script);
+                            } else {
+                                console.log('Clock app JavaScript already loaded');
+                            }
                             
                             // Load the Clock app's CSS
-                            const link = document.createElement('link');
-                            link.rel = 'stylesheet';
-                            link.href = 'apps/Clock/css/style.css';
-                            document.head.appendChild(link);
+                            // Check if the CSS is already loaded to prevent duplicates
+                            let existingCSS = document.head.querySelector('link[href="apps/Clock/css/style.css"]');
+                            if (!existingCSS) {
+                                const link = document.createElement('link');
+                                link.rel = 'stylesheet';
+                                link.href = 'apps/Clock/css/style.css';
+                                document.head.appendChild(link);
+                            }
                         })
                         .catch(error => {
                             console.error('Failed to load Clock app:', error);

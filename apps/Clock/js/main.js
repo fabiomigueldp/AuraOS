@@ -1,11 +1,18 @@
-const digitalClockElement = document.getElementById('time');
-const analogHourHand = document.getElementById('hour-hand');
-const analogMinuteHand = document.getElementById('minute-hand');
-const analogSecondHand = document.getElementById('second-hand');
-const tickMarksContainer = document.getElementById('tick-marks');
+// Prevent multiple executions of the Clock app script
+if (typeof window.clockAppLoaded !== 'undefined') {
+    console.log('Clock app script already loaded, skipping re-initialization');
+} else {
+    window.clockAppLoaded = true;
 
-// Ensure dbManager is available
-const dbManager = window.dbManager;
+    (function() {
+        const digitalClockElement = document.getElementById('time');
+        const analogHourHand = document.getElementById('hour-hand');
+        const analogMinuteHand = document.getElementById('minute-hand');
+        const analogSecondHand = document.getElementById('second-hand');
+        const tickMarksContainer = document.getElementById('tick-marks');
+
+        // Ensure dbManager is available
+        const dbManager = window.dbManager;
 
 async function saveAlarms() {
     if (dbManager) {
@@ -525,3 +532,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetTimer(); // Initialize timer display and state
     clockLoop(); // Start the main clock update loop
 });
+
+    })(); // Close the IIFE
+}
