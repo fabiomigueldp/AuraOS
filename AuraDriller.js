@@ -23,11 +23,21 @@ class AuraDrillerGame {
             console.error('AuraGameSDK not found. AuraDriller initialization may be incomplete.');
         }
 
-        // Game constants
-        this.blockSize = 32;
-        this.gridWidth = 8;
+        // Game constants - responsive design
+        this.updateCanvasDimensions();
+        this.blockSize = Math.min(32, Math.floor(this.canvas.width / 10)); // Adaptive block size
+        this.gridWidth = Math.floor(this.canvas.width / this.blockSize);
         this.gridHeight = Math.floor(this.canvas.height / this.blockSize) + 10; // Initial visible rows + buffer
         this.targetDepth = 200; // Target depth to win
+        
+        // Ensure minimum playable grid
+        if (this.gridWidth < 6) {
+            this.blockSize = Math.floor(this.canvas.width / 6);
+            this.gridWidth = 6;
+        }
+        if (this.gridHeight < 10) {
+            this.gridHeight = 15; // Minimum height for gameplay
+        }
 
         // Game state
         this.grid = [];
@@ -990,6 +1000,22 @@ class AuraDrillerGame {
      */
     _handleKeyUp(event) {
         this.keys[event.key] = false;
+    }
+
+    /**
+     * Update canvas dimensions for responsive design
+     */
+    updateCanvasDimensions() {
+        // Ensure canvas has reasonable minimum dimensions
+        if (this.canvas.width < 320) this.canvas.width = 320;
+        if (this.canvas.height < 240) this.canvas.height = 240;
+        
+        // Set canvas style to prevent blurring
+        this.canvas.style.imageRendering = 'pixelated';
+        this.canvas.style.imageRendering = 'crisp-edges';
+        
+        // Ensure 2D context is crisp
+        this.ctx.imageSmoothingEnabled = false;
     }
 }
 
