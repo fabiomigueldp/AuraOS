@@ -51,7 +51,9 @@ class AuraDrillerGame {
             score: 0,
             depth: 0, // Actual depth in meters/units
             isDrilling: false,
-            drillParticles: []
+            drillParticles: [],
+            movingLeft: false,
+            movingRight: false
         };
         this.currentScrollOffset = 0; // How much the grid has scrolled up in pixels
         this.lowOxygenNotified = false;
@@ -76,6 +78,13 @@ class AuraDrillerGame {
         this.drillSparkImage = null;
         this.blockParticlesImage = null;
         this.backgroundColor = '#120c1c'; // AuraOS dark purple
+        
+        // Player sprite animation
+        this.playerSpriteSize = 1024; // Original sprite size
+        this.playerFrameSize = Math.floor(this.playerSpriteSize / 3); // Each frame is 341x341
+        this.playerCurrentFrame = 0;
+        this.playerAnimationTimer = 0;
+        this.playerAnimationSpeed = 10; // Frames between sprite changes
         
         // Block colors for fallback
         this.blockColors = {
@@ -308,13 +317,31 @@ class AuraDrillerGame {
         // Smooth horizontal movement
         this.player.visualX += (this.player.x * this.blockSize - this.player.visualX) * 0.3;
 
-        const playerScreenX = this.player.visualX;
+        const playerScreenX = Math.max(0, Math.min(this.canvas.width - this.blockSize, this.player.visualX));
         const playerScreenY = this.player.visualY;
+
+        // Ensure player stays within canvas bounds
+        if (playerScreenX < 0 || playerScreenX + this.blockSize > this.canvas.width) {
+            return; // Skip drawing if player would be outside bounds
+        }
 
         // Player Body - use sprite if available, fallback to rectangle
         if (this.playerSprite && this.playerSprite.complete) {
-            // Player sprite is 32x32, use first frame (0,0)
-            this.ctx.drawImage(this.playerSprite, 0, 0, 32, 32, playerScreenX, playerScreenY, this.blockSize, this.blockSize);
+            // Update animation based on player state
+            this.updatePlayerAnimation();
+            
+            // Calculate sprite position on spritesheet (3x3 grid)
+            const col = this.playerCurrentFrame % 3;
+            const row = Math.floor(this.playerCurrentFrame / 3);
+            const spriteX = col * this.playerFrameSize;
+            const spriteY = row * this.playerFrameSize;
+            
+            // Draw the current frame from spritesheet
+            this.ctx.drawImage(
+                this.playerSprite,
+                spriteX, spriteY, this.playerFrameSize, this.playerFrameSize, // Source rectangle
+                playerScreenX, playerScreenY, this.blockSize, this.blockSize  // Destination rectangle
+            );
         } else {
             this.ctx.fillStyle = this.playerColor;
             this.ctx.fillRect(playerScreenX, playerScreenY, this.blockSize, this.blockSize);
@@ -323,15 +350,17 @@ class AuraDrillerGame {
             this.ctx.strokeRect(playerScreenX + 1, playerScreenY + 1, this.blockSize - 2, this.blockSize - 2);
         }
 
-
-        // Drill Bit (more detailed)
-        this.ctx.fillStyle = this.drillColor;
-        this.ctx.beginPath();
-        this.ctx.moveTo(playerScreenX + this.blockSize * 0.2, playerScreenY + this.blockSize);
-        this.ctx.lineTo(playerScreenX + this.blockSize * 0.8, playerScreenY + this.blockSize);
-        this.ctx.lineTo(playerScreenX + this.blockSize * 0.5, playerScreenY + this.blockSize * 1.6);
-        this.ctx.closePath();
-        this.ctx.fill();
+        // Drill Bit (more detailed) - ensure it doesn't go outside canvas
+        const drillTipY = playerScreenY + this.blockSize * 1.6;
+        if (drillTipY < this.canvas.height) {
+            this.ctx.fillStyle = this.drillColor;
+            this.ctx.beginPath();
+            this.ctx.moveTo(playerScreenX + this.blockSize * 0.2, playerScreenY + this.blockSize);
+            this.ctx.lineTo(playerScreenX + this.blockSize * 0.8, playerScreenY + this.blockSize);
+            this.ctx.lineTo(playerScreenX + this.blockSize * 0.5, Math.min(drillTipY, this.canvas.height - 5));
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
 
         // Drilling particles
         if (this.player.isDrilling) {
@@ -341,10 +370,17 @@ class AuraDrillerGame {
                 p.life--;
                 if (p.life <= 0) this.player.drillParticles.splice(index, 1);
                 else {
-                    this.ctx.fillStyle = p.colorAlpha || `rgba(220, 220, 200, ${p.life / p.initialLife})`;
-                    this.ctx.beginPath();
-                    this.ctx.arc(p.x, p.y - this.currentScrollOffset + playerScreenY + this.blockSize, p.size, 0, Math.PI * 2);
-                    this.ctx.fill();
+                    const particleX = p.x;
+                    const particleY = p.y - this.currentScrollOffset + playerScreenY + this.blockSize;
+                    
+                    // Only draw particles within canvas bounds
+                    if (particleX >= 0 && particleX <= this.canvas.width && 
+                        particleY >= 0 && particleY <= this.canvas.height) {
+                        this.ctx.fillStyle = p.colorAlpha || `rgba(220, 220, 200, ${p.life / p.initialLife})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(particleX, particleY, p.size, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
                 }
             });
         }
@@ -528,12 +564,22 @@ class AuraDrillerGame {
             this.drillCooldownTimer -= (1000 / 60);
         }
 
+        // Reset movement states
+        this.player.movingLeft = false;
+        this.player.movingRight = false;
+
         let targetVisualX = this.player.x * this.blockSize;
-        if (this.keys['ArrowLeft'] || this.keys['a']) {
-            if (this.player.x > 0) this.player.x--;
+        if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) {
+            if (this.player.x > 0) {
+                this.player.x--;
+                this.player.movingLeft = true;
+            }
         }
-        if (this.keys['ArrowRight'] || this.keys['d']) {
-            if (this.player.x < this.gridWidth - 1) this.player.x++;
+        if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) {
+            if (this.player.x < this.gridWidth - 1) {
+                this.player.x++;
+                this.player.movingRight = true;
+            }
         }
         // Player horizontal movement is now continuous if key is held, visualX smooths it
 
@@ -1016,6 +1062,43 @@ class AuraDrillerGame {
         
         // Ensure 2D context is crisp
         this.ctx.imageSmoothingEnabled = false;
+    }
+
+    /**
+     * Update player sprite animation based on current state
+     */
+    updatePlayerAnimation() {
+        this.playerAnimationTimer++;
+        
+        // Determine which animation to play based on player state
+        let targetFrame = 0; // Default idle frame (top-left of spritesheet)
+        
+        if (this.player.isDrilling) {
+            // Drilling animation - use frames 3, 4, 5 (middle row)
+            const drillingFrames = [3, 4, 5];
+            const frameIndex = Math.floor(this.playerAnimationTimer / (this.playerAnimationSpeed / 2)) % drillingFrames.length;
+            targetFrame = drillingFrames[frameIndex];
+        } else if (this.player.movingLeft) {
+            // Moving left - use frame 1 (top-center)
+            targetFrame = 1;
+        } else if (this.player.movingRight) {
+            // Moving right - use frame 2 (top-right)
+            targetFrame = 2;
+        } else if (this.player.oxygen < 30) {
+            // Low oxygen warning - alternate between frames 6 and 7 (bottom row)
+            const lowOxygenFrames = [6, 7];
+            const frameIndex = Math.floor(this.playerAnimationTimer / this.playerAnimationSpeed) % lowOxygenFrames.length;
+            targetFrame = lowOxygenFrames[frameIndex];
+        } else {
+            // Idle animation - use frame 0 with occasional blink at frame 8
+            if (this.playerAnimationTimer % (this.playerAnimationSpeed * 8) < this.playerAnimationSpeed) {
+                targetFrame = 8; // Blink frame (bottom-right)
+            } else {
+                targetFrame = 0; // Normal idle frame
+            }
+        }
+        
+        this.playerCurrentFrame = targetFrame;
     }
 }
 
