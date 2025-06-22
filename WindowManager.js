@@ -571,9 +571,9 @@ class WindowManager {
            let baseAppId = record.element.dataset.appId; // dataset.appId should be set at creation
            if (!baseAppId && record.id) { // Fallback, though dataset.appId is preferred
                baseAppId = record.id.split('-')[0];
-               if (apps[baseAppId]?.allowMultiple && record.id.includes('-')) {
+               if (window.apps && window.apps[baseAppId]?.allowMultiple && record.id.includes('-')) {
                    // It's a valid baseAppId for a multi-instance app
-               } else if (!apps[baseAppId]) {
+               } else if (!window.apps || !window.apps[baseAppId]) {
                    baseAppId = record.id; // If not multi-instance or not found, consider full id as appId
                }
            }
@@ -641,7 +641,7 @@ class WindowManager {
 
             for (const s of savedStates) {
                 const appToRestoreId = s.appId;
-                if (!appToRestoreId || !apps[appToRestoreId]) {
+                if (!appToRestoreId || !window.apps || !window.apps[appToRestoreId]) {
                     console.warn("WindowManager: Cannot restore window, appId missing or invalid in saved state:", s);
                     continue;
                 }
@@ -659,7 +659,7 @@ class WindowManager {
                         { width: parseFloat(s.originalNormalWidth.replace('px', '')), height: parseFloat(s.originalNormalHeight.replace('px', '')) } : undefined,
                     initialState: s.state,
                     restoredId: s.id, // Pass the original ID for the new window element
-                    resizable: s.resizable !== undefined ? s.resizable : (apps[appToRestoreId].resizable !== undefined ? apps[appToRestoreId].resizable : true),
+                    resizable: s.resizable !== undefined ? s.resizable : (window.apps && window.apps[appToRestoreId] && window.apps[appToRestoreId].resizable !== undefined ? window.apps[appToRestoreId].resizable : true),
                     filePath: s.filePath || null,
                     zIndexToRestore: s.zIndex // Pass the saved normal zIndex
                 };

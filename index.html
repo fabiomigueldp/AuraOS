@@ -3329,6 +3329,9 @@
             'file-explorer': { title: 'Explorador de Arquivos', width: 750, height: 550, allowMultiple: true }, // Added File Explorer App
         };
         
+        // Make apps globally available for WindowManager
+        window.apps = apps;
+        
         // --- NOVO: AURA MUSIC SONG DATABASE ---
         // Static songs (can be kept for demo purposes)
         const staticSongs = [
