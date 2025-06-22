@@ -161,7 +161,9 @@ class AuraDrillerGame {
         document.removeEventListener('keydown', this._boundKeyDown);
         document.removeEventListener('keyup', this._boundKeyUp);
 
-        AuraGameSDK.audio.stop();
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.stop();
+        }
         console.log('AuraDriller stopped!');
     }
 
@@ -170,14 +172,18 @@ class AuraDrillerGame {
     pause() {
         if (!this.gameRunning || this.gamePaused) return;
         this.gamePaused = true;
-        AuraGameSDK.audio.pause();
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.pause();
+        }
         console.log('AuraDriller paused');
     }
 
     resume() {
         if (!this.gameRunning || !this.gamePaused) return;
         this.gamePaused = false;
-        AuraGameSDK.audio.resume();
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.resume();
+        }
         // Re-focus canvas if needed, though GameCenter usually handles this.
         if (this.canvas && typeof this.canvas.focus === 'function') {
             this.canvas.focus();
@@ -428,6 +434,47 @@ class AuraDrillerGame {
         this.ctx.shadowColor = 'transparent';
     }
 
+    /**
+     * Draw pause screen
+     */
+    drawPauseScreen() {
+        if (!this.gamePaused) return;
+        
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.fillStyle = '#8a63d2';
+        this.ctx.font = `bold ${Math.min(24, this.canvas.width / 15)}px 'Inter', sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2 - 20);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `${Math.min(14, this.canvas.width / 25)}px 'Inter', sans-serif`;
+        this.ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 20);
+    }
+
+    /**
+     * Main draw function
+     */
+    draw() {
+        // Clear canvas with background
+        this.ctx.fillStyle = this.backgroundColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        if (this.gameRunning) {
+            this.drawGrid();
+            this.drawPlayer();
+            this.drawParticles();
+            this.drawFallingBlocks();
+            this.drawUI();
+            
+            if (this.gamePaused) {
+                this.drawPauseScreen();
+            }
+        }
+    }
+
     updateGame() {
         if (!this.gameRunning || this.gamePaused) return;
         const now = Date.now();
@@ -441,7 +488,12 @@ class AuraDrillerGame {
             return;
         }
         if (this.player.oxygen < this.player.maxOxygen * 0.20 && !this.lowOxygenNotified) { // Notify at 20%
-            AuraGameSDK.ui.showNotification({ message: 'Oxygen Critical!', type: 'error', duration: 2500 });
+            if (AuraGameSDK && AuraGameSDK.audio) {
+                AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/sfx_low_oxygen_warning.wav', 0.8);
+            }
+            if (AuraGameSDK && AuraGameSDK.ui) {
+                AuraGameSDK.ui.showNotification({ message: 'Oxygen Critical!', type: 'error', duration: 2500 });
+            }
             this.lowOxygenNotified = true;
         } else if (this.player.oxygen >= this.player.maxOxygen * 0.20) {
             this.lowOxygenNotified = false;
@@ -579,7 +631,9 @@ class AuraDrillerGame {
             const fbGridCol = fb.gridX;
 
             if (fbGridCol === playerCol && fbGridRow === playerHeadRow) {
-                 AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/player_hit.wav');
+                if (AuraGameSDK && AuraGameSDK.audio) {
+                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/player_hit.wav', 0.8);
+                }
                 this.gameOver('Crushed by a falling block!');
                 return;
             }
@@ -661,13 +715,60 @@ class AuraDrillerGame {
                 }
 
                 this.fallingBlocks.splice(i, 1);
-                AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/block_land.wav', 0.6);
+                if (AuraGameSDK && AuraGameSDK.audio) {
+                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/block_land.wav', 0.6);
+                }
                 this.createLandingParticles(col * this.blockSize + this.blockSize / 2, (finalLandingRow + 1) * this.blockSize - this.currentScrollOffset, fb.color);
             }
         }
     }
 
-
+    /**
+     * Draw falling blocks
+     */
+    drawFallingBlocks() {
+        for (const fb of this.fallingBlocks) {
+            if (Date.now() < fb.fallStartTime) continue; // Not started falling yet
+            
+            const x = fb.gridX * this.blockSize + (fb.visualXOffset || 0);
+            const y = fb.y - this.currentScrollOffset;
+            
+            // Only draw if visible on screen
+            if (y > -this.blockSize && y < this.canvas.height && x >= 0 && x < this.canvas.width) {
+                // Draw falling block with slight transparency
+                this.ctx.save();
+                this.ctx.globalAlpha = 0.9;
+                
+                if (fb.color === this.oxygenCapsuleColor) {
+                    // Draw oxygen capsule
+                    if (this.oxygenCapsuleImage && this.oxygenCapsuleImage.complete) {
+                        this.ctx.drawImage(this.oxygenCapsuleImage, x, y, this.blockSize, this.blockSize);
+                    } else {
+                        this.ctx.fillStyle = fb.color;
+                        this.ctx.fillRect(x + 2, y + 2, this.blockSize - 4, this.blockSize - 4);
+                    }
+                } else {
+                    // Draw normal block
+                    const blockType = this.getBlockTypeFromColor(fb.color);
+                    const blockImage = this.blockImages[blockType];
+                    
+                    if (blockImage && blockImage.complete) {
+                        this.ctx.drawImage(blockImage, x, y, this.blockSize, this.blockSize);
+                    } else {
+                        this.ctx.fillStyle = fb.color;
+                        this.ctx.fillRect(x, y, this.blockSize, this.blockSize);
+                    }
+                }
+                
+                // Add falling effect border
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(x, y, this.blockSize, this.blockSize);
+                
+                this.ctx.restore();
+            }
+        }
+    }
     handleChainReaction(r, c, landedBlockColor) {
         const landedBlock = this.grid[r]?.[c];
         if (!landedBlock || landedBlock.type === 'oxygen' || landedBlockColor === this.oxygenCapsuleColor) {
@@ -713,8 +814,12 @@ class AuraDrillerGame {
                 this.player.oxygen = Math.min(this.player.maxOxygen, this.player.oxygen + destroyedCount * 2); // More oxygen
                 const chainBonusScore = destroyedCount * (destroyedCount + 1) * 10; // Higher bonus
                 this.player.score += chainBonusScore;
-                AuraGameSDK.ui.showNotification({ message: `Chain Reaction! +${chainBonusScore} Score, +${destroyedCount * 2} Oxygen!`, type: 'success', duration: 2000 });
-                AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/chain_reaction.wav', 0.9);
+                if (AuraGameSDK && AuraGameSDK.ui) {
+                    AuraGameSDK.ui.showNotification({ message: `Chain Reaction! +${chainBonusScore} Score, +${destroyedCount * 2} Oxygen!`, type: 'success', duration: 2000 });
+                }
+                if (AuraGameSDK && AuraGameSDK.audio) {
+                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/chain_reaction.wav', 0.9);
+                }
             }
         }
     }
