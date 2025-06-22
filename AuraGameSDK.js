@@ -1462,6 +1462,102 @@ const AuraGameSDK = {
          */
         getActiveNotificationCount() {
             return this._activeNotifications.length;
+        },
+
+        /**
+         * Creates and manages a standardized pause menu for games.
+         * @param {object} options - Configuration for the pause menu.
+         * @param {function} options.onResume - Callback function when "Resume" is clicked.
+         * @param {function} options.onRestart - Callback function when "Restart" is clicked.
+         * @param {function} options.onQuit - Callback function when "Quit" is clicked.
+         * @param {string} [options.title='Game Paused'] - Title for the pause menu.
+         * @param {string} [options.gameId='current_game'] - The game ID, used for modal uniqueness.
+         */
+        createPauseMenu(options = {}) {
+            if (!options.onResume || typeof options.onResume !== 'function' ||
+                !options.onRestart || typeof options.onRestart !== 'function' ||
+                !options.onQuit || typeof options.onQuit !== 'function') {
+                console.error('AuraGameSDK.ui.createPauseMenu: onResume, onRestart, and onQuit callbacks are required.');
+                return;
+            }
+
+            const gameId = options.gameId || AuraGameSDK._gameId || 'current_game';
+            const modalId = `aura-pause-menu-${gameId}`;
+
+            // Close existing pause menu if any for this game to prevent duplicates
+            if (document.getElementById(modalId)) {
+                this.hideModal(modalId);
+                // Potentially remove the old modal if SDK manages modal elements directly
+                // For now, hideModal should suffice if modals are reused or properly handled.
+            }
+
+            this._injectCSS(); // Ensure base modal CSS is injected
+
+            const modalTitle = options.title || 'Game Paused';
+
+            const pauseMenuModal = this.createModal(modalId, {
+                title: modalTitle,
+                content: '<p style="text-align: center; margin-bottom: 20px;">Select an option to continue.</p>',
+                buttons: [
+                    {
+                        text: 'Resume',
+                        callback: () => {
+                            this.hideModal(modalId);
+                            options.onResume();
+                        },
+                        className: 'pause-resume-btn'
+                    },
+                    {
+                        text: 'Restart',
+                        callback: () => {
+                            this.hideModal(modalId);
+                            options.onRestart();
+                        },
+                        className: 'pause-restart-btn'
+                    },
+                    {
+                        text: 'Quit',
+                        callback: () => {
+                            this.hideModal(modalId);
+                            options.onQuit();
+                        },
+                        className: 'pause-quit-btn'
+                    }
+                ]
+            });
+
+            if (pauseMenuModal) {
+                // Additional styling for pause menu buttons to match AuraOS theme.
+                // This could also be done by adding specific classes and CSS rules.
+                const buttons = pauseMenuModal.querySelectorAll('.aura-sdk-button');
+                buttons.forEach(button => {
+                    button.style.setProperty('background-color', 'var(--glass-background)');
+                    button.style.setProperty('color', 'var(--text-color)');
+                    button.style.setProperty('border', '1px solid var(--glass-border)');
+                    button.style.setProperty('padding', '10px 20px');
+                    button.style.setProperty('font-weight', '500');
+                    button.style.setProperty('transition', 'background-color 0.2s ease, border-color 0.2s ease');
+
+                    button.addEventListener('mouseenter', () => {
+                        button.style.setProperty('background-color', 'rgba(var(--highlight-primary-rgb, 138, 99, 210), 0.2)');
+                        button.style.setProperty('border-color', 'var(--highlight-primary)');
+                    });
+                    button.addEventListener('mouseleave', () => {
+                        button.style.setProperty('background-color', 'var(--glass-background)');
+                        button.style.setProperty('border-color', 'var(--glass-border)');
+                    });
+                });
+
+                // Style the modal itself to be more theme-aware
+                pauseMenuModal.style.setProperty('background', 'var(--glass-background)');
+                pauseMenuModal.style.setProperty('backdrop-filter', 'blur(15px) saturate(1.7)');
+                pauseMenuModal.style.setProperty('-webkit-backdrop-filter', 'blur(15px) saturate(1.7)');
+                pauseMenuModal.style.setProperty('border', '1px solid var(--glass-border-focus)');
+                pauseMenuModal.style.setProperty('box-shadow', 'var(--window-shadow-focus)');
+
+                this.showModal(modalId);
+            }
+            return modalId; // Return the ID for potential manual control
         }
     }
 };

@@ -69,6 +69,14 @@ export const games = [
         banner: 'gameassets/auratimber.png',
         description: 'Test your reflexes in this fast-paced tree-chopping game! Chop wood while avoiding branches. Time is running out - how high can you score?',
         gameClass: 'AuraTimberGame'
+    },
+    {
+        id: 'aura-driller',
+        title: 'AuraDriller',
+        iconSvg: '<svg viewBox="0 0 32 32" fill="var(--icon-fill)"><path d="M16 4 L12 10 L14 10 L14 18 L10 18 L10 22 L12 22 L12 28 L20 28 L20 22 L22 22 L22 18 L18 18 L18 10 L20 10 Z M15 11 L17 11 L17 17 L15 17 Z M13 19 L19 19 L19 21 L13 21 Z M14 23 L18 23 L18 26 L14 26 Z" /></svg>', // Placeholder Icon
+        banner: 'gameassets/auradriller_banner.png', // Placeholder Banner
+        description: 'Drill downwards through colored blocks, manage oxygen, and reach the target depth. Watch out for falling blocks and trigger chain reactions for bonuses!',
+        gameClass: 'AuraDrillerGame'
     }
 ];
 

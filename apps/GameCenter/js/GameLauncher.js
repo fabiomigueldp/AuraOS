@@ -62,7 +62,8 @@ export function launchGame(gameData, contentArea, onExit) {
     const GameClass = window[gameClassName];
     
     if (typeof GameClass === 'function') {
-        currentGameInstance = new GameClass(canvas);
+        // Pass the onExit callback to the game instance if it might need it (e.g., for pause menu quit)
+        currentGameInstance = new GameClass(canvas, onExit);
         
         // Handle different game starting patterns
         if (gameData.id === 'aura-whack') {
@@ -229,6 +230,34 @@ export function calculateCanvasSize(gameData, contentArea) {
             
             if (canvasWidth > tetrisAvailableWidth) canvasWidth = tetrisAvailableWidth;
             if (canvasHeight > tetrisAvailableHeight) canvasHeight = tetrisAvailableHeight;
+            break;
+
+        case 'aura-driller':
+            // AuraDriller has a fixed grid width (e.g., 8 blocks)
+            // Let's say blocks are 32x32. Grid width = 8 * 32 = 256.
+            // We want to maintain this aspect ratio for the game area.
+            const drillerGridWidthPixels = 8 * 32; // Example: 8 blocks * 32px/block
+            const drillerAspectRatio = drillerGridWidthPixels / (drillerGridWidthPixels * 2); // Example: 1:2 width to effective height for play area
+
+            canvasHeight = Math.min(containerHeight * 0.95, containerWidth / drillerAspectRatio);
+            canvasWidth = canvasHeight * drillerAspectRatio;
+
+            // Ensure it fits within the container, adjusting if necessary
+            if (canvasWidth > containerWidth * 0.95) {
+                canvasWidth = containerWidth * 0.95;
+                canvasHeight = canvasWidth / drillerAspectRatio;
+            }
+            // Ensure minimum size for playability
+            const minDrillerWidth = 256; // 8 blocks * 32px
+            if (canvasWidth < minDrillerWidth) {
+                canvasWidth = minDrillerWidth;
+                canvasHeight = canvasWidth / drillerAspectRatio;
+                 // Re-check height bounds after enforcing min width
+                if (canvasHeight > containerHeight * 0.95) {
+                    canvasHeight = containerHeight * 0.95;
+                    canvasWidth = canvasHeight * drillerAspectRatio;
+                }
+            }
             break;
 
         default:
