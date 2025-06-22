@@ -5,6 +5,30 @@ if (typeof window.clockAppLoaded !== 'undefined') {
     window.clockAppLoaded = true;
 
     (function() {
+        // Find the window element for this Clock app instance
+        const windowElement = document.querySelector('.window:last-of-type');
+        
+        // Register with WindowManager if available
+        if (window.windowManager && windowElement) {
+            console.log('Clock app: Registering with WindowManager');
+            window.windowManager.registerWindow(windowElement, {
+                title: 'Relógio',
+                appId: 'clock-app',
+                resizable: false
+            });
+        }
+        
+        // Check for saved state and restore if available
+        let savedState = null;
+        if (windowElement && windowElement.dataset.appState) {
+            try {
+                savedState = JSON.parse(windowElement.dataset.appState);
+                console.log('Clock app: Found saved state', savedState);
+            } catch (error) {
+                console.error('Clock app: Error parsing saved state:', error);
+            }
+        }
+        
         const digitalClockElement = document.getElementById('time');
         const analogHourHand = document.getElementById('hour-hand');
         const analogMinuteHand = document.getElementById('minute-hand');
@@ -336,6 +360,34 @@ tabButtons.forEach(button => {
   });
 });
 
+// Restore saved state if available
+if (savedState) {
+    console.log('Clock app: Restoring saved state');
+    
+    // Restore active tab
+    if (savedState.activeTab) {
+        const targetButton = document.querySelector(`[data-tab="${savedState.activeTab}"]`);
+        if (targetButton) {
+            // Remove active from all tabs
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Activate the saved tab
+            targetButton.classList.add('active');
+            const targetContent = document.getElementById(savedState.activeTab);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        }
+    }
+    
+    // Restore alarms if available (will be merged with database alarms)
+    if (savedState.alarms && Array.isArray(savedState.alarms)) {
+        console.log('Clock app: Restoring saved alarms');
+        // This will be handled by loadAlarms() function
+    }
+}
+
 function checkAlarms(now) {
   const currentHours = String(now.getHours()).padStart(2, '0');
   const currentMinutes = String(now.getMinutes()).padStart(2, '0');
@@ -531,6 +583,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadAlarms(); // Load alarms, which then calls displayAlarms
     resetTimer(); // Initialize timer display and state
     clockLoop(); // Start the main clock update loop
+    
+    // Setup cleanup when window is closed
+    if (windowElement) {
+        windowElement.addEventListener('aura:close', () => {
+            console.log('Clock app: Window closing, performing cleanup');
+            // Stop any running timers/intervals if needed
+            // The clockLoop and other intervals should be cleaned up here
+        });
+        
+        // Setup state saving for WindowManager
+        windowElement.addEventListener('aura:beforeClose', () => {
+            if (window.windowManager) {
+                // Save current tab state
+                const activeTab = document.querySelector('.tab-button.active');
+                const currentState = {
+                    activeTab: activeTab ? activeTab.dataset.tab : 'clock-view',
+                    alarms: alarms || []
+                };
+                
+                windowElement.dataset.appState = JSON.stringify(currentState);
+                console.log('Clock app: State saved for restoration');
+            }
+        });
+    }
 });
 
     })(); // Close the IIFE

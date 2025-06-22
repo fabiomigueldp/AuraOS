@@ -578,7 +578,7 @@ class WindowManager {
                }
            }
             if (!baseAppId && record.title) { // Try to infer from title if ID doesn't help
-                const appEntry = Object.entries(apps).find(([_, appDetails]) => appDetails.title === record.title);
+                const appEntry = window.apps ? Object.entries(window.apps).find(([_, appDetails]) => appDetails.title === record.title) : null;
                 if (appEntry) baseAppId = appEntry[0];
             }
 

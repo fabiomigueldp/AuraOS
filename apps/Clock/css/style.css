@@ -1,57 +1,24 @@
-/* AuraOS Clock App Styling */
-:root {
-  /* Standard AuraOS variables (assuming they are defined elsewhere, e.g. in a global stylesheet) */
-  /* Fallbacks are provided if AuraOS variables are not available */
-  --background-primary: var(--aura-bg-primary, #2c3e50);
-  --background-secondary: var(--aura-bg-secondary, #34495e);
-  --glass-background: var(--aura-glass-bg, rgba(52, 73, 94, 0.8));
-  --text-color: var(--aura-text-primary, #ecf0f1);
-  --text-secondary-color: var(--aura-text-secondary, #bdc3c7);
-  --highlight-primary: var(--aura-highlight-primary, #3498db);
-  --highlight-secondary: var(--aura-highlight-secondary, #2980b9);
-  --border-color: var(--aura-border-color, #4a6278);
-  --input-background: var(--aura-input-bg, #3e576f);
-  --button-primary-bg: var(--aura-button-primary-bg, #3498db);
-  --button-primary-hover-bg: var(--aura-button-primary-hover-bg, #2980b9);
-  --button-secondary-bg: var(--aura-button-secondary-bg, #56708a);
-  --button-secondary-hover-bg: var(--aura-button-secondary-hover-bg, #4a6278);
-  --danger-color: var(--aura-danger, #e74c3c);
-  --danger-hover-color: var(--aura-danger-hover, #c0392b);
-
-  --font-family-main: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
-  --font-family-monospace: 'Consolas', 'Monaco', 'Lucida Console', monospace;
-}
-
-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /* justify-content: center; */ /* Removed to allow content to flow from top */
-  min-height: 100vh;
-  margin: 0;
-  background-color: var(--background-primary);
-  color: var(--text-color);
-  font-family: var(--font-family-main);
-  padding-top: 20px; /* Add some padding at the top */
-  box-sizing: border-box;
-}
+/* AuraOS Clock App Styling with Glass Theme Integration */
 
 .app-container {
   width: 100%;
-  max-width: 600px; /* Max width for the clock app content */
-  margin: 0 auto;
-  padding: 15px;
-  box-sizing: border-box;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  overflow: hidden;
 }
 
 #analog-clock {
-  margin: 20px auto; /* Centered with margin */
+  margin: 20px auto;
   display: flex;
   justify-content: center;
 }
 
 #analog-clock svg {
-  stroke: var(--text-color); /* Default stroke for SVG elements */
+  stroke: var(--text-primary);
 }
 
 #analog-clock .clock-face {
@@ -61,13 +28,13 @@ body {
 }
 
 #analog-clock .hour-hand {
-  stroke: var(--text-color);
+  stroke: var(--text-primary);
   stroke-width: 6px;
   stroke-linecap: round;
 }
 
 #analog-clock .minute-hand {
-  stroke: var(--text-color);
+  stroke: var(--text-primary);
   stroke-width: 4px;
   stroke-linecap: round;
 }
@@ -83,68 +50,86 @@ body {
 }
 
 #analog-clock .tick {
-  stroke: var(--text-secondary-color);
+  stroke: var(--text-secondary);
   stroke-width: 1px;
 }
 
 #analog-clock .hour-tick {
-  stroke: var(--text-color);
+  stroke: var(--text-primary);
   stroke-width: 2px;
 }
 
 
 #digital-clock {
-  font-size: 3em; /* Larger digital clock */
+  font-size: 2.5em;
   text-align: center;
   margin-bottom: 25px;
-  font-family: var(--font-family-monospace);
-  color: var(--text-color);
-  text-shadow: 0 0 5px var(--highlight-primary);
+  font-family: var(--font-family-mono);
+  color: var(--text-primary);
+  text-shadow: 0 0 10px var(--highlight-primary);
+  font-weight: 300;
 }
 
-/* Tabs styling */
+/* Tabs styling with AuraOS Glass theme */
 .tabs {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
-  background-color: var(--background-secondary);
-  border-radius: 8px;
-  padding: 5px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 .tab-button {
   padding: 12px 20px;
   cursor: pointer;
   border: none;
-  background-color: transparent;
-  color: var(--text-secondary-color);
-  font-size: 1em;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.95em;
   font-weight: 500;
-  border-radius: 6px;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  margin: 0 5px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  margin: 0 4px;
+  position: relative;
+  overflow: hidden;
 }
 
 .tab-button:hover {
-  background-color: var(--glass-background);
-  color: var(--text-color);
+  background: var(--glass-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .tab-button.active {
-  background-color: var(--highlight-primary);
-  color: white; /* Ensure contrast on active tab */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  background: var(--highlight-primary);
+  color: white;
+  box-shadow: var(--button-shadow);
 }
 
-/* Tab content styling */
+.tab-button.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+  pointer-events: none;
+}
+
+/* Tab content styling with glass theme */
 .tab-content {
   display: none;
   padding: 25px;
-  background-color: var(--glass-background);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  background: var(--glass-background);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 .tab-content.active {
@@ -162,70 +147,100 @@ body {
   padding-bottom: 10px;
 }
 
-/* Input and Button styling */
+/* Input and Button styling with AuraOS Glass theme */
 input[type="time"],
 input[type="text"],
 input[type="number"] {
-  background-color: var(--input-background);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  padding: 10px;
-  border-radius: 4px;
+  background: var(--glass-background);
+  backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  padding: 12px 16px;
+  border-radius: 8px;
   margin-right: 10px;
   font-size: 0.95em;
+  transition: all 0.3s ease;
+}
+
+input[type="time"]:focus,
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--highlight-primary);
+  box-shadow: 0 0 0 3px rgba(var(--highlight-primary-rgb), 0.1);
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(1); /* Make the time picker icon visible on dark backgrounds */
+  filter: invert(1);
 }
 
 button {
-  padding: 10px 18px;
+  padding: 12px 20px;
   cursor: pointer;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   font-size: 0.95em;
   font-weight: 500;
-  transition: background-color 0.2s ease, transform 0.1s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 button:active {
-    transform: translateY(1px);
+  transform: translateY(1px);
 }
 
-/* Primary button style (e.g., Add Alarm, Start) */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary button style */
 .button-primary {
-  background-color: var(--button-primary-bg);
+  background: var(--highlight-primary);
   color: white;
-}
-.button-primary:hover {
-  background-color: var(--button-primary-hover-bg);
+  box-shadow: var(--button-shadow);
 }
 
-/* Secondary button style (e.g., Edit, Lap) */
+.button-primary:hover:not(:disabled) {
+  background: var(--highlight-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(var(--highlight-primary-rgb), 0.3);
+}
+
+/* Secondary button style */
 .button-secondary {
-  background-color: var(--button-secondary-bg);
-  color: var(--text-color);
-}
-.button-secondary:hover {
-  background-color: var(--button-secondary-hover-bg);
+  background: var(--glass-background);
+  backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
 }
 
-/* Danger button style (e.g., Delete, Reset) */
+.button-secondary:hover:not(:disabled) {
+  background: var(--glass-hover);
+  transform: translateY(-1px);
+}
+
+/* Danger button style */
 .button-danger {
-  background-color: var(--danger-color);
+  background: var(--danger-color);
   color: white;
+  box-shadow: var(--button-shadow);
 }
-.button-danger:hover {
-  background-color: var(--danger-hover-color);
+
+.button-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
 }
 
 
-/* Alarms list styling */
-#alarms-view div:first-of-type { /* Targeting the input group */
+/* Alarms list styling with glass theme */
+#alarms-view div:first-of-type {
   display: flex;
   align-items: center;
   margin-bottom: 20px;
+  gap: 12px;
 }
 
 #alarms-view div:first-of-type input[type="time"] {
@@ -234,10 +249,6 @@ button:active {
 #alarms-view div:first-of-type input[type="text"] {
   flex-grow: 1;
 }
-#alarms-view div:first-of-type button {
-  margin-left: 10px;
-}
-
 
 #alarms-list {
   list-style-type: none;
@@ -247,78 +258,88 @@ button:active {
 }
 
 #alarms-list li {
-  padding: 12px 15px;
-  border-bottom: 1px solid var(--border-color);
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--glass-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background-color 0.15s ease;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--glass-background);
+  backdrop-filter: blur(10px);
 }
 
 #alarms-list li:hover {
-    background-color: rgba(255,255,255,0.05);
-}
-
-#alarms-list li:last-child {
-  border-bottom: none;
+  background: var(--glass-hover);
+  transform: translateX(4px);
 }
 
 #alarms-list .alarm-info {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
 }
 
 #alarms-list input[type="checkbox"] {
   margin-right: 12px;
-  transform: scale(1.2); /* Larger checkbox */
+  transform: scale(1.2);
   cursor: pointer;
+  accent-color: var(--highlight-primary);
 }
 
 #alarms-list span {
   font-size: 1.1em;
+  color: var(--text-primary);
+}
+
+#alarms-list .alarm-actions {
+  display: flex;
+  gap: 8px;
 }
 
 #alarms-list .alarm-actions button {
-  margin-left: 8px;
-  padding: 6px 12px; /* Smaller buttons for actions */
+  padding: 8px 16px;
+  font-size: 0.85em;
 }
-
 
 /* Styling for disabled alarms */
 #alarms-list li.disabled span {
   text-decoration: line-through;
-  color: var(--text-secondary-color);
+  color: var(--text-secondary);
   opacity: 0.7;
 }
 
 /* Stopwatch & Timer styling */
 #stopwatch-view h3, #timer-view h3 {
-  font-size: 3.5em; /* Larger time display */
+  font-size: 3.2em;
   margin-bottom: 20px;
-  font-family: var(--font-family-monospace);
+  font-family: var(--font-family-mono);
   text-align: center;
-  color: var(--text-color);
-  text-shadow: 0 0 8px var(--highlight-primary);
+  color: var(--text-primary);
+  text-shadow: 0 0 20px var(--highlight-primary);
+  font-weight: 300;
 }
 
-.controls-group { /* For stopwatch and timer controls */
+.controls-group {
   display: flex;
   justify-content: center;
-  gap: 10px; /* Space between buttons */
+  gap: 12px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .controls-group button {
-  padding: 12px 20px; /* Larger control buttons */
-  min-width: 100px; /* Ensure buttons have a decent width */
+  padding: 14px 24px;
+  min-width: 100px;
+  font-weight: 600;
 }
 
 .controls-group button:disabled {
-  background-color: var(--button-secondary-hover-bg); /* More subtle disabled state */
-  color: var(--text-secondary-color);
+  background: var(--glass-background);
+  color: var(--text-secondary);
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 #stopwatch-laps {
@@ -327,14 +348,19 @@ button:active {
   margin-top: 20px;
   max-height: 200px;
   overflow-y: auto;
-  font-family: var(--font-family-monospace);
+  font-family: var(--font-family-mono);
   font-size: 0.95em;
 }
 
 #stopwatch-laps li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary-color);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: color 0.3s ease;
+}
+
+#stopwatch-laps li:hover {
+  color: var(--text-primary);
 }
 
 #stopwatch-laps li:last-child {
@@ -343,17 +369,87 @@ button:active {
 
 /* Timer specific input fields */
 #timer-inputs {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    align-items: center;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+#timer-inputs label {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9em;
 }
 
 #timer-inputs input[type="number"] {
-    width: 70px; /* Fixed width for number inputs */
-    text-align: center;
-    font-size: 1.1em;
+  width: 70px;
+  text-align: center;
+  font-size: 1.2em;
+  font-weight: 500;
+  background: var(--glass-background);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 12px 8px;
+  color: var(--text-primary);
+}
+
+/* Scrollbar styling for glass theme */
+#alarms-list::-webkit-scrollbar,
+#stopwatch-laps::-webkit-scrollbar {
+  width: 8px;
+}
+
+#alarms-list::-webkit-scrollbar-track,
+#stopwatch-laps::-webkit-scrollbar-track {
+  background: var(--glass-background);
+  border-radius: 4px;
+}
+
+#alarms-list::-webkit-scrollbar-thumb,
+#stopwatch-laps::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+
+#alarms-list::-webkit-scrollbar-thumb:hover,
+#stopwatch-laps::-webkit-scrollbar-thumb:hover {
+  background: var(--highlight-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .app-container {
+    padding: 10px;
+  }
+  
+  #digital-clock {
+    font-size: 2em;
+  }
+  
+  #stopwatch-view h3, #timer-view h3 {
+    font-size: 2.5em;
+  }
+  
+  .controls-group {
+    gap: 8px;
+  }
+  
+  .controls-group button {
+    padding: 10px 16px;
+    min-width: 80px;
+    font-size: 0.9em;
+  }
+  
+  .tabs {
+    padding: 6px;
+  }
+  
+  .tab-button {
+    padding: 10px 16px;
+    font-size: 0.9em;
+  }
 }
 
 #timer-inputs label {

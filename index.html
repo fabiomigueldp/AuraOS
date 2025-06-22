@@ -7083,6 +7083,23 @@
                                 link.href = 'apps/Clock/css/style.css';
                                 document.head.appendChild(link);
                             }
+                            
+                            // Ensure the Clock app is registered with WindowManager
+                            // This is a fallback in case the script doesn't register it
+                            setTimeout(() => {
+                                if (window.windowManager && windowEl) {
+                                    // Check if already registered
+                                    const isRegistered = window.windowManager.windows.some(w => w.id === windowEl.id);
+                                    if (!isRegistered) {
+                                        console.log('Clock app: Fallback registration with WindowManager');
+                                        window.windowManager.registerWindow(windowEl, {
+                                            title: 'Relógio',
+                                            appId: 'clock-app',
+                                            resizable: false
+                                        });
+                                    }
+                                }
+                            }, 100); // Small delay to ensure script has loaded
                         })
                         .catch(error => {
                             console.error('Failed to load Clock app:', error);
