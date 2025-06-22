@@ -1,6 +1,9 @@
 /**
  * @file AuraDriller.js
- * Implements the AuraDriller game for AuraOS.
+ * Implements the AuraDriller game for AuraOS - MVP Version
+ * 
+ * A deep-drilling mining adventure where players control an astronaut
+ * drilling through layers of colored blocks while managing oxygen.
  */
 
 class AuraDrillerGame {
@@ -15,28 +18,31 @@ class AuraDrillerGame {
         this.gameRunning = false;
         this.gamePaused = false;
         this.gameInterval = null;
-        this.onExitCallback = onExit || null; // Store the onExit callback
+        this.onExitCallback = onExit || null;
 
+        // Initialize SDK
         if (typeof AuraGameSDK !== 'undefined' && AuraGameSDK) {
             AuraGameSDK.init('aura-driller', this.canvas);
         } else {
-            console.error('AuraGameSDK not found. AuraDriller initialization may be incomplete.');
+            console.warn('AuraGameSDK not found. Some features may be limited.');
         }
 
-        // Game constants - responsive design
-        this.updateCanvasDimensions();
-        this.blockSize = Math.min(32, Math.floor(this.canvas.width / 10)); // Adaptive block size
-        this.gridWidth = Math.floor(this.canvas.width / this.blockSize);
-        this.gridHeight = Math.floor(this.canvas.height / this.blockSize) + 10; // Initial visible rows + buffer
-        this.targetDepth = 200; // Target depth to win
+        // Setup canvas for optimal rendering
+        this.setupCanvas();
         
-        // Ensure minimum playable grid
-        if (this.gridWidth < 6) {
-            this.blockSize = Math.floor(this.canvas.width / 6);
-            this.gridWidth = 6;
+        // Game constants - optimized for MVP
+        this.blockSize = Math.max(24, Math.min(32, Math.floor(this.canvas.width / 16)));
+        this.gridWidth = Math.floor(this.canvas.width / this.blockSize);
+        this.gridHeight = Math.floor(this.canvas.height / this.blockSize) + 20;
+        this.targetDepth = 100; // Reasonable target for MVP
+        
+        // Ensure playable grid dimensions
+        if (this.gridWidth < 8) {
+            this.blockSize = Math.floor(this.canvas.width / 8);
+            this.gridWidth = 8;
         }
-        if (this.gridHeight < 10) {
-            this.gridHeight = 15; // Minimum height for gameplay
+        if (this.gridHeight < 15) {
+            this.gridHeight = 20;
         }
 
         // Game state
@@ -45,11 +51,11 @@ class AuraDrillerGame {
             x: Math.floor(this.gridWidth / 2),
             y: 0, // Current depth in terms of blocks drilled from the initial surface
             visualX: Math.floor(this.gridWidth / 2) * this.blockSize, // For smooth horizontal movement
-            visualY: this.blockSize, // Player's visual Y on screen (fixed)
+            visualY: this.blockSize,
             oxygen: 100,
             maxOxygen: 100,
             score: 0,
-            depth: 0, // Actual depth in meters/units
+            depth: 0,
             isDrilling: false,
             drillParticles: [],
             movingLeft: false,
@@ -99,27 +105,45 @@ class AuraDrillerGame {
         this._loadAssets();
         this._setupTheming();
 
-
         // Bind event listeners
         this._boundKeyDown = this._handleKeyDown.bind(this);
         this._boundKeyUp = this._handleKeyUp.bind(this);
     }
 
+    /**
+     * Setup canvas for optimal rendering
+     */
+    setupCanvas() {
+        // Ensure canvas has reasonable minimum dimensions
+        if (this.canvas.width < 320) this.canvas.width = 320;
+        if (this.canvas.height < 240) this.canvas.height = 240;
+        
+        // Set canvas style to prevent blurring
+        this.canvas.style.imageRendering = 'pixelated';
+        this.canvas.style.imageRendering = 'crisp-edges';
+        
+        // Ensure 2D context is crisp
+        this.ctx.imageSmoothingEnabled = false;
+    }
+
     _setupTheming() {
-        const rootStyle = getComputedStyle(document.documentElement);
-        this.blockColors = [
-            rootStyle.getPropertyValue('--highlight-primary').trim() || '#8a63d2',
-            rootStyle.getPropertyValue('--highlight-secondary').trim() || '#63d2b3',
-            rootStyle.getPropertyValue('--red-accent').trim() || '#ff5f56',
-            rootStyle.getPropertyValue('--yellow-accent').trim() || '#ffbd2e',
-            rootStyle.getPropertyValue('--green-accent').trim() || '#27c93f',
-            '#4a90e2', // Bright Blue
-            '#f5a623'  // Orange
-        ];
-        this.oxygenCapsuleColor = 'rgba(200, 225, 255, 0.95)'; // Lighter, more distinct
-        this.playerColor = rootStyle.getPropertyValue('--text-color').trim() || '#f0f0f5';
-        this.drillColor = rootStyle.getPropertyValue('--subtle-text-color').trim() || '#b0a8d9';
-        this.particleColor = rootStyle.getPropertyValue('--highlight-primary').trim() || '#8a63d2';
+        // Use fixed colors for consistency in MVP
+        this.playerColor = '#f0f0f5';
+        this.drillColor = '#b0a8d9';
+        this.oxygenCapsuleColor = 'rgba(100, 200, 255, 0.9)';
+        
+        // Ensure colors are available even without CSS
+        const colorKeys = Object.keys(this.blockColors);
+        if (colorKeys.length === 0) {
+            this.blockColors = {
+                'blue': '#4a90e2',
+                'cyan': '#63d2b3', 
+                'green': '#27c93f',
+                'magenta': '#8a63d2',
+                'red': '#ff5f56',
+                'yellow': '#ffbd2e'
+            };
+        }
     }
 
     /**
@@ -230,19 +254,26 @@ class AuraDrillerGame {
 
     initializeGrid() {
         this.grid = [];
+        const colorValues = Object.values(this.blockColors);
+        
         for (let r = 0; r < this.gridHeight; r++) {
             const row = [];
             for (let c = 0; c < this.gridWidth; c++) {
                 if (r < 3) { // Initial empty space
                     row.push(null);
                 } else {
-                    const isOxygenCapsule = Math.random() < 0.035; // Reduced chance
+                    const isOxygenCapsule = Math.random() < 0.04; // Balanced oxygen chance
                     if (isOxygenCapsule) {
-                        row.push({ type: 'oxygen', color: this.oxygenCapsuleColor, id: `block-${r}-${c}`, visualState: 'normal' });
+                        row.push({ 
+                            type: 'oxygen', 
+                            color: this.oxygenCapsuleColor, 
+                            id: `block-${r}-${c}`, 
+                            visualState: 'normal' 
+                        });
                     } else {
                         row.push({
                             type: 'normal',
-                            color: this.blockColors[Math.floor(Math.random() * this.blockColors.length)],
+                            color: colorValues[Math.floor(Math.random() * colorValues.length)],
                             id: `block-${r}-${c}`,
                             visualState: 'normal'
                         });
@@ -256,8 +287,9 @@ class AuraDrillerGame {
     drawGrid() {
         const startRow = Math.floor(this.currentScrollOffset / this.blockSize);
         const offsetY = this.currentScrollOffset % this.blockSize;
+        const visibleRows = Math.ceil(this.canvas.height / this.blockSize) + 2; // +2 for smooth scrolling
 
-        for (let r = 0; r <= Math.ceil(this.canvas.height / this.blockSize) + 1; r++) { // +1 to draw one more row for smooth scroll
+        for (let r = 0; r < visibleRows; r++) {
             const actualRowIndex = startRow + r;
             if (actualRowIndex < 0 || actualRowIndex >= this.grid.length) continue;
 
@@ -267,48 +299,53 @@ class AuraDrillerGame {
                 if (block) {
                     const x = c * this.blockSize;
                     const y = r * this.blockSize - offsetY;
-
-                    if (block.visualState === 'breaking') {
-                        const animProgress = (Date.now() - block.breakStartTime) / 150; // Faster break
-                        if (animProgress >= 1) {
-                            this.grid[actualRowIndex][c] = null;
-                            continue;
-                        }
-                        this.ctx.save();
-                        this.ctx.globalAlpha = 1 - animProgress;
-                        this.ctx.fillStyle = block.color;
-                        this.ctx.fillRect(x + (this.blockSize * animProgress / 2), y + (this.blockSize * animProgress / 2),
-                                          this.blockSize * (1 - animProgress), this.blockSize * (1 - animProgress));
-                        this.ctx.restore();
-                    } else if (block.type === 'oxygen') {
-                        // Draw oxygen capsule with image if available, fallback to colored rect
-                        if (this.oxygenCapsuleImage && this.oxygenCapsuleImage.complete) {
-                            this.ctx.drawImage(this.oxygenCapsuleImage, x, y, this.blockSize, this.blockSize);
-                        } else {
-                            this.ctx.fillStyle = block.color; // Already has alpha
-                            this.ctx.fillRect(x + 2, y + 2, this.blockSize - 4, this.blockSize - 4);
-                            this.ctx.fillStyle = '#102c3c';
-                            this.ctx.font = `bold ${Math.max(10, this.blockSize * 0.4)}px 'Inter', sans-serif`;
-                            this.ctx.textAlign = 'center';
-                            this.ctx.textBaseline = 'middle';
-                            this.ctx.fillText('O₂', x + this.blockSize / 2, y + this.blockSize / 2 + 1);
-                        }
-                    } else {
-                        // Draw normal block with image if available, fallback to colored rect
-                        const blockType = this.getBlockTypeFromColor(block.color);
-                        const blockImage = this.blockImages[blockType];
-                        
-                        if (blockImage && blockImage.complete) {
-                            this.ctx.drawImage(blockImage, x, y, this.blockSize, this.blockSize);
-                        } else {
+                    
+                    // Only draw blocks that are visible on screen
+                    if (y > -this.blockSize && y < this.canvas.height && x >= 0 && x < this.canvas.width) {
+                        if (block.visualState === 'breaking') {
+                            const animProgress = (Date.now() - block.breakStartTime) / 150; // Faster break
+                            if (animProgress >= 1) {
+                                this.grid[actualRowIndex][c] = null;
+                                continue;
+                            }
+                            this.ctx.save();
+                            this.ctx.globalAlpha = 1 - animProgress;
                             this.ctx.fillStyle = block.color;
-                            this.ctx.fillRect(x, y, this.blockSize, this.blockSize);
+                            this.ctx.fillRect(x + (this.blockSize * animProgress / 2), y + (this.blockSize * animProgress / 2),
+                                              this.blockSize * (1 - animProgress), this.blockSize * (1 - animProgress));
+                            this.ctx.restore();
+                        } else if (block.type === 'oxygen') {
+                            // Draw oxygen capsule with image if available, fallback to colored rect
+                            if (this.oxygenCapsuleImage && this.oxygenCapsuleImage.complete) {
+                                this.ctx.drawImage(this.oxygenCapsuleImage, x, y, this.blockSize, this.blockSize);
+                            } else {
+                                this.ctx.fillStyle = block.color;
+                                this.ctx.fillRect(x + 2, y + 2, this.blockSize - 4, this.blockSize - 4);
+                                this.ctx.fillStyle = '#ffffff';
+                                this.ctx.font = `bold ${Math.max(8, this.blockSize * 0.35)}px Arial`;
+                                this.ctx.textAlign = 'center';
+                                this.ctx.textBaseline = 'middle';
+                                this.ctx.fillText('O₂', x + this.blockSize / 2, y + this.blockSize / 2);
+                            }
+                        } else {
+                            // Draw normal block with image if available, fallback to colored rect
+                            const blockType = this.getBlockTypeFromColor(block.color);
+                            const blockImage = this.blockImages[blockType];
+                            
+                            if (blockImage && blockImage.complete) {
+                                this.ctx.drawImage(blockImage, x, y, this.blockSize, this.blockSize);
+                            } else {
+                                this.ctx.fillStyle = block.color;
+                                this.ctx.fillRect(x, y, this.blockSize, this.blockSize);
+                            }
                         }
-                    }
-                    if (block.visualState !== 'breaking') { // Don't draw border for breaking blocks
-                        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-                        this.ctx.lineWidth = 1;
-                        this.ctx.strokeRect(x + 0.5, y + 0.5, this.blockSize - 1, this.blockSize - 1);
+                        
+                        // Draw border for better visibility
+                        if (block.visualState !== 'breaking') {
+                            this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                            this.ctx.lineWidth = 1;
+                            this.ctx.strokeRect(x + 0.5, y + 0.5, this.blockSize - 1, this.blockSize - 1);
+                        }
                     }
                 }
             }
@@ -409,76 +446,68 @@ class AuraDrillerGame {
 
 
     drawUI() {
-        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#FFF';
-        this.ctx.font = `bold 18px 'Inter', sans-serif`;
+        // Dynamic font sizes based on canvas size
+        const baseFontSize = Math.max(12, Math.min(18, this.canvas.width / 30));
+        const smallFontSize = Math.max(10, Math.min(14, this.canvas.width / 40));
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `bold ${baseFontSize}px Arial`;
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
 
-        this.ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        this.ctx.shadowBlur = 3;
+        // Text shadow for better readability
+        this.ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        this.ctx.shadowBlur = 2;
         this.ctx.shadowOffsetX = 1;
         this.ctx.shadowOffsetY = 1;
 
-        this.ctx.fillText(`Score: ${this.player.score}`, 20, 20);
-        this.ctx.fillText(`Depth: ${this.player.depth}m`, 20, 48);
+        this.ctx.fillText(`Score: ${this.player.score}`, 15, 15);
+        this.ctx.fillText(`Depth: ${this.player.depth}m / ${this.targetDepth}m`, 15, 15 + baseFontSize + 5);
 
-        this.ctx.shadowColor = 'transparent'; // Reset shadow for other elements
+        this.ctx.shadowColor = 'transparent';
 
-        const oxygenBarMaxWidth = 180;
-        const oxygenBarHeight = 25;
-        const oxygenBarX = this.canvas.width - oxygenBarMaxWidth - 20;
-        const oxygenBarY = 20;
+        // Oxygen bar - responsive sizing
+        const oxygenBarMaxWidth = Math.min(180, this.canvas.width * 0.25);
+        const oxygenBarHeight = Math.max(20, Math.min(25, this.canvas.height * 0.04));
+        const oxygenBarX = this.canvas.width - oxygenBarMaxWidth - 15;
+        const oxygenBarY = 15;
         const barRadius = 6;
 
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.beginPath();
-        this.ctx.moveTo(oxygenBarX + barRadius, oxygenBarY);
-        this.ctx.lineTo(oxygenBarX + oxygenBarMaxWidth - barRadius, oxygenBarY);
-        this.ctx.quadraticCurveTo(oxygenBarX + oxygenBarMaxWidth, oxygenBarY, oxygenBarX + oxygenBarMaxWidth, oxygenBarY + barRadius);
-        this.ctx.lineTo(oxygenBarX + oxygenBarMaxWidth, oxygenBarY + oxygenBarHeight - barRadius);
-        this.ctx.quadraticCurveTo(oxygenBarX + oxygenBarMaxWidth, oxygenBarY + oxygenBarHeight, oxygenBarX + oxygenBarMaxWidth - barRadius, oxygenBarY + oxygenBarHeight);
-        this.ctx.lineTo(oxygenBarX + barRadius, oxygenBarY + oxygenBarHeight);
-        this.ctx.quadraticCurveTo(oxygenBarX, oxygenBarY + oxygenBarHeight, oxygenBarX, oxygenBarY + oxygenBarHeight - barRadius);
-        this.ctx.lineTo(oxygenBarX, oxygenBarY + barRadius);
-        this.ctx.quadraticCurveTo(oxygenBarX, oxygenBarY, oxygenBarX + barRadius, oxygenBarY);
-        this.ctx.closePath();
-        this.ctx.fill();
+        // Oxygen bar background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        this.ctx.fillRect(oxygenBarX, oxygenBarY, oxygenBarMaxWidth, oxygenBarHeight);
 
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        this.ctx.lineWidth = 1.5;
-        this.ctx.stroke();
-
-        const currentOxygenWidth = Math.max(0, (this.player.oxygen / this.player.maxOxygen) * oxygenBarMaxWidth);
-        const oxygenGradient = this.ctx.createLinearGradient(oxygenBarX, 0, oxygenBarX + oxygenBarMaxWidth, 0);
-        oxygenGradient.addColorStop(0, '#ff5f56'); // Red
-        oxygenGradient.addColorStop(0.35, '#ffbd2e'); // Yellow
-        oxygenGradient.addColorStop(0.7, '#27c93f');   // Green
-        this.ctx.fillStyle = oxygenGradient;
-
-        if (currentOxygenWidth > barRadius * 2) { // Ensure there's enough width for curves
-            this.ctx.beginPath();
-            this.ctx.moveTo(oxygenBarX + barRadius, oxygenBarY);
-            this.ctx.lineTo(oxygenBarX + currentOxygenWidth - barRadius, oxygenBarY);
-            this.ctx.quadraticCurveTo(oxygenBarX + currentOxygenWidth, oxygenBarY, oxygenBarX + currentOxygenWidth, oxygenBarY + barRadius);
-            this.ctx.lineTo(oxygenBarX + currentOxygenWidth, oxygenBarY + oxygenBarHeight - barRadius);
-            this.ctx.quadraticCurveTo(oxygenBarX + currentOxygenWidth, oxygenBarY + oxygenBarHeight, oxygenBarX + currentOxygenWidth - barRadius, oxygenBarY + oxygenBarHeight);
-            this.ctx.lineTo(oxygenBarX + barRadius, oxygenBarY + oxygenBarHeight);
-            this.ctx.quadraticCurveTo(oxygenBarX, oxygenBarY + oxygenBarHeight, oxygenBarX, oxygenBarY + oxygenBarHeight - barRadius);
-            this.ctx.lineTo(oxygenBarX, oxygenBarY + barRadius);
-            this.ctx.quadraticCurveTo(oxygenBarX, oxygenBarY, oxygenBarX + barRadius, oxygenBarY);
-            this.ctx.closePath();
-            this.ctx.fill();
-        } else if (currentOxygenWidth > 0) { // Fallback for very small widths
-             this.ctx.fillRect(oxygenBarX, oxygenBarY, currentOxygenWidth, oxygenBarHeight);
+        // Oxygen bar fill
+        const oxygenPercent = Math.max(0, this.player.oxygen / this.player.maxOxygen);
+        const currentOxygenWidth = oxygenPercent * oxygenBarMaxWidth;
+        
+        // Color gradient based on oxygen level
+        let oxygenColor;
+        if (oxygenPercent > 0.6) {
+            oxygenColor = '#27c93f'; // Green
+        } else if (oxygenPercent > 0.3) {
+            oxygenColor = '#ffbd2e'; // Yellow
+        } else {
+            oxygenColor = '#ff5f56'; // Red
         }
+        
+        this.ctx.fillStyle = oxygenColor;
+        this.ctx.fillRect(oxygenBarX, oxygenBarY, currentOxygenWidth, oxygenBarHeight);
 
+        // Oxygen bar border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(oxygenBarX, oxygenBarY, oxygenBarMaxWidth, oxygenBarHeight);
 
-        this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#FFF';
-        this.ctx.font = `bold 11px 'Inter', sans-serif`;
+        // Oxygen label
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `bold ${smallFontSize}px Arial`;
         this.ctx.textAlign = 'center';
-        this.ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        this.ctx.shadowColor = 'rgba(0,0,0,0.8)';
         this.ctx.shadowBlur = 2;
-        this.ctx.fillText(`OXYGEN`, oxygenBarX + oxygenBarMaxWidth / 2, oxygenBarY + oxygenBarHeight / 2 + 4);
+        this.ctx.fillText(`OXYGEN ${Math.floor(this.player.oxygen)}%`, 
+                         oxygenBarX + oxygenBarMaxWidth / 2, 
+                         oxygenBarY + oxygenBarHeight / 2 + 4);
         this.ctx.shadowColor = 'transparent';
     }
 
@@ -529,21 +558,28 @@ class AuraDrillerGame {
 
         this.handlePlayerActions(now);
 
-        this.player.oxygen -= 0.035; // Slightly slower passive depletion
+        // Oxygen depletion - balanced for MVP
+        this.player.oxygen -= 0.025; // Slower depletion for better gameplay
         if (this.player.oxygen <= 0) {
             this.player.oxygen = 0;
             this.gameOver('Out of Oxygen');
             return;
         }
-        if (this.player.oxygen < this.player.maxOxygen * 0.20 && !this.lowOxygenNotified) { // Notify at 20%
+        
+        // Low oxygen warning
+        if (this.player.oxygen < 25 && !this.lowOxygenNotified) {
             if (AuraGameSDK && AuraGameSDK.audio) {
                 AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/sfx_low_oxygen_warning.wav', 0.8);
             }
             if (AuraGameSDK && AuraGameSDK.ui) {
-                AuraGameSDK.ui.showNotification({ message: 'Oxygen Critical!', type: 'error', duration: 2500 });
+                AuraGameSDK.ui.showNotification({ 
+                    message: 'Oxygen Critical!', 
+                    type: 'error', 
+                    duration: 2500 
+                });
             }
             this.lowOxygenNotified = true;
-        } else if (this.player.oxygen >= this.player.maxOxygen * 0.20) {
+        } else if (this.player.oxygen >= 30) {
             this.lowOxygenNotified = false;
         }
 
@@ -551,13 +587,15 @@ class AuraDrillerGame {
         this.initiateFallingBlocks(now);
         this.checkCollisions();
 
+        // Extend grid when needed
         const playerVisualGridTop = Math.floor(this.currentScrollOffset / this.blockSize);
-        if (playerVisualGridTop > this.grid.length - (this.canvas.height / this.blockSize) * 1.5) { // Extend sooner
+        if (playerVisualGridTop > this.grid.length - (this.canvas.height / this.blockSize) * 2) {
             this.extendGrid();
         }
 
+        // Win condition
         if (this.player.depth >= this.targetDepth) {
-            this.gameOver('Target Depth Reached!');
+            this.gameWin();
         }
     }
 
@@ -604,71 +642,104 @@ class AuraDrillerGame {
 
         const blockToDrill = this.grid[drillEffectiveRow][drillCol];
 
-        if (blockToDrill && blockToDrill.visualState !== 'breaking') { // Can only drill non-breaking blocks
+        if (blockToDrill && blockToDrill.visualState !== 'breaking') {
+            // Play drill sound
             if (AuraGameSDK && AuraGameSDK.audio) {
                 AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/drill.wav', 0.7);
             }
 
             if (blockToDrill.type === 'oxygen') {
-                this.player.oxygen = Math.min(this.player.maxOxygen, this.player.oxygen + 30); // Increased oxygen
+                // Oxygen pickup
+                this.player.oxygen = Math.min(this.player.maxOxygen, this.player.oxygen + 25);
+                this.player.score += 50; // Bonus for oxygen
+                
                 if (AuraGameSDK && AuraGameSDK.audio) {
                     AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/oxygen_pickup.wav', 0.8);
                 }
                 if (AuraGameSDK && AuraGameSDK.ui) {
-                    AuraGameSDK.ui.showNotification({ message: 'Oxygen +30!', type: 'success', duration: 1500 });
+                    AuraGameSDK.ui.showNotification({ 
+                        message: 'Oxygen +25!', 
+                        type: 'success', 
+                        duration: 1500 
+                    });
                 }
             } else {
-                this.player.oxygen -= 0.25; // Slightly less cost for drilling
+                // Normal block drilling
+                this.player.oxygen -= 0.5; // Drilling cost
+                this.player.score += 10;
+                
                 if (AuraGameSDK && AuraGameSDK.audio) {
                     AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/block_break.wav', 0.6);
                 }
             }
 
+            // Start breaking animation
             blockToDrill.visualState = 'breaking';
             blockToDrill.breakStartTime = Date.now();
 
-            this.player.score += 10;
+            // Create drill particles
+            this.createDrillParticles(blockToDrill);
 
-            this.player.isDrilling = true;
-            this.player.drillParticles = []; // Clear old particles
-            const particleCount = blockToDrill.type === 'oxygen' ? 12 : 6;
-            const particleBaseColor = blockToDrill.type === 'oxygen' ? {r:173, g:216, b:230} : this.hexToRgb(blockToDrill.color);
-
-            for(let i=0; i < particleCount; i++) {
-                this.player.drillParticles.push({
-                    x: (this.player.x + 0.5) * this.blockSize + (Math.random() - 0.5) * (this.blockSize * 0.6),
-                    y: this.player.visualY + this.blockSize * 1.5, // Start at drill tip relative to player's visual Y
-                    vx: (Math.random() - 0.5) * 2.5,
-                    vy: Math.random() * 1.5 + 0.5,
-                    size: Math.random() * 2.5 + 1.5,
-                    life: Math.random() * 20 + 15,
-                    initialLife: Math.random() * 20 + 15,
-                    colorAlpha: particleBaseColor ? `rgba(${particleBaseColor.r}, ${particleBaseColor.g}, ${particleBaseColor.b}, 0.8)` : `rgba(200,200,200,0.7)`
-                });
-            }
-            setTimeout(() => this.player.isDrilling = false, 100); // Short drilling animation
+            // Update depth and scroll
+            this.player.depth++;
+            this.currentScrollOffset += this.blockSize;
+            this.player.y = Math.floor(this.currentScrollOffset / this.blockSize);
         }
+    }
 
-        this.player.depth++;
-        this.player.score += 1;
-        this.currentScrollOffset += this.blockSize;
-        this.player.y = Math.floor(this.currentScrollOffset / this.blockSize);
+    createDrillParticles(block) {
+        this.player.isDrilling = true;
+        this.player.drillParticles = [];
+        
+        const particleCount = block.type === 'oxygen' ? 12 : 6;
+        const particleBaseColor = block.type === 'oxygen' ? 
+            {r: 100, g: 200, b: 255} : 
+            this.hexToRgb(block.color);
+
+        for(let i = 0; i < particleCount; i++) {
+            this.player.drillParticles.push({
+                x: (this.player.x + 0.5) * this.blockSize + (Math.random() - 0.5) * (this.blockSize * 0.6),
+                y: this.player.visualY + this.blockSize * 1.5,
+                vx: (Math.random() - 0.5) * 2.5,
+                vy: Math.random() * 1.5 + 0.5,
+                size: Math.random() * 2.5 + 1.5,
+                life: Math.random() * 20 + 15,
+                initialLife: Math.random() * 20 + 15,
+                colorAlpha: particleBaseColor ? 
+                    `rgba(${particleBaseColor.r}, ${particleBaseColor.g}, ${particleBaseColor.b}, 0.8)` : 
+                    `rgba(200,200,200,0.7)`
+            });
+        }
+        
+        // Stop drilling animation after short duration
+        setTimeout(() => this.player.isDrilling = false, 100);
     }
 
 
     extendGrid() {
-        const rowsToExtend = 15;
+        const rowsToExtend = 10;
+        const colorValues = Object.values(this.blockColors);
+        
         for (let i = 0; i < rowsToExtend; i++) {
             const newRowArray = [];
             const newRowIndexGlobal = this.grid.length;
+            
             for (let c = 0; c < this.gridWidth; c++) {
-                const oxygenChance = 0.035 - (newRowIndexGlobal / (this.targetDepth * 3)) * 0.02;
-                if (Math.random() < Math.max(0.01, oxygenChance)) {
-                    newRowArray.push({ type: 'oxygen', color: this.oxygenCapsuleColor, id: `block-${newRowIndexGlobal}-${c}`, visualState: 'normal' });
+                // Decrease oxygen chance as player goes deeper
+                const depthFactor = Math.min(0.02, newRowIndexGlobal / (this.targetDepth * 5));
+                const oxygenChance = Math.max(0.01, 0.04 - depthFactor);
+                
+                if (Math.random() < oxygenChance) {
+                    newRowArray.push({ 
+                        type: 'oxygen', 
+                        color: this.oxygenCapsuleColor, 
+                        id: `block-${newRowIndexGlobal}-${c}`, 
+                        visualState: 'normal' 
+                    });
                 } else {
                     newRowArray.push({
                         type: 'normal',
-                        color: this.blockColors[Math.floor(Math.random() * this.blockColors.length)],
+                        color: colorValues[Math.floor(Math.random() * colorValues.length)],
                         id: `block-${newRowIndexGlobal}-${c}`,
                         visualState: 'normal'
                     });
@@ -1015,6 +1086,58 @@ class AuraDrillerGame {
         }
     }
 
+    /**
+     * Handle winning the game
+     */
+    gameWin() {
+        if (!this.gameRunning) return;
+        
+        this.gameRunning = false;
+        this.gamePaused = true;
+        
+        // Stop audio
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.stop();
+        }
+        
+        // Calculate final score with bonuses
+        const depthBonus = this.player.depth * 5;
+        const oxygenBonus = Math.floor(this.player.oxygen) * 2;
+        const finalScore = this.player.score + depthBonus + oxygenBonus;
+        
+        // Draw win screen
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.fillStyle = '#27c93f';
+        this.ctx.font = `bold ${Math.min(32, this.canvas.width / 12)}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('MISSION COMPLETE!', this.canvas.width / 2, this.canvas.height / 2 - 80);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `${Math.min(16, this.canvas.width / 22)}px Arial`;
+        this.ctx.fillText(`Target depth of ${this.targetDepth}m reached!`, this.canvas.width / 2, this.canvas.height / 2 - 40);
+        this.ctx.fillText(`Final Score: ${finalScore}`, this.canvas.width / 2, this.canvas.height / 2 - 10);
+        this.ctx.fillText(`Depth: ${this.player.depth}m`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.ctx.fillText(`Oxygen Remaining: ${Math.floor(this.player.oxygen)}%`, this.canvas.width / 2, this.canvas.height / 2 + 50);
+        
+        this.ctx.fillStyle = '#8a63d2';
+        this.ctx.font = `${Math.min(14, this.canvas.width / 25)}px Arial`;
+        this.ctx.fillText('Press ESC to return to menu or R to play again', this.canvas.width / 2, this.canvas.height / 2 + 90);
+        
+        // Show notification
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            AuraGameSDK.ui.showNotification({ 
+                message: `Mission Complete! Score: ${finalScore}`, 
+                type: 'success', 
+                duration: 4000 
+            });
+        }
+        
+        // Update player score to final score
+        this.player.score = finalScore;
+    }
     /**
      * Handle key input
      */
