@@ -2599,6 +2599,15 @@
                         </svg>
                         <p>Calculadora</p>
                     </div>
+                    
+                    <div class="desktop-icon" data-app-id="clock-app" title="Relógio">
+                        <svg viewBox="0 0 24 24" fill="var(--icon-fill)">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            <circle cx="12" cy="12" r="9" stroke="var(--icon-fill)" stroke-width="1.5" fill="none"/>
+                            <path d="M12 6v6l4 2" stroke="var(--icon-fill)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+                        </svg>
+                        <p>Relógio</p>
+                    </div>
                     <div class="desktop-icon" data-app-id="game-center" title="Game Center">
                         <svg viewBox="0 0 24 24" fill="var(--icon-fill)"><path d="M16.5 9.5c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-9 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6.75 3.25c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zm-4.5 0c-.41 0-.75.34-.75.75s.34.75.75.75.75-.34.75-.75-.34-.75-.75-.75zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-13c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg>
                         <p>Game Center</p>
@@ -3313,6 +3322,7 @@
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
             'aura-3d-viewer': { title: 'Aura 3D Viewer', width: 700, height: 550, allowMultiple: true },
             'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
+            'clock-app': { title: 'Relógio', width: 450, height: 500, resizable: false },
             'game-center': { title: 'Game Center', width: 800, height: 600 },
             'aura-paint': { title: 'AuraPaint', width: 700, height: 550 },
             'aura-flow': { title: 'AuraFlow', width: 800, height: 600, allowMultiple: false },
@@ -7029,6 +7039,39 @@
                     windowEl.setAttribute('tabindex', '-1');
                     // Optionally, focus it when created, though focusWindow should handle this.
                     // windowEl.focus(); // This might be too aggressive if called directly here.
+                    break;
+                case 'clock-app':
+                    // Load the Clock app's HTML content
+                    fetch('apps/Clock/index.html')
+                        .then(response => response.text())
+                        .then(html => {
+                            // Extract the body content from the fetched HTML
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = html;
+                            const bodyContent = tempDiv.querySelector('body').innerHTML;
+                            body.innerHTML = bodyContent;
+                            
+                            // Load and execute the Clock app's JavaScript
+                            const script = document.createElement('script');
+                            script.src = 'apps/Clock/js/main.js';
+                            script.onload = () => {
+                                console.log('Clock app JavaScript loaded successfully');
+                            };
+                            script.onerror = () => {
+                                console.error('Failed to load Clock app JavaScript');
+                            };
+                            document.head.appendChild(script);
+                            
+                            // Load the Clock app's CSS
+                            const link = document.createElement('link');
+                            link.rel = 'stylesheet';
+                            link.href = 'apps/Clock/css/style.css';
+                            document.head.appendChild(link);
+                        })
+                        .catch(error => {
+                            console.error('Failed to load Clock app:', error);
+                            body.innerHTML = '<p style="color: red; padding: 10px;">Erro ao carregar o aplicativo Relógio.</p>';
+                        });
                     break;
                 case 'task-manager':
                     body.innerHTML = `
