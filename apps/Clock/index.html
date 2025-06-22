@@ -5,60 +5,106 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="tabs">
-    <button class="tab-button active" data-tab="clock-view">Clock</button>
-    <button class="tab-button" data-tab="alarms-view">Alarms</button>
-    <button class="tab-button" data-tab="stopwatch-view">Stopwatch</button>
-    <button class="tab-button" data-tab="timer-view">Timer</button>
-  </div>
-
-  <div id="clock-view" class="tab-content active">
-    <div id="analog-clock">
-      <!-- Placeholder for analog clock (e.g., SVG or canvas) -->
-      <svg width="200" height="200">
-        <circle cx="100" cy="100" r="90" stroke="black" stroke-width="2" fill="white" />
-        <line id="hour-hand" x1="100" y1="100" x2="100" y2="50" stroke="black" stroke-width="4" />
-        <line id="minute-hand" x1="100" y1="100" x2="100" y2="30" stroke="black" stroke-width="3" />
-        <line id="second-hand" x1="100" y1="100" x2="100" y2="20" stroke="red" stroke-width="2" />
-      </svg>
+  <div class="app-container">
+    <div class="tabs">
+      <button class="tab-button active" data-tab="clock-view">Clock</button>
+      <button class="tab-button" data-tab="alarms-view">Alarms</button>
+      <button class="tab-button" data-tab="stopwatch-view">Stopwatch</button>
+      <button class="tab-button" data-tab="timer-view">Timer</button>
     </div>
-    <div id="digital-clock">
-      <!-- Placeholder for digital clock -->
-      <span id="time"></span>
+
+    <div id="clock-view" class="tab-content active">
+      <div id="analog-clock">
+        <svg width="220" height="220" viewBox="0 0 220 220">
+          <circle class="clock-face" cx="110" cy="110" r="100" />
+          <!-- Tick marks -->
+          <g id="tick-marks">
+            <!-- Hour ticks -->
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(0, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(30, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(60, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(90, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(120, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(150, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(180, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(210, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(240, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(270, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(300, 110, 110)" />
+            <line class="hour-tick" x1="110" y1="20" x2="110" y2="35" transform="rotate(330, 110, 110)" />
+            <!-- Minute ticks (example for first 5 minutes) -->
+            <line class="tick" x1="110" y1="20" x2="110" y2="30" transform="rotate(6, 110, 110)" />
+            <line class="tick" x1="110" y1="20" x2="110" y2="30" transform="rotate(12, 110, 110)" />
+            <line class="tick" x1="110" y1="20" x2="110" y2="30" transform="rotate(18, 110, 110)" />
+            <line class="tick" x1="110" y1="20" x2="110" y2="30" transform="rotate(24, 110, 110)" />
+          </g>
+          <line id="hour-hand" class="hour-hand" x1="110" y1="110" x2="110" y2="60" />
+          <line id="minute-hand" class="minute-hand" x1="110" y1="110" x2="110" y2="40" />
+          <line id="second-hand" class="second-hand" x1="110" y1="110" x2="110" y2="30" />
+          <circle class="center-dot" cx="110" cy="110" r="4" />
+        </svg>
+      </div>
+      <div id="digital-clock">
+        <span id="time"></span>
+      </div>
+    </div>
+
+    <div id="alarms-view" class="tab-content">
+      <h2>Alarms</h2>
+      <div>
+        <input type="time" id="alarm-time" />
+        <input type="text" id="alarm-label" placeholder="Alarm label" />
+        <button id="add-alarm-button" class="button-primary">Add Alarm</button>
+      </div>
+      <ul id="alarms-list">
+        <!-- Alarms will be listed here -->
+        <!-- Example list item structure:
+        <li>
+            <div class="alarm-info">
+                <input type="checkbox" checked />
+                <span>07:00 - Wake up!</span>
+            </div>
+            <div class="alarm-actions">
+                <button class="button-secondary">Edit</button>
+                <button class="button-danger">Delete</button>
+            </div>
+        </li>
+        -->
+      </ul>
+    </div>
+
+    <div id="stopwatch-view" class="tab-content">
+      <h2>Stopwatch</h2>
+      <h3 id="stopwatch-time">00:00:00.000</h3>
+      <div class="controls-group">
+        <button id="start-stopwatch" class="button-primary">Start</button>
+        <button id="stop-stopwatch" class="button-secondary" disabled>Stop</button>
+        <button id="lap-stopwatch" class="button-secondary" disabled>Lap</button>
+        <button id="reset-stopwatch" class="button-danger">Reset</button>
+      </div>
+      <ul id="stopwatch-laps">
+        <!-- Lap times will be listed here -->
+      </ul>
+    </div>
+
+    <div id="timer-view" class="tab-content">
+      <h2>Timer</h2>
+      <h3 id="timer-display">00:00:00</h3>
+      <div id="timer-inputs">
+        <label for="timer-hours">H:</label>
+        <input type="number" id="timer-hours" min="0" max="23" value="0">
+        <label for="timer-minutes">M:</label>
+        <input type="number" id="timer-minutes" min="0" max="59" value="0">
+        <label for="timer-seconds">S:</label>
+        <input type="number" id="timer-seconds" min="0" max="59" value="5"> <!-- Default to 5 seconds for quick testing -->
+      </div>
+      <div class="controls-group">
+        <button id="start-timer" class="button-primary">Start</button>
+        <button id="pause-timer" class="button-secondary" disabled>Pause</button>
+        <button id="reset-timer" class="button-danger">Reset</button>
+      </div>
     </div>
   </div>
-
-  <div id="alarms-view" class="tab-content">
-    <h2>Alarms</h2>
-    <div>
-      <input type="time" id="alarm-time" />
-      <input type="text" id="alarm-label" placeholder="Alarm label" />
-      <button id="add-alarm-button">Add Alarm</button>
-    </div>
-    <ul id="alarms-list">
-      <!-- Alarms will be listed here -->
-    </ul>
-  </div>
-
-  <div id="stopwatch-view" class="tab-content">
-    <h2>Stopwatch</h2>
-    <h3 id="stopwatch-time">00:00:00.000</h3>
-    <div class="stopwatch-controls">
-      <button id="start-stopwatch">Start</button>
-      <button id="stop-stopwatch" disabled>Stop</button>
-      <button id="lap-stopwatch" disabled>Lap</button>
-      <button id="reset-stopwatch">Reset</button>
-    </div>
-    <ul id="stopwatch-laps">
-      <!-- Lap times will be listed here -->
-    </ul>
-  </div>
-
-  <div id="timer-view" class="tab-content">
-    <h2>Timer</h2>
-    <!-- Timer UI will go here -->
-  </div>
-
   <script src="js/main.js"></script>
 </body>
 </html>
