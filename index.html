@@ -7046,9 +7046,9 @@
                         .then(response => response.text())
                         .then(html => {
                             // Extract the body content from the fetched HTML
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = html;
-                            const bodyContent = tempDiv.querySelector('body').innerHTML;
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const bodyContent = doc.body.innerHTML;
                             body.innerHTML = bodyContent;
                             
                             // Load and execute the Clock app's JavaScript
