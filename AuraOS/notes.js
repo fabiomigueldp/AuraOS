@@ -11,6 +11,10 @@ class AuraNotesApp {
         this.boundDestroy = this.destroy.bind(this);
         this.windowEl.addEventListener('aura:close', this.boundDestroy);
 
+        // Bind file system change handler
+        this.boundHandleFileSystemChange = this.handleFileSystemChange.bind(this);
+        document.addEventListener('aura:filesystem:change', this.boundHandleFileSystemChange);
+
         this._initUI();
         // Call the async initialization logic
         this._initialize();
@@ -21,19 +25,23 @@ class AuraNotesApp {
             await this._initEditor(); // Wait for editor to be ready
             await this._loadNotesList(); // Then load notes metadata
 
-            if (this.data && this.data.filePath) {
+            // Check if a specific file path was provided to open
+            if (this.data && this.data.filePath && this.data.filePath.endsWith('.txt')) {
                 console.log(`AuraNotesApp: filePath provided: ${this.data.filePath}. Loading it.`);
-                // Ensure the note list has rendered and this.notesCache is populated
-                // _loadNotesList should handle the initial rendering.
-                // A small delay might be needed if _renderFilteredNotes is not fully synchronous
-                // with DOM updates, but ideally it should be.
-                // For now, assume _loadNotesList completes fully including render.
+                // Ensure this note exists in cache or can be loaded
+                // _loadNoteIntoEditor will handle fetching if not in cache.
                 await this._loadNoteIntoEditor(this.data.filePath);
+            } else if (this.notesCache.length > 0) {
+                // If no specific file, and notes exist, load the most recent (first in sorted cache)
+                console.log("AuraNotesApp: No specific filePath, loading most recent note.");
+                await this._loadNoteIntoEditor(this.notesCache[0].path);
             } else {
-                // If _loadNotesList already selected a note (e.g. most recent one),
-                // that selection will be active. If not (e.g. no notes),
-                // _loadNoteIntoEditor(null) inside _loadNotesList handles the empty state.
-                console.log("AuraNotesApp: No specific filePath provided, relying on _loadNotesList's default selection or empty state.");
+                // No notes exist, and no specific file to load
+                console.log("AuraNotesApp: No specific filePath and no notes in cache. Editor will be empty.");
+                if (this.editor) {
+                    this.editor.setValue('Nenhuma anotação. Crie uma nova!');
+                }
+                this.currentNotePath = null;
             }
         } catch (error) {
             console.error("AuraNotesApp: Error during initialization:", error);
@@ -43,6 +51,54 @@ class AuraNotesApp {
             }
         }
     }
+
+    handleFileSystemChange(event) {
+        console.log('AuraNotesApp: Received aura:filesystem:change event', event.detail);
+        const { action, path, oldPath, type } = event.detail;
+        let relevantChange = false;
+
+        // Determine if the change is relevant to the Notes app's view
+        // Typically, Notes app cares about changes in its designated notes directory (e.g., /Notes/)
+        // or changes to the currently open file, regardless of its location.
+        const notesAppDirectory = '/Notes/'; // Configurable or determined dynamically if needed
+
+        if (path.startsWith(notesAppDirectory) || (oldPath && oldPath.startsWith(notesAppDirectory))) {
+            relevantChange = true;
+        } else if (this.currentNotePath && (path === this.currentNotePath || (oldPath && oldPath === this.currentNotePath))) {
+            relevantChange = true;
+        }
+
+        if (relevantChange) {
+            console.log('AuraNotesApp: Filesystem change is relevant. Refreshing notes list.');
+            this._loadNotesList().then(async () => {
+                // Special handling if the currently open note was deleted or renamed
+                if (action === 'delete' && path === this.currentNotePath) {
+                    console.log(`AuraNotesApp: Currently open note ${this.currentNotePath} was deleted.`);
+                    this.currentNotePath = null; // Clear current path
+                    // _loadNotesList will attempt to load the most recent or set empty state
+                    // If _loadNotesList doesn't automatically select a new note, explicitly clear editor:
+                    if (!this.currentNotePath && this.editor) { // Check if a new note was selected by _loadNotesList
+                        this.editor.setValue('Anotação excluída. Selecione outra ou crie uma nova.');
+                    }
+                } else if (action === 'rename' && oldPath === this.currentNotePath) {
+                    console.log(`AuraNotesApp: Currently open note ${oldPath} was renamed to ${path}.`);
+                    this.currentNotePath = path; // Update to new path
+                    // Content is still the same, editor doesn't need update unless title is derived from path.
+                    // _loadNotesList will re-render sidebar with new name.
+                    // Re-highlight in sidebar if necessary (though _loadNotesList should handle active states)
+                    const activeListItem = this.notesListDiv.querySelector(`.note-item[data-note-path="${CSS.escape(path)}"]`);
+                    if (activeListItem) {
+                        this.notesListDiv.querySelectorAll('.note-item.active').forEach(item => item.classList.remove('active'));
+                        activeListItem.classList.add('active');
+                    }
+                }
+                // If a new file was created and it's now the most recent, _loadNotesList might select it.
+            }).catch(error => {
+                console.error("AuraNotesApp: Error refreshing notes list after filesystem change:", error);
+            });
+        }
+    }
+
 
     async _loadNoteIntoEditor(filePath) {
         if (!this.editor) {
@@ -119,50 +175,30 @@ class AuraNotesApp {
         if (!filePath) return;
 
         const noteToDelete = this.notesCache.find(n => n.path === filePath);
-        // Use cached title (filename based) or derive from path for the confirmation dialog and notifications.
         const noteTitle = noteToDelete ? (noteToDelete.title || filePath.split('/').pop().replace('.txt','')) : filePath.split('/').pop().replace('.txt','');
 
-        Aura.UI.createModal({
-            title: 'Confirmar Exclusão',
-            message: `Tem certeza que deseja excluir "${noteTitle}"? Esta ação não pode ser desfeita.`,
-            buttons: [
-                {
-                    label: 'Cancelar',
-                    action: (modal) => modal.close()
-                },
-                {
-                    label: 'Confirmar',
-                    action: async (modal) => {
-                        try {
-                            await dbManager.deleteFile(filePath);
-                            console.log(`AuraNotesApp: Note ${filePath} deleted from DB.`);
-                            AuraOS.showNotification({ title: 'Anotação Excluída', message: `"${noteTitle}" foi excluída.`, type: 'info' });
-
-                            if (this.currentNotePath === filePath) {
-                                this.currentNotePath = null; // Signal to _loadNotesList to select a new default
-                                if (this.editor) {
-                                    // Clear editor immediately, _loadNotesList will load new content if a note is selected
-                                    this.editor.setValue('');
-                                }
-                            }
-
-                            // Reloads cache from DB (which will exclude the deleted note),
-                            // re-renders the list, and handles selection logic
-                            // (e.g. selects most recent if currentNotePath is null and notes exist,
-                            // or sets empty state if no notes are left).
-                            await this._loadNotesList();
-
-                        } catch (error) {
-                            console.error(`AuraNotesApp: Error deleting note ${filePath}:`, error);
-                            AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Não foi possível excluir "${noteTitle}". Detalhes: ${error.message}`, type: 'error' });
-                        } finally {
-                            modal.close(); // Ensure modal is closed in either case
-                        }
-                    },
-                    primary: true
+        // Use global AuraOS.dialog.confirm
+        AuraOS.dialog.confirm(
+            `Tem certeza que deseja excluir "${noteTitle}"? Esta ação não pode ser desfeita.`,
+            async () => { // onConfirm
+                try {
+                    const success = await window.deleteItem(filePath); // Use global deleteItem
+                    if (success) {
+                        console.log(`AuraNotesApp: Note ${filePath} deletion initiated via global deleteItem.`);
+                        // Notification is handled by deleteItem if successful.
+                        // The file system event 'aura:filesystem:change' will trigger _loadNotesList
+                        // and handle UI updates, including clearing editor if current note was deleted.
+                    } else {
+                        // deleteItem handles its own error notifications.
+                        console.error(`AuraNotesApp: Failed to delete note ${filePath} via global deleteItem.`);
+                    }
+                } catch (error) {
+                    console.error(`AuraNotesApp: Error calling global deleteItem for ${filePath}:`, error);
+                    AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Não foi possível excluir "${noteTitle}". Detalhes: ${error.message}`, type: 'error' });
                 }
-            ]
-        });
+            }
+            // No onCancel needed for AuraOS.dialog.confirm if default behavior is just to close.
+        );
     }
 
     async _autoSaveNote() {
@@ -255,27 +291,26 @@ class AuraNotesApp {
             }
 
             const initialContent = `# ${newNoteName.replace('.txt', '')}\n\n`;
-            const newFileMeta = {
-                path: newFilePath,
-                type: 'file',
-                lastModified: Date.now()
-            };
+            // Use global createItem
+            const success = await window.createItem(newFilePath, 'file', initialContent);
 
-            await dbManager.saveFile(newFileMeta, initialContent);
-            console.log(`AuraNotesApp: New note created at ${newFilePath}`);
-            AuraOS.showNotification({ title: 'Anotação Criada', message: `"${newNoteName.replace('.txt', '')}" foi criada.`, type: 'success' });
-
-            // Refresh notes list from DB & load the new note
-            await this._loadNotesList(); // This will update cache and sidebar
-            await this._loadNoteIntoEditor(newFilePath); // This will load content and set active
-
-            if (this.editor) {
-                this.editor.focus();
+            if (success) {
+                console.log(`AuraNotesApp: New note ${newFilePath} creation initiated via global createItem.`);
+                // Notification is handled by createItem.
+                // The filesystem event will trigger _loadNotesList, which will update the sidebar.
+                // We then explicitly load the new note into the editor.
+                await this._loadNotesList(); // Ensure cache is updated before loading
+                await this._loadNoteIntoEditor(newFilePath);
+                if (this.editor) {
+                    this.editor.focus();
+                }
+            } else {
+                // createItem handles its own error notifications.
+                console.error(`AuraNotesApp: Failed to create new note ${newFilePath} via global createItem.`);
             }
-
         } catch (error) {
-            console.error('AuraNotesApp: Error creating new note:', error);
-            AuraOS.showNotification({ title: 'Erro ao Criar Nota', message: `Ocorreu um erro: ${error.message}`, type: 'error' });
+            console.error('AuraNotesApp: Error in new note creation process:', error);
+            AuraOS.showNotification({ title: 'Erro ao Criar Nota', message: `Ocorreu um erro inesperado: ${error.message}`, type: 'error' });
         }
     }
 
