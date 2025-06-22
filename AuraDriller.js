@@ -295,12 +295,17 @@ class AuraDrillerGame {
         const playerScreenX = this.player.visualX;
         const playerScreenY = this.player.visualY;
 
-        // Player Body (simple rectangle)
-        this.ctx.fillStyle = this.playerColor;
-        this.ctx.fillRect(playerScreenX, playerScreenY, this.blockSize, this.blockSize);
-        this.ctx.strokeStyle = 'rgba(var(--highlight-primary-rgb), 0.8)';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(playerScreenX + 1, playerScreenY + 1, this.blockSize - 2, this.blockSize - 2);
+        // Player Body - use sprite if available, fallback to rectangle
+        if (this.playerSprite && this.playerSprite.complete) {
+            // Player sprite is 32x32, use first frame (0,0)
+            this.ctx.drawImage(this.playerSprite, 0, 0, 32, 32, playerScreenX, playerScreenY, this.blockSize, this.blockSize);
+        } else {
+            this.ctx.fillStyle = this.playerColor;
+            this.ctx.fillRect(playerScreenX, playerScreenY, this.blockSize, this.blockSize);
+            this.ctx.strokeStyle = 'rgba(138, 99, 210, 0.8)';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(playerScreenX + 1, playerScreenY + 1, this.blockSize - 2, this.blockSize - 2);
+        }
 
 
         // Drill Bit (more detailed)
@@ -490,15 +495,23 @@ class AuraDrillerGame {
         const blockToDrill = this.grid[drillEffectiveRow][drillCol];
 
         if (blockToDrill && blockToDrill.visualState !== 'breaking') { // Can only drill non-breaking blocks
-            AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/drill.wav', 0.7);
+            if (AuraGameSDK && AuraGameSDK.audio) {
+                AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/drill.wav', 0.7);
+            }
 
             if (blockToDrill.type === 'oxygen') {
                 this.player.oxygen = Math.min(this.player.maxOxygen, this.player.oxygen + 30); // Increased oxygen
-                AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/oxygen_pickup.wav', 0.8);
-                AuraGameSDK.ui.showNotification({ message: 'Oxygen +30!', type: 'success', duration: 1500 });
+                if (AuraGameSDK && AuraGameSDK.audio) {
+                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/oxygen_pickup.wav', 0.8);
+                }
+                if (AuraGameSDK && AuraGameSDK.ui) {
+                    AuraGameSDK.ui.showNotification({ message: 'Oxygen +30!', type: 'success', duration: 1500 });
+                }
             } else {
                 this.player.oxygen -= 0.25; // Slightly less cost for drilling
-                 AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/block_break.wav', 0.6);
+                if (AuraGameSDK && AuraGameSDK.audio) {
+                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/block_break.wav', 0.6);
+                }
             }
 
             blockToDrill.visualState = 'breaking';
@@ -777,6 +790,21 @@ class AuraDrillerGame {
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
         } : {r: 200, g: 200, b: 200};
+    }
+
+    /**
+     * Get block type from color
+     */
+    getBlockTypeFromColor(color) {
+        const colorMap = {
+            '#4a90e2': 'blue',
+            '#63d2b3': 'cyan', 
+            '#27c93f': 'green',
+            '#8a63d2': 'magenta',
+            '#ff5f56': 'red',
+            '#ffbd2e': 'yellow'
+        };
+        return colorMap[color] || 'blue'; // Default fallback
     }
 
     /**
