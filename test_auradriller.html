@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraDriller MVP Test</title>
+    <style>
+        :root {
+            --highlight-primary: #8a63d2;
+            --highlight-secondary: #63d2b3;
+            --red-accent: #ff5f56;
+            --yellow-accent: #ffbd2e;
+            --green-accent: #27c93f;
+            --text-color: #f0f0f5;
+            --subtle-text-color: #b0a8d9;
+            --bg-primary: #1a1625;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg-primary);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            color: var(--highlight-primary);
+            margin-bottom: 20px;
+        }
+        
+        #gameCanvas {
+            border: 2px solid var(--highlight-primary);
+            border-radius: 8px;
+            background: #120c1c;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .controls button {
+            background: var(--highlight-primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .controls button:hover {
+            background: var(--highlight-secondary);
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        .instructions h3 {
+            color: var(--highlight-secondary);
+        }
+        
+        .key {
+            background: rgba(138, 99, 210, 0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 AuraDriller MVP Test</h1>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <button onclick="startGame()">Start Game</button>
+        <button onclick="pauseGame()">Pause</button>
+        <button onclick="resumeGame()">Resume</button>
+        <button onclick="stopGame()">Stop</button>
+        <button onclick="restartGame()">Restart</button>
+    </div>
+    
+    <div class="instructions">
+        <h3>🎮 Como Jogar</h3>
+        <p><strong>Objetivo:</strong> Perfure para baixo através dos blocos coloridos até atingir a profundidade alvo de 200m!</p>
+        
+        <p><strong>Controles:</strong></p>
+        <ul style="text-align: left; display: inline-block;">
+            <li><span class="key">←→</span> ou <span class="key">A/D</span> - Mover horizontalmente</li>
+            <li><span class="key">↓</span> ou <span class="key">S</span> ou <span class="key">Espaço</span> - Perfurar</li>
+            <li><span class="key">ESC</span> - Pausar/Retomar</li>
+            <li><span class="key">R</span> - Reiniciar (quando game over)</li>
+        </ul>
+        
+        <p><strong>Dicas:</strong></p>
+        <ul style="text-align: left; display: inline-block;">
+            <li>🫁 Colete cápsulas de oxigênio (O₂) para não ficar sem ar</li>
+            <li>⚡ Blocos da mesma cor que caem juntos criam reações em cadeia</li>
+            <li>🎯 Reações em cadeia dão pontos extras e oxigênio</li>
+            <li>⚠️ Cuidado com blocos que caem - eles podem te esmagar!</li>
+        </ul>
+    </div>
+
+    <!-- Mock AuraGameSDK for testing -->
+    <script>
+        window.AuraGameSDK = {
+            init: function(gameId, canvas) {
+                console.log(`AuraGameSDK initialized for ${gameId}`);
+            },
+            audio: {
+                playLoopMusic: function(path, volume) {
+                    console.log(`Playing music: ${path} at volume ${volume}`);
+                },
+                playSfx: function(path, volume) {
+                    console.log(`Playing SFX: ${path} at volume ${volume}`);
+                },
+                stop: function() {
+                    console.log('Audio stopped');
+                },
+                pause: function() {
+                    console.log('Audio paused');
+                },
+                resume: function() {
+                    console.log('Audio resumed');
+                }
+            },
+            ui: {
+                showNotification: function(options) {
+                    console.log(`Notification: ${options.message} (${options.type})`);
+                    // Create a simple notification
+                    const notification = document.createElement('div');
+                    notification.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: ${options.type === 'error' ? '#ff5f56' : '#27c93f'};
+                        color: white;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        z-index: 1000;
+                        font-family: Inter, sans-serif;
+                        font-size: 14px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    `;
+                    notification.textContent = options.message;
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, options.duration || 3000);
+                }
+            }
+        };
+    </script>
+    
+    <!-- Load AuraDriller -->
+    <script src="AuraDriller.js"></script>
+    
+    <script>
+        let game = null;
+        const canvas = document.getElementById('gameCanvas');
+        
+        function startGame() {
+            if (game) {
+                game.stop();
+            }
+            game = new AuraDrillerGame(canvas, function() {
+                console.log('Game exited');
+            });
+            game.start();
+        }
+        
+        function pauseGame() {
+            if (game) {
+                game.pause();
+            }
+        }
+        
+        function resumeGame() {
+            if (game) {
+                game.resume();
+            }
+        }
+        
+        function stopGame() {
+            if (game) {
+                game.stop();
+            }
+        }
+        
+        function restartGame() {
+            if (game) {
+                game.restart();
+            }
+        }
+        
+        // Auto-start when page loads
+        window.addEventListener('load', function() {
+            setTimeout(startGame, 500);
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (game) {
+                game.updateCanvasDimensions();
+            }
+        });
+    </script>
+</body>
+</html>

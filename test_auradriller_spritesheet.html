@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraDriller Spritesheet Test</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --text-color: #f0f0f5;
+            --subtle-text-color: #b0a8d9;
+            --highlight-primary: #8a63d2;
+            --highlight-secondary: #63d2b3;
+            --red-accent: #ff5f56;
+            --yellow-accent: #ffbd2e;
+            --green-accent: #27c93f;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg-primary);
+            color: var(--text-color);
+            font-family: 'Inter', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: var(--highlight-primary);
+            margin-bottom: 20px;
+        }
+
+        #gameCanvas {
+            border: 2px solid var(--highlight-secondary);
+            border-radius: 10px;
+            background: #120c1c;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .controls h3 {
+            margin-top: 0;
+            color: var(--highlight-secondary);
+        }
+
+        .key {
+            background: var(--highlight-primary);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+
+        #info {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AuraDriller - Teste do Spritesheet</h1>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <h3>Controles</h3>
+        <p>
+            <span class="key">←→</span> ou <span class="key">A/D</span> Mover<br>
+            <span class="key">↓</span> ou <span class="key">S</span> ou <span class="key">Espaço</span> Perfurar<br>
+            <span class="key">ESC</span> Pausar/Menu<br>
+            <span class="key">R</span> Reiniciar (quando game over)
+        </p>
+    </div>
+
+    <div id="info">
+        <p>Este é um teste do AuraDriller com sistema de spritesheet implementado!</p>
+        <p>O jogador astronauta deve ter diferentes animações: idle, movimento lateral, perfuração, e aviso de oxigênio baixo.</p>
+    </div>
+
+    <!-- Simulação básica do AuraGameSDK -->
+    <script>
+        window.AuraGameSDK = {
+            init: function(gameId, canvas) {
+                console.log(`AuraGameSDK initialized for ${gameId}`);
+                return true;
+            },
+            audio: {
+                playLoopMusic: function(src, volume) {
+                    console.log(`Playing music: ${src} at volume ${volume}`);
+                },
+                playSfx: function(src, volume) {
+                    console.log(`Playing SFX: ${src} at volume ${volume}`);
+                },
+                stop: function() {
+                    console.log('Audio stopped');
+                }
+            },
+            ui: {
+                showNotification: function(options) {
+                    console.log(`Notification: ${options.message}`);
+                }
+            }
+        };
+    </script>
+
+    <!-- AuraDriller Game Script -->
+    <script src="AuraDriller.js"></script>
+
+    <script>
+        // Initialize and start the game
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('gameCanvas');
+            const game = new AuraDrillerGame(canvas);
+            
+            // Add event listeners
+            document.addEventListener('keydown', game._boundKeyDown);
+            document.addEventListener('keyup', game._boundKeyUp);
+            
+            // Start the game
+            game.start();
+            
+            console.log('AuraDriller test started! Watch for spritesheet animations.');
+        });
+    </script>
+</body>
+</html>

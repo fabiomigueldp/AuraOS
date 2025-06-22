@@ -141,7 +141,9 @@ class AuraDrillerGame {
             score: 0,
             depth: 0,
             isDrilling: false,
-            drillParticles: []
+            drillParticles: [],
+            movingLeft: false,
+            movingRight: false
         };
         this.currentScrollOffset = 0;
         this.fallingBlocks = [];
