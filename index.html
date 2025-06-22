@@ -3322,7 +3322,7 @@
             'image-viewer': { title: 'Visualizador de Imagem', width: 700, height: 550, allowMultiple: true },
             'aura-3d-viewer': { title: 'Aura 3D Viewer', width: 700, height: 550, allowMultiple: true },
             'calculator-app': { title: 'Calculadora', width: 320, height: 500, resizable: false },
-            'clock-app': { title: 'Relógio', width: 450, height: 500, resizable: false },
+            'clock-app': { title: 'Relógio', width: 450, height: 500, resizable: true },
             'game-center': { title: 'Game Center', width: 800, height: 600 },
             'aura-paint': { title: 'AuraPaint', width: 700, height: 550 },
             'aura-flow': { title: 'AuraFlow', width: 800, height: 600, allowMultiple: false },
@@ -7044,7 +7044,19 @@
                     // windowEl.focus(); // This might be too aggressive if called directly here.
                     break;
                 case 'clock-app':
-                    // Load the Clock app's HTML content
+                    // Integrate Clock app with WindowManager following AuraOS patterns
+                    body.innerHTML = '<div class="clock-loading">Carregando Relógio...</div>';
+                    
+                    // Load the Clock app's CSS first
+                    let existingCSS = document.head.querySelector('link[href="apps/Clock/css/style.css"]');
+                    if (!existingCSS) {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = 'apps/Clock/css/style.css';
+                        document.head.appendChild(link);
+                    }
+                    
+                    // Load Clock app HTML content
                     fetch('apps/Clock/index.html')
                         .then(response => response.text())
                         .then(html => {
@@ -7054,11 +7066,29 @@
                             const bodyContent = doc.body.innerHTML;
                             body.innerHTML = bodyContent;
                             
-                            // Reset the clock app loaded flag to allow re-initialization for new instances
+                            // Ensure windowEl has proper attributes for WindowManager
+                            windowEl.dataset.appId = 'clock-app';
+                            windowEl.dataset.creationTime = Date.now().toString();
+                            
+                            // Register with WindowManager using the correct pattern
+                            if (window.windowManager) {
+                                const appConfig = apps['clock-app'] || {};
+                                window.windowManager.registerWindow(windowEl, {
+                                    title: data.title || appConfig.title || 'Relógio',
+                                    initialData: data,
+                                    resizable: data.resizable !== undefined ? data.resizable : (appConfig.resizable !== undefined ? appConfig.resizable : true),
+                                    filePath: data.filePath,
+                                    initialState: data.initialState,
+                                    restoredId: data.restoredId,
+                                    zIndexToRestore: data.zIndexToRestore
+                                });
+                                console.log('Clock app: Registered with WindowManager using standard pattern');
+                            }
+                            
+                            // Reset the clock app loaded flag to allow re-initialization
                             window.clockAppLoaded = undefined;
                             
                             // Load and execute the Clock app's JavaScript
-                            // Check if the script is already loaded to prevent duplicate declarations
                             let existingScript = document.head.querySelector('script[src="apps/Clock/js/main.js"]');
                             if (!existingScript) {
                                 const script = document.createElement('script');
@@ -7072,34 +7102,13 @@
                                 document.head.appendChild(script);
                             } else {
                                 console.log('Clock app JavaScript already loaded');
-                            }
-                            
-                            // Load the Clock app's CSS
-                            // Check if the CSS is already loaded to prevent duplicates
-                            let existingCSS = document.head.querySelector('link[href="apps/Clock/css/style.css"]');
-                            if (!existingCSS) {
-                                const link = document.createElement('link');
-                                link.rel = 'stylesheet';
-                                link.href = 'apps/Clock/css/style.css';
-                                document.head.appendChild(link);
-                            }
-                            
-                            // Ensure the Clock app is registered with WindowManager
-                            // This is a fallback in case the script doesn't register it
-                            setTimeout(() => {
-                                if (window.windowManager && windowEl) {
-                                    // Check if already registered
-                                    const isRegistered = window.windowManager.windows.some(w => w.id === windowEl.id);
-                                    if (!isRegistered) {
-                                        console.log('Clock app: Fallback registration with WindowManager');
-                                        window.windowManager.registerWindow(windowEl, {
-                                            title: 'Relógio',
-                                            appId: 'clock-app',
-                                            resizable: false
-                                        });
-                                    }
+                                // Force re-execution of initialization if script already exists
+                                if (window.clockAppLoaded) {
+                                    window.clockAppLoaded = undefined;
+                                    // Trigger a custom event to reinitialize
+                                    window.dispatchEvent(new CustomEvent('clockAppReinit'));
                                 }
-                            }, 100); // Small delay to ensure script has loaded
+                            }
                         })
                         .catch(error => {
                             console.error('Failed to load Clock app:', error);

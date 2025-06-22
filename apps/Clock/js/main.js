@@ -5,29 +5,30 @@ if (typeof window.clockAppLoaded !== 'undefined') {
     window.clockAppLoaded = true;
 
     (function() {
-        // Find the window element for this Clock app instance
-        const windowElement = document.querySelector('.window:last-of-type');
+        // Clock app is now registered by the main AuraOS system
+        // We just need to check if we're being reinitialized
+        let isReinit = false;
         
-        // Register with WindowManager if available
-        if (window.windowManager && windowElement) {
-            console.log('Clock app: Registering with WindowManager');
-            window.windowManager.registerWindow(windowElement, {
-                title: 'Relógio',
-                appId: 'clock-app',
-                resizable: false
-            });
-        }
+        // Listen for reinitialization events
+        window.addEventListener('clockAppReinit', () => {
+            isReinit = true;
+            initializeClock();
+        });
         
-        // Check for saved state and restore if available
-        let savedState = null;
-        if (windowElement && windowElement.dataset.appState) {
-            try {
-                savedState = JSON.parse(windowElement.dataset.appState);
-                console.log('Clock app: Found saved state', savedState);
-            } catch (error) {
-                console.error('Clock app: Error parsing saved state:', error);
+        function initializeClock() {
+            // Find the window element for this Clock app instance
+            const windowElement = document.querySelector('.window:last-of-type');
+            
+            // Check for saved state and restore if available
+            let savedState = null;
+            if (windowElement && windowElement.dataset.appState) {
+                try {
+                    savedState = JSON.parse(windowElement.dataset.appState);
+                    console.log('Clock app: Found saved state', savedState);
+                } catch (error) {
+                    console.error('Clock app: Error parsing saved state:', error);
+                }
             }
-        }
         
         const digitalClockElement = document.getElementById('time');
         const analogHourHand = document.getElementById('hour-hand');
@@ -607,7 +608,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
-});
+}); // Close the DOMContentLoaded event listener
+
+        }; // Close the initializeClock function
+        
+        // Call initializeClock immediately if not reinitializing
+        if (!isReinit) {
+            initializeClock();
+        }
 
     })(); // Close the IIFE
 }

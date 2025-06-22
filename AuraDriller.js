@@ -59,13 +59,25 @@ class AuraDrillerGame {
         // Particle effects
         this.particles = [];
 
-        // Theming
-        this.blockColors = [];
-        this.oxygenCapsuleColor = '';
-        this.playerColor = '';
-        this.drillColor = '';
+        // Assets and visuals
+        this.blockImages = {};
+        this.playerSprite = null;
+        this.oxygenCapsuleImage = null;
+        this.drillSparkImage = null;
+        this.blockParticlesImage = null;
         this.backgroundColor = '#120c1c'; // AuraOS dark purple
+        
+        // Block colors for fallback
+        this.blockColors = {
+            'blue': '#4a90e2',
+            'cyan': '#63d2b3', 
+            'green': '#27c93f',
+            'magenta': '#8a63d2',
+            'red': '#ff5f56',
+            'yellow': '#ffbd2e'
+        };
 
+        this._loadAssets();
         this._setupTheming();
 
 
@@ -130,7 +142,10 @@ class AuraDrillerGame {
             }
         }, 1000 / 60); // 60 FPS
 
-        AuraGameSDK.audio.playLoopMusic('gameassets/auradriller/music/auradriller_bgm.mp3', 0.6);
+        // Play background music
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.playLoopMusic('gameassets/auradriller/music/auradriller_bgm.mp3', 0.6);
+        }
         console.log('AuraDriller started!');
     }
 
@@ -239,16 +254,29 @@ class AuraDrillerGame {
                                           this.blockSize * (1 - animProgress), this.blockSize * (1 - animProgress));
                         this.ctx.restore();
                     } else if (block.type === 'oxygen') {
-                        this.ctx.fillStyle = block.color; // Already has alpha
-                        this.ctx.fillRect(x + 2, y + 2, this.blockSize - 4, this.blockSize - 4);
-                        this.ctx.fillStyle = '#102c3c';
-                        this.ctx.font = `bold ${this.blockSize * 0.45}px 'Inter', sans-serif`;
-                        this.ctx.textAlign = 'center';
-                        this.ctx.textBaseline = 'middle';
-                        this.ctx.fillText('O₂', x + this.blockSize / 2, y + this.blockSize / 2 + 1);
+                        // Draw oxygen capsule with image if available, fallback to colored rect
+                        if (this.oxygenCapsuleImage && this.oxygenCapsuleImage.complete) {
+                            this.ctx.drawImage(this.oxygenCapsuleImage, x, y, this.blockSize, this.blockSize);
+                        } else {
+                            this.ctx.fillStyle = block.color; // Already has alpha
+                            this.ctx.fillRect(x + 2, y + 2, this.blockSize - 4, this.blockSize - 4);
+                            this.ctx.fillStyle = '#102c3c';
+                            this.ctx.font = `bold ${Math.max(10, this.blockSize * 0.4)}px 'Inter', sans-serif`;
+                            this.ctx.textAlign = 'center';
+                            this.ctx.textBaseline = 'middle';
+                            this.ctx.fillText('O₂', x + this.blockSize / 2, y + this.blockSize / 2 + 1);
+                        }
                     } else {
-                        this.ctx.fillStyle = block.color;
-                        this.ctx.fillRect(x, y, this.blockSize, this.blockSize);
+                        // Draw normal block with image if available, fallback to colored rect
+                        const blockType = this.getBlockTypeFromColor(block.color);
+                        const blockImage = this.blockImages[blockType];
+                        
+                        if (blockImage && blockImage.complete) {
+                            this.ctx.drawImage(blockImage, x, y, this.blockSize, this.blockSize);
+                        } else {
+                            this.ctx.fillStyle = block.color;
+                            this.ctx.fillRect(x, y, this.blockSize, this.blockSize);
+                        }
                     }
                     if (block.visualState !== 'breaking') { // Don't draw border for breaking blocks
                         this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
@@ -713,98 +741,122 @@ class AuraDrillerGame {
         }
     }
 
+    /**
+     * Load game assets
+     */
+    _loadAssets() {
+        // Load block images
+        const blockTypes = ['blue', 'cyan', 'green', 'magenta', 'red', 'yellow'];
+        blockTypes.forEach(type => {
+            const img = new Image();
+            img.src = `gameassets/auradriller/images/block_${type}.png`;
+            this.blockImages[type] = img;
+        });
+
+        // Load special images
+        this.playerSprite = new Image();
+        this.playerSprite.src = 'gameassets/auradriller/images/player_spritesheet.png';
+        
+        this.oxygenCapsuleImage = new Image();
+        this.oxygenCapsuleImage.src = 'gameassets/auradriller/images/oxygen_capsule.png';
+        
+        this.drillSparkImage = new Image();
+        this.drillSparkImage.src = 'gameassets/auradriller/images/drill_spark.png';
+        
+        this.blockParticlesImage = new Image();
+        this.blockParticlesImage.src = 'gameassets/auradriller/images/block_particles.png';
+    }
+
+    /**
+     * Get hex color to RGB conversion
+     */
     hexToRgb(hex) {
-        if (!hex || typeof hex !== 'string' || hex.charAt(0) !== '#') return null;
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
             r: parseInt(result[1], 16),
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
-        } : null;
+        } : {r: 200, g: 200, b: 200};
     }
 
-
+    /**
+     * Create game over screen
+     */
     gameOver(reason) {
-        this.stop();
-        console.log(`Game Over: ${reason}`);
-        AuraGameSDK.ui.showNotification({ title: 'Game Over!', message: `${reason}. Final Score: ${this.player.score}`, type: 'info', duration: 5000 });
-        AuraGameSDK.leaderboard.submitScore('AuraUser', this.player.score)
-            .then(() => console.log('Score submitted'))
-            .catch(err => console.error('Failed to submit score', err));
-
-        AuraGameSDK.audio.playSfx('gameassets/auradriller/sfx/game_over.wav');
-        AuraGameSDK.audio.stop();
-    }
-
-    draw() {
-        this.ctx.fillStyle = this.backgroundColor;
+        if (!this.gameRunning) return;
+        
+        this.gameRunning = false;
+        this.gamePaused = true;
+        
+        // Play game over sound
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.stop();
+            AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/game_over.wav', 0.8);
+        }
+        
+        // Draw game over screen
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.drawGrid();
-        this.drawPlayer();
-        this.drawParticles(); // Draw general particles
-
-        for (const fb of this.fallingBlocks) {
-            if (Date.now() >= fb.fallStartTime) {
-                 const screenX = fb.gridX * this.blockSize + (fb.visualXOffset || 0); // Apply wobble
-                 const screenY = fb.y - this.currentScrollOffset;
-
-                 this.ctx.fillStyle = fb.color;
-                 this.ctx.fillRect(screenX, screenY, this.blockSize, this.blockSize);
-
-                 this.ctx.fillStyle = 'rgba(0,0,0,0.15)'; // Slightly darker shadow for falling blocks
-                 this.ctx.fillRect(screenX + 2, screenY + this.blockSize - 3, this.blockSize - 4, 3);
-
-                 this.ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-                 this.ctx.strokeRect(screenX, screenY, this.blockSize, this.blockSize);
-            }
+        
+        this.ctx.fillStyle = '#ff5f56';
+        this.ctx.font = `bold ${Math.min(32, this.canvas.width / 12)}px 'Inter', sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 60);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `${Math.min(18, this.canvas.width / 20)}px 'Inter', sans-serif`;
+        this.ctx.fillText(reason, this.canvas.width / 2, this.canvas.height / 2 - 20);
+        this.ctx.fillText(`Score: ${this.player.score}`, this.canvas.width / 2, this.canvas.height / 2 + 10);
+        this.ctx.fillText(`Depth: ${this.player.depth}m`, this.canvas.width / 2, this.canvas.height / 2 + 40);
+        
+        this.ctx.fillStyle = '#8a63d2';
+        this.ctx.font = `${Math.min(14, this.canvas.width / 25)}px 'Inter', sans-serif`;
+        this.ctx.fillText('Press ESC to return to menu or R to restart', this.canvas.width / 2, this.canvas.height / 2 + 80);
+        
+        // Show notification
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            AuraGameSDK.ui.showNotification({ 
+                message: `Game Over! Score: ${this.player.score}`, 
+                type: 'error', 
+                duration: 3000 
+            });
         }
-
-        this.drawUI();
     }
 
-
-    _handleKeyDown(e) {
-        this.keys[e.key] = true;
-        if (this.gameRunning && !this.gamePaused && ['ArrowLeft', 'ArrowRight', 'ArrowDown', ' ', 'a', 'd', 's'].includes(e.key)) {
-            e.preventDefault();
-        }
-
-        if (e.key === 'Escape') {
-            if (!this.gameRunning) return;
-
-            //this.gamePaused = !this.gamePaused; // Toggle pause state
-            if (!this.gamePaused) { // If game is running, pause it and show menu
-                this.pause(); // This sets this.gamePaused = true
-                AuraGameSDK.ui.createPauseMenu({
-                    onResume: () => {
-                        // Important: The modal hide is handled by SDK. We just need to resume game logic.
-                        this.resume();
-                    },
-                    onRestart: () => this.restart(),
-                    onQuit: () => {
-                        this.stop(true);
-                        if (this.onExitCallback && typeof this.onExitCallback === 'function') {
-                             this.onExitCallback(); // Call the GameCenter's exit handler
-                        }
-                    },
-                    gameId: 'aura-driller'
-                });
-            } else {
-                // If game is already paused (pause menu is likely up), pressing Esc again could hide the menu.
-                // The SDK's modal might handle its own Escape key dismissal.
-                // If we want Escape to *also* resume from our game's perspective:
-                const pauseMenuModal = document.getElementById('aura-pause-menu-aura-driller');
-                if (pauseMenuModal && pauseMenuModal.classList.contains('aura-modal-visible')) {
-                    AuraGameSDK.ui.hideModal('aura-pause-menu-aura-driller'); // Hide SDK modal
+    /**
+     * Handle key input
+     */
+    _handleKeyDown(event) {
+        this.keys[event.key] = true;
+        
+        // Handle game over inputs
+        if (!this.gameRunning) {
+            if (event.key === 'Escape') {
+                if (this.onExitCallback) {
+                    this.onExitCallback();
                 }
-                this.resume(); // And resume game logic
+            } else if (event.key === 'r' || event.key === 'R') {
+                this.restart();
+            }
+            return;
+        }
+        
+        // Handle pause
+        if (event.key === 'Escape') {
+            if (this.gamePaused) {
+                this.resume();
+            } else {
+                this.pause();
             }
         }
     }
 
-    _handleKeyUp(e) {
-        this.keys[e.key] = false;
+    /**
+     * Handle key release
+     */
+    _handleKeyUp(event) {
+        this.keys[event.key] = false;
     }
 }
 
