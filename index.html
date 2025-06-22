@@ -32,6 +32,7 @@
     <script src="AuraFlow.js"></script>    <script src="AuraOS/notes.js"></script>
     <script src="AuraOS/terminal.js"></script>
     <script src="AuraOS/Aura3DViewer.js"></script>
+    <script src="AuraOS/file-explorer.js"></script> <!-- Added File Explorer -->
     
     <!-- Game Center Modular Import -->
     <script type="module">
@@ -3314,6 +3315,7 @@
             'game-center': { title: 'Game Center', width: 800, height: 600 },
             'aura-paint': { title: 'AuraPaint', width: 700, height: 550 },
             'aura-flow': { title: 'AuraFlow', width: 800, height: 600, allowMultiple: false },
+            'file-explorer': { title: 'Explorador de Arquivos', width: 750, height: 550, allowMultiple: true }, // Added File Explorer App
         };
         
         // --- NOVO: AURA MUSIC SONG DATABASE ---
@@ -7386,32 +7388,32 @@
             let fileContentForDB = null;
 
             if (type === 'folder') {
-                // For folders, children are managed by their own entries in DB.
-                // We might store some folder-specific metadata if needed.
+                // No content for folders in DB, just metadata
             } else if (type === 'file') {
-                fileContentForDB = content || ''; // Ensure content is not undefined
-                itemMetadata.content = content || ''; // Also store in metadata for dbManager.saveFile if it expects it there
+                fileContentForDB = content || '';
+                // itemMetadata.content = content || ''; // Content is passed as second arg to dbManager.saveFile
             } else {
                 AuraOS.showNotification({ title: 'Erro ao Criar Item', message: "Tipo de item inválido.", type: 'error' });
                 return false;
             }
 
             try {
-                // dbManager.saveFile expects (metadata, fileData).
-                // Ensure metadata includes path, type, lastModified. fileData is content for files.
                 await dbManager.saveFile(itemMetadata, fileContentForDB);
 
-                // Update in-memory representation AFTER successful DB operation
                 parentNodeInMemory.children[finalItemName] = {
                     type: type,
                     lastModified: itemMetadata.lastModified,
-                    ...(type === 'file' && { content: content || '' }), // Keep content in memory for files
-                    ...(type === 'folder' && { children: {} }) // Initialize children for folders in memory
+                    ...(type === 'file' && { content: content || '' }),
+                    ...(type === 'folder' && { children: {} })
                 };
 
-                console.log(`Item ${finalItemPath} (type: ${type}) created in DB and memory.`);
+                console.log(`Item ${finalItemPath} (type: ${type}) created. Dispatching event.`);
                 AuraOS.showNotification({ title: 'Sucesso', message: `Item '${finalItemName}' (${type}) criado em ${parentPath}.`, type: 'info' });
-                updateDesktopAndFileExplorer(parentPath);
+
+                document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                    detail: { action: 'create', path: finalItemPath, type: type }
+                }));
+                // updateDesktopAndFileExplorer is now handled by listeners of aura:filesystem:change
                 return true;
             } catch (error) {
                 console.error(`Error creating item ${finalItemPath} in DB:`, error);
@@ -7429,43 +7431,51 @@
             const pathParts = itemPath.split('/');
             const itemName = pathParts.pop();
             const parentPath = pathParts.join('/') || '/';
-            const itemToDeleteInMemory = getFileSystemNode(itemPath); // Get item before attempting delete
+            const itemToDeleteInMemory = getFileSystemNode(itemPath);
+
+            if (!itemToDeleteInMemory) {
+                 AuraOS.showNotification({ title: 'Erro ao Excluir', message: `Item '${itemName}' não encontrado.`, type: 'error' });
+                 // It might have been deleted by another process, refresh UI
+                 document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                    detail: { action: 'delete', path: itemPath, type: 'unknown' } // Type might be unknown if not in memory
+                }));
+                 return false;
+            }
+            const itemType = itemToDeleteInMemory.type;
+
 
             try {
-                if (itemToDeleteInMemory && itemToDeleteInMemory.type === 'folder') {
-                    // If it's a folder, recursively delete its contents from DB first
-                    const filesInFolder = await dbManager.listFiles(itemPath); // Assuming listFiles gets direct children
+                if (itemType === 'folder') {
+                    const filesInFolder = await dbManager.listFiles(itemPath);
                     for (const child of filesInFolder) {
-                        await deleteItem(child.path); // Recursive call for children
+                        // Recursive delete will dispatch its own events
+                        await deleteItem(child.path);
                     }
-                    // After children are deleted, delete the folder entry itself
-                    await dbManager.deleteFile(itemPath);
-                } else {
-                    // It's a file or an empty folder (or listFiles didn't find children)
-                    await dbManager.deleteFile(itemPath);
                 }
+                await dbManager.deleteFile(itemPath);
 
-                // Then, update in-memory representation
                 const parentNodeInMemory = getFileSystemNode(parentPath);
                 if (parentNodeInMemory && parentNodeInMemory.type === 'folder' && parentNodeInMemory.children[itemName]) {
                     delete parentNodeInMemory.children[itemName];
-                } else {
-                    console.warn(`Item ${itemName} not found in-memory at ${parentPath} after DB deletion, but proceeding.`);
                 }
 
-                console.log(`Item ${itemPath} deleted from DB and memory.`);
+                console.log(`Item ${itemPath} deleted. Dispatching event.`);
                 AuraOS.showNotification({ title: 'Sucesso', message: `Item '${itemName}' excluído de ${parentPath}.`, type: 'info' });
-                updateDesktopAndFileExplorer(parentPath);
+
+                document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                    detail: { action: 'delete', path: itemPath, type: itemType }
+                }));
                 return true;
             } catch (error) {
                 console.error(`Error deleting item ${itemPath} from DB:`, error);
                 AuraOS.showNotification({ title: 'Erro de DB', message: `Falha ao excluir '${itemName}': ${error.message}`, type: 'error' });
-                // Attempt to re-sync if delete failed, as FS might be out of sync
-                // Consider only reloading FS if error indicates potential desync, e.g. not just "item not found"
-                if (error.name !== 'NotFoundError') { // Example: Avoid reloading if DB already confirms not found
-                    await loadFileSystem();
+                if (error.name !== 'NotFoundError') {
+                    await loadFileSystem(); // Attempt to resync if critical error
                 }
-                updateDesktopAndFileExplorer(); // Always refresh UI based on current (possibly reloaded) FS
+                // Dispatch an event even on error to allow UI to refresh from potentially reloaded FS
+                 document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                    detail: { action: 'delete', path: itemPath, type: itemType, error: true }
+                }));
                 return false;
             }
         }
@@ -7491,7 +7501,7 @@
             const parentPath = pathParts.join('/') || '/';
             const newPath = parentPath === '/' ? `/${newName}` : `${parentPath}/${newName}`;
 
-            if (itemPath === newPath) return true;
+            if (itemPath === newPath) return true; // No change
 
             const parentNodeInMemory = getFileSystemNode(parentPath);
             if (!parentNodeInMemory || parentNodeInMemory.type !== 'folder' || !parentNodeInMemory.children[oldName]) {
@@ -7507,20 +7517,20 @@
                 const oldItemDataFromDB = await dbManager.loadFile(itemPath);
                 if (!oldItemDataFromDB) {
                     AuraOS.showNotification({ title: 'Erro ao Renomear', message: "Item não encontrado no DB.", type: 'error' });
+                     document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                        detail: { action: 'rename', oldPath: itemPath, path: newPath, type: 'unknown', error: true }
+                    }));
                     return false;
                 }
+                const itemType = oldItemDataFromDB.type;
 
-                const newItemMetadata = { ...oldItemDataFromDB, path: newPath, lastModified: Date.now() };
-                // Content is part of oldItemDataFromDB if it was a file, so it's spread into newItemMetadata.
-                // dbManager.saveFile expects metadata and separate content.
-                const { content: fileContent, ...metadataToSave } = newItemMetadata;
+                const { content: fileContent, ...metadataToSave } = { ...oldItemDataFromDB, path: newPath, lastModified: Date.now() };
 
-                await dbManager.saveFile(metadataToSave, fileContent);
-                await dbManager.deleteFile(itemPath);
+                await dbManager.saveFile(metadataToSave, fileContent); // Save new item
+                await dbManager.deleteFile(itemPath); // Delete old item
 
-                if (oldItemDataFromDB.type === 'folder') {
-                    console.log(`Folder ${itemPath} renamed to ${newPath}. Updating children paths if any.`);
-                    const allDbFiles = await dbManager.getAllFiles();
+                if (itemType === 'folder') {
+                    const allDbFiles = await dbManager.getAllFiles(); // Get all files for path updates
                     const childrenUpdatePromises = [];
                     const oldPathPrefix = itemPath + '/';
                     const newPathPrefix = newPath + '/';
@@ -7529,11 +7539,9 @@
                         if (fileInDb.path.startsWith(oldPathPrefix)) {
                             const oldChildPath = fileInDb.path;
                             const newChildPath = newPathPrefix + fileInDb.path.substring(oldPathPrefix.length);
-
                             const { content: childDbContent, ...childDbMetadata } = fileInDb;
                             childDbMetadata.path = newChildPath;
-                            childDbMetadata.lastModified = Date.now();
-
+                            childDbMetadata.lastModified = Date.now(); // Update lastModified for children too
                             childrenUpdatePromises.push(
                                 dbManager.saveFile(childDbMetadata, childDbContent)
                                     .then(() => dbManager.deleteFile(oldChildPath))
@@ -7541,43 +7549,37 @@
                         }
                     });
                     await Promise.all(childrenUpdatePromises);
-                    console.log(`Children of folder ${itemPath} (if any) had their paths updated in DB.`);
                 }
 
                 // Update in-memory FS
-                parentNodeInMemory.children[newName] = { ...parentNodeInMemory.children[oldName] }; // Copy data
-                if (oldItemDataFromDB.type === 'file' && typeof fileContent !== 'undefined') {
-                     parentNodeInMemory.children[newName].content = fileContent;
-                }
-                parentNodeInMemory.children[newName].lastModified = newItemMetadata.lastModified;
+                const oldItemInMemory = parentNodeInMemory.children[oldName];
                 delete parentNodeInMemory.children[oldName];
-                // If it was a folder, its children structure in memory needs to be moved/recreated under newName.
-                // The current simple in-memory FS update might not perfectly reflect deep rename for folders until next full load.
-                // For a more robust in-memory update for folders:
-                if (oldItemDataFromDB.type === 'folder' && parentNodeInMemory.children[newName]) {
-                     // If the original item had children in memory, they are implicitly "moved" by renaming the parent.
-                     // However, the paths within those children objects in memory are not updated by this simple rename.
-                     // This implies getFileSystemNode and path resolution should be robust, or a deep in-memory rename is needed.
+                parentNodeInMemory.children[newName] = {
+                     ...oldItemInMemory, // copy properties like type, content (if file), children (if folder)
+                     lastModified: metadataToSave.lastModified
+                 };
+                if(itemType === 'folder' && !parentNodeInMemory.children[newName].children){
+                    parentNodeInMemory.children[newName].children = {}; // ensure children obj exists for renamed folder
                 }
 
 
-                console.log(`Item ${itemPath} renamed to ${newPath} in DB and memory.`);
+                console.log(`Item ${itemPath} renamed to ${newPath}. Dispatching event.`);
                 AuraOS.showNotification({ title: 'Sucesso', message: `Item '${oldName}' renomeado para '${newName}'.`, type: 'info' });
-                updateDesktopAndFileExplorer(parentPath); // Update the view of the parent directory
-                if (oldItemDataFromDB.type === 'folder') { // If a folder was renamed, its previous path might be open in another explorer
-                    updateDesktopAndFileExplorer(itemPath); // Also trigger update for the old path, in case it was a view root
-                    updateDesktopAndFileExplorer(newPath);  // And for the new path
-                }
+
+                document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                    detail: { action: 'rename', oldPath: itemPath, path: newPath, type: itemType }
+                }));
                 return true;
 
             } catch (error) {
                 console.error(`Error renaming item ${itemPath} to ${newPath} in DB:`, error);
                 AuraOS.showNotification({ title: 'Erro de DB', message: `Falha ao renomear '${oldName}': ${error.message}`, type: 'error' });
-                // Attempt to re-sync if rename failed partially
                 if (error.name !== 'NotFoundError') {
-                     await loadFileSystem();
+                    await loadFileSystem();
                 }
-                updateDesktopAndFileExplorer();
+                 document.dispatchEvent(new CustomEvent('aura:filesystem:change', {
+                    detail: { action: 'rename', oldPath: itemPath, path: newPath, type: 'unknown', error: true }
+                }));
                 return false;
             }
         }
