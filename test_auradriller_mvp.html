@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraDriller MVP - Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #120c1c 0%, #1a1530 50%, #2a1b3d 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #8a63d2;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #b0a8d9;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        #gameCanvas {
+            border: 2px solid #8a63d2;
+            border-radius: 8px;
+            background: #1a1530;
+            box-shadow: 0 8px 32px rgba(138, 99, 210, 0.3);
+            margin: 20px 0;
+        }
+
+        .controls {
+            background: rgba(138, 99, 210, 0.1);
+            border: 1px solid #8a63d2;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .controls h3 {
+            color: #63d2b3;
+            margin-top: 0;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .control-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #63d2b3;
+        }
+
+        .control-key {
+            color: #ffbd2e;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        .status {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .status h3 {
+            color: #27c93f;
+            margin-top: 0;
+        }
+
+        .features {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .features h3 {
+            color: #ff5f56;
+            margin-top: 0;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .features li:before {
+            content: "✓";
+            color: #27c93f;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 AuraDriller MVP</h1>
+        <p class="subtitle">Deep Space Mining Adventure - Full Featured Version</p>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <h3>🎮 Controls</h3>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <strong>Movement:</strong><br>
+                    <span class="control-key">← → / A D</span> - Move left/right
+                </div>
+                <div class="control-item">
+                    <strong>Drilling:</strong><br>
+                    <span class="control-key">↓ / S / SPACE</span> - Drill down
+                </div>
+                <div class="control-item">
+                    <strong>Game Menu:</strong><br>
+                    <span class="control-key">ESC</span> - Pause/Menu
+                </div>
+                <div class="control-item">
+                    <strong>Quick Actions:</strong><br>
+                    <span class="control-key">R</span> - Restart game
+                </div>
+            </div>
+        </div>
+        
+        <div class="status">
+            <h3>📊 Game Status</h3>
+            <p><strong>State:</strong> <span id="gameState">Loading...</span></p>
+            <p><strong>Canvas:</strong> <span id="canvasInfo">Initializing...</span></p>
+            <p><strong>AuraGameSDK:</strong> <span id="sdkStatus">Checking...</span></p>
+        </div>
+        
+        <div class="features">
+            <h3>🎯 MVP Features Implemented</h3>
+            <ul>
+                <li>Complete main menu system with animations</li>
+                <li>Responsive canvas with crisp pixel rendering</li>
+                <li>Full spritesheet system (3x3 player animations)</li>
+                <li>Smooth drilling mechanics with particle effects</li>
+                <li>Physics-based falling blocks with chain reactions</li>
+                <li>Oxygen management system with warnings</li>
+                <li>Progressive difficulty and oxygen capsule distribution</li>
+                <li>Complete audio system (BGM, SFX, spatial audio)</li>
+                <li>AuraGameSDK integration (pause menu, notifications, modals)</li>
+                <li>Win/lose conditions with score bonuses</li>
+                <li>Game state management (menu, playing, paused, game over, win)</li>
+                <li>Improved input handling with proper key detection</li>
+                <li>Asset loading system with fallback graphics</li>
+                <li>Responsive UI scaling for different screen sizes</li>
+                <li>Complete game loop with 60 FPS optimization</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="AuraGameSDK.js"></script>
+    <script src="AuraDriller.js"></script>
+    
+    <script>
+        // Initialize the game
+        let game;
+        let gameCanvas;
+        
+        function updateStatus() {
+            const gameStateEl = document.getElementById('gameState');
+            const canvasInfoEl = document.getElementById('canvasInfo');
+            const sdkStatusEl = document.getElementById('sdkStatus');
+            
+            if (game) {
+                gameStateEl.textContent = game.gameState || 'Unknown';
+                canvasInfoEl.textContent = `${gameCanvas.width}x${gameCanvas.height} (${game.blockSize}px blocks, ${game.gridWidth}x${game.gridHeight} grid)`;
+            } else {
+                gameStateEl.textContent = 'Not initialized';
+                canvasInfoEl.textContent = 'Canvas not ready';
+            }
+            
+            if (typeof AuraGameSDK !== 'undefined') {
+                sdkStatusEl.textContent = 'Loaded and ready';
+                sdkStatusEl.style.color = '#27c93f';
+            } else {
+                sdkStatusEl.textContent = 'Not available';
+                sdkStatusEl.style.color = '#ff5f56';
+            }
+        }
+        
+        function initGame() {
+            gameCanvas = document.getElementById('gameCanvas');
+            
+            // Ensure canvas is properly sized
+            const rect = gameCanvas.getBoundingClientRect();
+            gameCanvas.width = 800;
+            gameCanvas.height = 600;
+            
+            console.log('Initializing AuraDriller...');
+            
+            try {
+                game = new AuraDrillerGame(gameCanvas, () => {
+                    console.log('Game exit callback triggered');
+                });
+                
+                console.log('AuraDriller initialized successfully!');
+                console.log('Game instance:', game);
+                
+                // Update status periodically
+                setInterval(updateStatus, 1000);
+                updateStatus();
+                
+            } catch (error) {
+                console.error('Failed to initialize AuraDriller:', error);
+                document.getElementById('gameState').textContent = 'Initialization failed: ' + error.message;
+                document.getElementById('gameState').style.color = '#ff5f56';
+            }
+        }
+        
+        // Initialize when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGame);
+        } else {
+            initGame();
+        }
+        
+        // Debug helpers
+        window.debugGame = () => {
+            if (game) {
+                console.log('Game state:', game.gameState);
+                console.log('Running:', game.gameRunning);
+                console.log('Paused:', game.gamePaused);
+                console.log('Player position:', game.player.x, game.player.y);
+                console.log('Current scroll offset:', game.currentScrollOffset);
+                console.log('Grid dimensions:', game.gridWidth, game.gridHeight);
+                console.log('Block size:', game.blockSize);
+                console.log('Keys pressed:', game.keys);
+            } else {
+                console.log('Game not initialized');
+            }
+        };
+        
+        window.testDrill = () => {
+            if (game && game.gameRunning) {
+                console.log('Triggering test drill...');
+                game.drillBlock();
+            } else {
+                console.log('Game not running - cannot test drill');
+            }
+        };
+    </script>
+</body>
+</html>

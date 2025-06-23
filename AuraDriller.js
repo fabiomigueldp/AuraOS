@@ -46,6 +46,7 @@ class AuraDrillerGame {
         }
 
         // Game state
+        this.gameState = 'mainMenu'; // 'mainMenu', 'playing', 'paused', 'gameOver', 'gameWin'
         this.grid = [];
         this.player = {
             x: Math.floor(this.gridWidth / 2),
@@ -66,8 +67,10 @@ class AuraDrillerGame {
 
         // Input handling
         this.keys = {};
+        this.lastLeftPressed = false;
+        this.lastRightPressed = false;
         this.drillCooldownTimer = 0;
-        this.drillCooldownTime = 120; // ms between drills (faster drill)
+        this.drillCooldownTime = 150; // ms between drills (better balance)
 
         // Falling block mechanics
         this.fallingBlocks = [];
@@ -102,12 +105,12 @@ class AuraDrillerGame {
             'yellow': '#ffbd2e'
         };
 
-        this._loadAssets();
-        this._setupTheming();
-
         // Bind event listeners
         this._boundKeyDown = this._handleKeyDown.bind(this);
         this._boundKeyUp = this._handleKeyUp.bind(this);
+        
+        // Initialize the game
+        this.init();
     }
 
     /**
@@ -153,6 +156,7 @@ class AuraDrillerGame {
         if (this.gameRunning) return;
         this.gameRunning = true;
         this.gamePaused = false;
+        this.gameState = 'playing';
         this._setupTheming(); // Re-apply theme colors in case they changed
 
         this.player = {
@@ -177,8 +181,12 @@ class AuraDrillerGame {
 
         this.initializeGrid();
 
-        document.addEventListener('keydown', this._boundKeyDown);
-        document.addEventListener('keyup', this._boundKeyUp);
+        // Ensure event listeners are added
+        if (!this._keyListenersAdded) {
+            document.addEventListener('keydown', this._boundKeyDown);
+            document.addEventListener('keyup', this._boundKeyUp);
+            this._keyListenersAdded = true;
+        }
 
         this.gameInterval = setInterval(() => {
             if (!this.gamePaused) {
@@ -200,11 +208,16 @@ class AuraDrillerGame {
     stop(quitToMenu = false) {
         if (!this.gameRunning && !quitToMenu) return; // Allow stop to be called for quitting even if not "running"
         this.gameRunning = false;
+        this.gameState = 'stopped';
         clearInterval(this.gameInterval);
         this.gameInterval = null;
 
-        document.removeEventListener('keydown', this._boundKeyDown);
-        document.removeEventListener('keyup', this._boundKeyUp);
+        // Only remove listeners if we're truly quitting, not just pausing
+        if (quitToMenu) {
+            document.removeEventListener('keydown', this._boundKeyDown);
+            document.removeEventListener('keyup', this._boundKeyUp);
+            this._keyListenersAdded = false;
+        }
 
         if (AuraGameSDK && AuraGameSDK.audio) {
             AuraGameSDK.audio.stop();
@@ -248,6 +261,7 @@ class AuraDrillerGame {
         setTimeout(() => {
             // Re-initialize or create a new instance if necessary.
             // For simplicity, we'll re-call start which resets state.
+            this.gameState = 'playing';
             this.start();
         }, 100);
     }
@@ -539,6 +553,11 @@ class AuraDrillerGame {
         this.ctx.fillStyle = this.backgroundColor;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
+        if (this.gameState === 'mainMenu') {
+            // Main menu is drawn by its own loop
+            return;
+        }
+        
         if (this.gameRunning) {
             this.drawGrid();
             this.drawPlayer();
@@ -546,7 +565,7 @@ class AuraDrillerGame {
             this.drawFallingBlocks();
             this.drawUI();
             
-            if (this.gamePaused) {
+            if (this.gamePaused && this.gameState === 'paused') {
                 this.drawPauseScreen();
             }
         }
@@ -608,27 +627,33 @@ class AuraDrillerGame {
         this.player.movingLeft = false;
         this.player.movingRight = false;
 
-        let targetVisualX = this.player.x * this.blockSize;
-        if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) {
+        // Handle horizontal movement - now uses discrete movement on key press
+        const leftPressed = this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A'];
+        const rightPressed = this.keys['ArrowRight'] || this.keys['d'] || this.keys['D'];
+        
+        if (leftPressed && !this.lastLeftPressed) {
             if (this.player.x > 0) {
                 this.player.x--;
                 this.player.movingLeft = true;
             }
         }
-        if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) {
+        if (rightPressed && !this.lastRightPressed) {
             if (this.player.x < this.gridWidth - 1) {
                 this.player.x++;
                 this.player.movingRight = true;
             }
         }
-        // Player horizontal movement is now continuous if key is held, visualX smooths it
+        
+        // Store last frame key states for edge detection
+        this.lastLeftPressed = leftPressed;
+        this.lastRightPressed = rightPressed;
 
-        if ((this.keys['ArrowDown'] || this.keys['s'] || this.keys[' ']) && this.drillCooldownTimer <= 0) {
+        // Handle drilling - improved detection
+        const drillPressed = this.keys['ArrowDown'] || this.keys['s'] || this.keys['S'] || this.keys[' '];
+        
+        if (drillPressed && this.drillCooldownTimer <= 0) {
             this.drillBlock();
             this.drillCooldownTimer = this.drillCooldownTime;
-            // For continuous drilling if held, don't clear keys here.
-            // If single drill per press:
-            // this.keys['ArrowDown'] = false; this.keys['s'] = false; this.keys[' '] = false;
         }
     }
 
@@ -636,55 +661,71 @@ class AuraDrillerGame {
         const drillEffectiveRow = Math.floor(this.currentScrollOffset / this.blockSize) + 1;
         const drillCol = this.player.x;
 
+        // Debug logging
+        console.log(`Drilling at row ${drillEffectiveRow}, col ${drillCol}`);
+
         if (drillEffectiveRow >= this.grid.length || drillCol < 0 || drillCol >= this.gridWidth) {
+            console.log('Drill position out of bounds');
             return;
         }
 
         const blockToDrill = this.grid[drillEffectiveRow][drillCol];
 
-        if (blockToDrill && blockToDrill.visualState !== 'breaking') {
-            // Play drill sound
-            if (AuraGameSDK && AuraGameSDK.audio) {
-                AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/drill.wav', 0.7);
-            }
-
-            if (blockToDrill.type === 'oxygen') {
-                // Oxygen pickup
-                this.player.oxygen = Math.min(this.player.maxOxygen, this.player.oxygen + 25);
-                this.player.score += 50; // Bonus for oxygen
-                
-                if (AuraGameSDK && AuraGameSDK.audio) {
-                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/oxygen_pickup.wav', 0.8);
-                }
-                if (AuraGameSDK && AuraGameSDK.ui) {
-                    AuraGameSDK.ui.showNotification({ 
-                        message: 'Oxygen +25!', 
-                        type: 'success', 
-                        duration: 1500 
-                    });
-                }
-            } else {
-                // Normal block drilling
-                this.player.oxygen -= 0.5; // Drilling cost
-                this.player.score += 10;
-                
-                if (AuraGameSDK && AuraGameSDK.audio) {
-                    AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/block_break.wav', 0.6);
-                }
-            }
-
-            // Start breaking animation
-            blockToDrill.visualState = 'breaking';
-            blockToDrill.breakStartTime = Date.now();
-
-            // Create drill particles
-            this.createDrillParticles(blockToDrill);
-
-            // Update depth and scroll
-            this.player.depth++;
-            this.currentScrollOffset += this.blockSize;
-            this.player.y = Math.floor(this.currentScrollOffset / this.blockSize);
+        if (!blockToDrill) {
+            console.log('No block to drill');
+            return;
         }
+
+        if (blockToDrill.visualState === 'breaking') {
+            console.log('Block already breaking');
+            return;
+        }
+
+        console.log('Drilling block:', blockToDrill);
+
+        // Play drill sound
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/drill.wav', 0.7);
+        }
+
+        if (blockToDrill.type === 'oxygen') {
+            // Oxygen pickup
+            this.player.oxygen = Math.min(this.player.maxOxygen, this.player.oxygen + 25);
+            this.player.score += 50; // Bonus for oxygen
+            
+            if (AuraGameSDK && AuraGameSDK.audio) {
+                AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/oxygen_pickup.wav', 0.8);
+            }
+            if (AuraGameSDK && AuraGameSDK.ui) {
+                AuraGameSDK.ui.showNotification({ 
+                    message: 'Oxygen +25!', 
+                    type: 'success', 
+                    duration: 1500 
+                });
+            }
+        } else {
+            // Normal block drilling
+            this.player.oxygen -= 0.5; // Drilling cost
+            this.player.score += 10;
+            
+            if (AuraGameSDK && AuraGameSDK.audio) {
+                AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/block_break.wav', 0.6);
+            }
+        }
+
+        // Start breaking animation
+        blockToDrill.visualState = 'breaking';
+        blockToDrill.breakStartTime = Date.now();
+
+        // Create drill particles
+        this.createDrillParticles(blockToDrill);
+
+        // Update depth and scroll
+        this.player.depth++;
+        this.currentScrollOffset += this.blockSize;
+        this.player.y = Math.floor(this.currentScrollOffset / this.blockSize);
+        
+        console.log(`Depth now: ${this.player.depth}, Scroll offset: ${this.currentScrollOffset}`);
     }
 
     createDrillParticles(block) {
@@ -1049,6 +1090,7 @@ class AuraDrillerGame {
         
         this.gameRunning = false;
         this.gamePaused = true;
+        this.gameState = 'gameOver';
         
         // Play game over sound
         if (AuraGameSDK && AuraGameSDK.audio) {
@@ -1056,7 +1098,60 @@ class AuraDrillerGame {
             AuraGameSDK.audio.playSfx('gameassets/auradriller/sounds/game_over.wav', 0.8);
         }
         
-        // Draw game over screen
+        // Create game over modal using AuraGameSDK
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            const gameOverContent = `
+                <div style="text-align: center; color: white;">
+                    <h2 style="color: #ff5f56; margin-bottom: 10px;">GAME OVER</h2>
+                    <p style="margin: 5px 0;">${reason}</p>
+                    <p style="margin: 5px 0;"><strong>Score: ${this.player.score}</strong></p>
+                    <p style="margin: 5px 0;"><strong>Depth: ${this.player.depth}m</strong></p>
+                </div>
+            `;
+            
+            AuraGameSDK.ui.createModal('aura-driller-game-over', {
+                title: 'Mission Failed',
+                content: gameOverContent,
+                buttons: [
+                    {
+                        text: 'Play Again',
+                        callback: () => {
+                            AuraGameSDK.ui.hideModal('aura-driller-game-over');
+                            this.restart();
+                        },
+                        className: 'game-over-restart-btn'
+                    },
+                    {
+                        text: 'Main Menu',
+                        callback: () => {
+                            AuraGameSDK.ui.hideModal('aura-driller-game-over');
+                            this.showMainMenu();
+                        },
+                        className: 'game-over-menu-btn'
+                    }
+                ]
+            });
+            
+            AuraGameSDK.ui.showModal('aura-driller-game-over');
+        } else {
+            // Fallback to canvas drawing
+            this.drawGameOverScreen(reason);
+        }
+        
+        // Show notification
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            AuraGameSDK.ui.showNotification({ 
+                message: `Game Over! Score: ${this.player.score}`, 
+                type: 'error', 
+                duration: 3000 
+            });
+        }
+    }
+
+    /**
+     * Fallback game over screen drawing
+     */
+    drawGameOverScreen(reason) {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
@@ -1075,15 +1170,6 @@ class AuraDrillerGame {
         this.ctx.fillStyle = '#8a63d2';
         this.ctx.font = `${Math.min(14, this.canvas.width / 25)}px 'Inter', sans-serif`;
         this.ctx.fillText('Press ESC to return to menu or R to restart', this.canvas.width / 2, this.canvas.height / 2 + 80);
-        
-        // Show notification
-        if (AuraGameSDK && AuraGameSDK.ui) {
-            AuraGameSDK.ui.showNotification({ 
-                message: `Game Over! Score: ${this.player.score}`, 
-                type: 'error', 
-                duration: 3000 
-            });
-        }
     }
 
     /**
@@ -1094,6 +1180,7 @@ class AuraDrillerGame {
         
         this.gameRunning = false;
         this.gamePaused = true;
+        this.gameState = 'gameWin';
         
         // Stop audio
         if (AuraGameSDK && AuraGameSDK.audio) {
@@ -1105,7 +1192,67 @@ class AuraDrillerGame {
         const oxygenBonus = Math.floor(this.player.oxygen) * 2;
         const finalScore = this.player.score + depthBonus + oxygenBonus;
         
-        // Draw win screen
+        // Create win modal using AuraGameSDK
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            const winContent = `
+                <div style="text-align: center; color: white;">
+                    <h2 style="color: #27c93f; margin-bottom: 10px;">MISSION COMPLETE!</h2>
+                    <p style="margin: 5px 0;">Target depth of ${this.targetDepth}m reached!</p>
+                    <p style="margin: 5px 0;"><strong>Final Score: ${finalScore}</strong></p>
+                    <p style="margin: 5px 0;">Depth: ${this.player.depth}m</p>
+                    <p style="margin: 5px 0;">Oxygen Remaining: ${Math.floor(this.player.oxygen)}%</p>
+                    <p style="margin: 10px 0; font-size: 0.9em; color: #63d2b3;">
+                        Depth Bonus: +${depthBonus} | Oxygen Bonus: +${oxygenBonus}
+                    </p>
+                </div>
+            `;
+            
+            AuraGameSDK.ui.createModal('aura-driller-game-win', {
+                title: 'Victory!',
+                content: winContent,
+                buttons: [
+                    {
+                        text: 'Play Again',
+                        callback: () => {
+                            AuraGameSDK.ui.hideModal('aura-driller-game-win');
+                            this.restart();
+                        },
+                        className: 'game-win-restart-btn'
+                    },
+                    {
+                        text: 'Main Menu',
+                        callback: () => {
+                            AuraGameSDK.ui.hideModal('aura-driller-game-win');
+                            this.showMainMenu();
+                        },
+                        className: 'game-win-menu-btn'
+                    }
+                ]
+            });
+            
+            AuraGameSDK.ui.showModal('aura-driller-game-win');
+        } else {
+            // Fallback to canvas drawing
+            this.drawGameWinScreen(finalScore);
+        }
+        
+        // Show notification
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            AuraGameSDK.ui.showNotification({ 
+                message: `Mission Complete! Score: ${finalScore}`, 
+                type: 'success', 
+                duration: 4000 
+            });
+        }
+        
+        // Update player score to final score
+        this.player.score = finalScore;
+    }
+
+    /**
+     * Fallback game win screen drawing
+     */
+    drawGameWinScreen(finalScore) {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
@@ -1125,32 +1272,37 @@ class AuraDrillerGame {
         this.ctx.fillStyle = '#8a63d2';
         this.ctx.font = `${Math.min(14, this.canvas.width / 25)}px Arial`;
         this.ctx.fillText('Press ESC to return to menu or R to play again', this.canvas.width / 2, this.canvas.height / 2 + 90);
-        
-        // Show notification
-        if (AuraGameSDK && AuraGameSDK.ui) {
-            AuraGameSDK.ui.showNotification({ 
-                message: `Mission Complete! Score: ${finalScore}`, 
-                type: 'success', 
-                duration: 4000 
-            });
-        }
-        
-        // Update player score to final score
-        this.player.score = finalScore;
     }
     /**
      * Handle key input
      */
     _handleKeyDown(event) {
+        // Prevent default for specific keys to avoid conflicts
+        if (event.key === ' ' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+        }
+        
         this.keys[event.key] = true;
+        
+        // Handle main menu state
+        if (this.gameState === 'mainMenu') {
+            if (event.key === 'Enter' || event.key === ' ') {
+                this.startGame();
+            } else if (event.key === 'Escape') {
+                if (this.onExitCallback) {
+                    this.onExitCallback();
+                }
+            }
+            return;
+        }
         
         // Handle game over inputs
         if (!this.gameRunning) {
             if (event.key === 'Escape') {
-                if (this.onExitCallback) {
-                    this.onExitCallback();
-                }
+                this.showMainMenu();
             } else if (event.key === 'r' || event.key === 'R') {
+                this.restart();
+            } else if (event.key === 'Enter') {
                 this.restart();
             }
             return;
@@ -1161,8 +1313,13 @@ class AuraDrillerGame {
             if (this.gamePaused) {
                 this.resume();
             } else {
-                this.pause();
+                this.showPauseMenu();
             }
+        }
+        
+        // Handle restart during game
+        if (event.key === 'r' || event.key === 'R') {
+            this.restart();
         }
     }
 
@@ -1224,6 +1381,185 @@ class AuraDrillerGame {
         }
         
         this.playerCurrentFrame = targetFrame;
+    }
+
+    /**
+     * Show main menu
+     */
+    showMainMenu() {
+        this.gameState = 'mainMenu';
+        this.gameRunning = false;
+        this.gamePaused = false;
+        
+        // Stop any running game loop
+        if (this.gameInterval) {
+            clearInterval(this.gameInterval);
+            this.gameInterval = null;
+        }
+        
+        // Stop audio
+        if (AuraGameSDK && AuraGameSDK.audio) {
+            AuraGameSDK.audio.stop();
+        }
+        
+        // Add event listeners if not already added
+        if (!this._keyListenersAdded) {
+            document.addEventListener('keydown', this._boundKeyDown);
+            document.addEventListener('keyup', this._boundKeyUp);
+            this._keyListenersAdded = true;
+        }
+        
+        // Start drawing the main menu
+        this.drawMainMenu();
+        
+        console.log('AuraDriller: Main menu shown');
+    }
+
+    /**
+     * Start the actual game from menu
+     */
+    startGame() {
+        this.gameState = 'playing';
+        this.start();
+    }
+
+    /**
+     * Show pause menu using AuraGameSDK
+     */
+    showPauseMenu() {
+        if (!this.gameRunning) return;
+        
+        this.pause();
+        this.gameState = 'paused';
+        
+        // Create pause menu using AuraGameSDK
+        if (AuraGameSDK && AuraGameSDK.ui) {
+            AuraGameSDK.ui.createPauseMenu({
+                onResume: () => {
+                    this.gameState = 'playing';
+                    this.resume();
+                },
+                onRestart: () => {
+                    this.restart();
+                },
+                onQuit: () => {
+                    this.stop();
+                    this.showMainMenu();
+                },
+                title: 'AuraDriller Paused',
+                gameId: 'aura-driller'
+            });
+        } else {
+            // Fallback to simple pause if SDK not available
+            this.gamePaused = true;
+        }
+    }
+
+    /**
+     * Draw main menu
+     */
+    drawMainMenu() {
+        // Clear canvas
+        this.ctx.fillStyle = this.backgroundColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw animated background particles
+        this.drawMenuBackground();
+        
+        // Title
+        this.ctx.fillStyle = '#8a63d2';
+        this.ctx.font = `bold ${Math.min(48, this.canvas.width / 10)}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        this.ctx.shadowBlur = 4;
+        this.ctx.shadowOffsetX = 2;
+        this.ctx.shadowOffsetY = 2;
+        this.ctx.fillText('AURA DRILLER', this.canvas.width / 2, this.canvas.height / 2 - 100);
+        
+        // Subtitle
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `${Math.min(16, this.canvas.width / 25)}px Arial`;
+        this.ctx.fillText('Deep Space Mining Adventure', this.canvas.width / 2, this.canvas.height / 2 - 60);
+        
+        // Instructions
+        this.ctx.fillStyle = '#63d2b3';
+        this.ctx.font = `bold ${Math.min(20, this.canvas.width / 20)}px Arial`;
+        this.ctx.fillText('Press ENTER or SPACE to Start', this.canvas.width / 2, this.canvas.height / 2 + 20);
+        
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `${Math.min(14, this.canvas.width / 28)}px Arial`;
+        this.ctx.fillText('Press ESC to Exit', this.canvas.width / 2, this.canvas.height / 2 + 50);
+        
+        // Controls info
+        this.ctx.fillStyle = '#b0a8d9';
+        this.ctx.font = `${Math.min(12, this.canvas.width / 35)}px Arial`;
+        this.ctx.fillText('Controls: ←/→ or A/D to move, ↓/S/SPACE to drill', this.canvas.width / 2, this.canvas.height / 2 + 90);
+        this.ctx.fillText('Target: Reach 100m depth while managing oxygen', this.canvas.width / 2, this.canvas.height / 2 + 110);
+        
+        this.ctx.shadowColor = 'transparent';
+        
+        // Continue drawing menu animation
+        if (this.gameState === 'mainMenu') {
+            requestAnimationFrame(() => this.drawMainMenu());
+        }
+    }
+
+    /**
+     * Draw animated background for menu
+     */
+    drawMenuBackground() {
+        // Create some floating particles for visual appeal
+        if (!this.menuParticles) {
+            this.menuParticles = [];
+            for (let i = 0; i < 20; i++) {
+                this.menuParticles.push({
+                    x: Math.random() * this.canvas.width,
+                    y: Math.random() * this.canvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 3 + 1,
+                    alpha: Math.random() * 0.5 + 0.2,
+                    color: ['#8a63d2', '#63d2b3', '#b0a8d9'][Math.floor(Math.random() * 3)]
+                });
+            }
+        }
+        
+        // Update and draw particles
+        for (let particle of this.menuParticles) {
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            
+            // Wrap around screen
+            if (particle.x < 0) particle.x = this.canvas.width;
+            if (particle.x > this.canvas.width) particle.x = 0;
+            if (particle.y < 0) particle.y = this.canvas.height;
+            if (particle.y > this.canvas.height) particle.y = 0;
+            
+            // Draw particle
+            this.ctx.save();
+            this.ctx.globalAlpha = particle.alpha;
+            this.ctx.fillStyle = particle.color;
+            this.ctx.beginPath();
+            this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+    }
+
+    /**
+     * Initialize the game (called from constructor)
+     */
+    init() {
+        this._loadAssets();
+        this._setupTheming();
+        
+        // Initialize menu particles
+        this.menuParticles = null;
+        this._keyListenersAdded = false;
+        
+        // Show main menu by default
+        this.showMainMenu();
     }
 }
 

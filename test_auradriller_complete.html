@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraDriller MVP - Complete Test</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-tertiary: #0f3460;
+            --text-primary: #e94560;
+            --text-secondary: #f5f5f5;
+            --accent-primary: #8a63d2;
+            --accent-secondary: #63d2b3;
+            --glass-background: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --glass-border-focus: rgba(255, 255, 255, 0.3);
+            --window-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --window-shadow-focus: 0 12px 48px rgba(0, 0, 0, 0.4);
+            --highlight-primary: var(--accent-primary);
+            --highlight-primary-rgb: 138, 99, 210;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-secondary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-container {
+            background: var(--glass-background);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--window-shadow);
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 2px solid var(--accent-primary);
+            border-radius: 8px;
+            background: #120c1c;
+            display: block;
+            margin: 0 auto;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .controls h3 {
+            color: var(--accent-primary);
+            margin-bottom: 15px;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-section h4 {
+            color: var(--accent-secondary);
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+
+        .key {
+            display: inline-block;
+            background: var(--accent-primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 2px;
+        }
+
+        .objective {
+            background: rgba(138, 99, 210, 0.1);
+            border: 1px solid var(--accent-primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .status {
+            background: rgba(99, 210, 179, 0.1);
+            border: 1px solid var(--accent-secondary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .debug-info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .test-btn {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .test-btn:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 style="text-align: center; color: var(--accent-primary); margin-bottom: 20px;">
+            🚀 AuraDriller MVP - Complete Test
+        </h1>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <h3>🎮 Game Controls</h3>
+            <div class="control-grid">
+                <div class="control-section">
+                    <h4>🏃 Movement</h4>
+                    <span class="key">←</span> <span class="key">→</span> or <span class="key">A</span> <span class="key">D</span>
+                    <br><small>Move astronaut left/right</small>
+                </div>
+                <div class="control-section">
+                    <h4>⚡ Drilling</h4>
+                    <span class="key">↓</span> <span class="key">S</span> <span class="key">SPACE</span>
+                    <br><small>Drill through blocks</small>
+                </div>
+                <div class="control-section">
+                    <h4>⏸️ Game Control</h4>
+                    <span class="key">ESC</span> - Pause/Menu
+                    <br><span class="key">R</span> - Restart
+                </div>
+                <div class="control-section">
+                    <h4>🎯 Menu Navigation</h4>
+                    <span class="key">ENTER</span> <span class="key">SPACE</span> - Start Game
+                    <br><span class="key">ESC</span> - Exit/Back
+                </div>
+            </div>
+            
+            <div class="objective">
+                <h4>🎯 Mission Objective</h4>
+                <p>Drill down to <strong>100 meters</strong> while managing your oxygen supply!</p>
+                <p>🔵 Collect oxygen capsules to refill your tank<br>
+                ⛏️ Chain reactions give bonus points and oxygen<br>
+                ⚠️ Watch out for falling blocks!</p>
+            </div>
+            
+            <div class="status" id="gameStatus">
+                <h4>📊 Game Status</h4>
+                <p id="statusText">Click "Start Game" to begin your mining adventure!</p>
+            </div>
+            
+            <div class="test-buttons">
+                <button class="test-btn" onclick="startGame()">🚀 Start Game</button>
+                <button class="test-btn" onclick="togglePause()">⏸️ Pause/Resume</button>
+                <button class="test-btn" onclick="restartGame()">🔄 Restart</button>
+                <button class="test-btn" onclick="showMainMenu()">🏠 Main Menu</button>
+                <button class="test-btn" onclick="testDrilling()">⚡ Test Drilling</button>
+                <button class="test-btn" onclick="toggleDebug()">🐛 Debug Info</button>
+            </div>
+            
+            <div class="debug-info" id="debugInfo" style="display: none;">
+                <h4>🔍 Debug Information</h4>
+                <div id="debugContent">Debug info will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load AuraGameSDK first -->
+    <script src="AuraGameSDK.js"></script>
+    <!-- Then load the game -->
+    <script src="AuraDriller.js"></script>
+    
+    <script>
+        let game = null;
+        let debugEnabled = false;
+        let debugInterval = null;
+
+        // Initialize the game when page loads
+        window.addEventListener('load', () => {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // Ensure canvas is properly initialized
+            canvas.width = 800;
+            canvas.height = 600;
+            
+            // Create game instance
+            game = new AuraDrillerGame(canvas, () => {
+                updateStatus('Game exited to menu');
+                console.log('Game exited via callback');
+            });
+            
+            updateStatus('Game initialized - Ready to start!');
+            console.log('AuraDriller test initialized');
+        });
+
+        function startGame() {
+            if (game) {
+                if (game.gameState === 'mainMenu') {
+                    game.startGame();
+                } else {
+                    game.showMainMenu();
+                    setTimeout(() => game.startGame(), 100);
+                }
+                updateStatus('Game started! Use arrow keys/WASD to move, Space/S/↓ to drill');
+            }
+        }
+
+        function togglePause() {
+            if (game && game.gameRunning) {
+                if (game.gamePaused) {
+                    game.resume();
+                    updateStatus('Game resumed');
+                } else {
+                    game.showPauseMenu();
+                    updateStatus('Game paused');
+                }
+            } else {
+                updateStatus('No active game to pause/resume');
+            }
+        }
+
+        function restartGame() {
+            if (game) {
+                game.restart();
+                updateStatus('Game restarted');
+            }
+        }
+
+        function showMainMenu() {
+            if (game) {
+                game.showMainMenu();
+                updateStatus('Showing main menu');
+            }
+        }
+
+        function testDrilling() {
+            if (game && game.gameRunning && !game.gamePaused) {
+                // Simulate drilling key press
+                const drillEvent = new KeyboardEvent('keydown', { key: ' ' });
+                document.dispatchEvent(drillEvent);
+                
+                setTimeout(() => {
+                    const drillEventUp = new KeyboardEvent('keyup', { key: ' ' });
+                    document.dispatchEvent(drillEventUp);
+                }, 100);
+                
+                updateStatus('Test drilling performed');
+            } else {
+                updateStatus('Start the game first to test drilling');
+            }
+        }
+
+        function toggleDebug() {
+            debugEnabled = !debugEnabled;
+            const debugInfo = document.getElementById('debugInfo');
+            
+            if (debugEnabled) {
+                debugInfo.style.display = 'block';
+                debugInterval = setInterval(updateDebugInfo, 100);
+                updateStatus('Debug mode enabled');
+            } else {
+                debugInfo.style.display = 'none';
+                if (debugInterval) {
+                    clearInterval(debugInterval);
+                    debugInterval = null;
+                }
+                updateStatus('Debug mode disabled');
+            }
+        }
+
+        function updateDebugInfo() {
+            if (game && debugEnabled) {
+                const debugContent = document.getElementById('debugContent');
+                
+                const info = `
+Game State: ${game.gameState || 'undefined'}
+Running: ${game.gameRunning || false}
+Paused: ${game.gamePaused || false}
+Canvas: ${game.canvas ? `${game.canvas.width}x${game.canvas.height}` : 'null'}
+Block Size: ${game.blockSize || 'undefined'}
+Grid: ${game.gridWidth || 0}x${game.gridHeight || 0}
+Player Position: (${game.player ? game.player.x : 'N/A'}, ${game.player ? game.player.y : 'N/A'})
+Player Depth: ${game.player ? game.player.depth : 'N/A'}m
+Player Oxygen: ${game.player ? Math.floor(game.player.oxygen) : 'N/A'}%
+Player Score: ${game.player ? game.player.score : 'N/A'}
+Current Keys: ${Object.keys(game.keys || {}).filter(k => game.keys[k]).join(', ') || 'none'}
+Scroll Offset: ${game.currentScrollOffset || 0}
+Falling Blocks: ${game.fallingBlocks ? game.fallingBlocks.length : 0}
+Particles: ${game.particles ? game.particles.length : 0}
+SDK Available: ${typeof AuraGameSDK !== 'undefined'}
+Assets Loaded: ${game.playerSprite && game.playerSprite.complete ? 'Yes' : 'Loading...'}
+                `.trim();
+                
+                debugContent.textContent = info;
+            }
+        }
+
+        function updateStatus(message) {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = message;
+            console.log('Status:', message);
+        }
+
+        // Handle keyboard events for testing
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'F1') {
+                event.preventDefault();
+                toggleDebug();
+            }
+        });
+
+        // Test SDK integration
+        console.log('AuraGameSDK available:', typeof AuraGameSDK !== 'undefined');
+        if (typeof AuraGameSDK !== 'undefined') {
+            console.log('AuraGameSDK loaded successfully');
+        } else {
+            console.warn('AuraGameSDK not loaded - some features may not work');
+        }
+    </script>
+</body>
+</html>
